@@ -1,0 +1,24 @@
+# https://github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
+
+[MESSAGES CONTROL]
+
+disable=bad-continuation,fixme,locally-disabled
+
+[REPORTS]
+
+reports=no
+
+[VARIABLES]
+
+max-locals=25
+
+[BASIC]
+
+argument-rgx=[a-z_][a-z0-9_]{1,30}$
+variable-rgx=[a-z_][a-z0-9_]{1,30}$
+
+[FORMAT]
+
+indent-string="  "
+indent-after-paren=2
+max-line-length=80
