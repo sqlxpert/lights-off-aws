@@ -33,6 +33,30 @@ Parameters:
       - INFO
       - DEBUG
       - NOTSET
+  SqsKmsKey:
+    Type: String
+    Description: >-
+      Encryption key for queue messages. If blank, queue messages will not be
+      encrypted. Specify "alias/aws/sqs" for the AWS-managed SQS service KMS
+      key, which allows for encryption but not for any key access restrictions.
+      To use a custom KMS key, specify an ARN with the key ID, not an alias.
+    Default: ""
+  QueueMessageBytesMax:
+    Type: Number
+    Description: Operations queue message size limit (bytes)
+    MinValue: 1024
+    Default: 16384
+    MaxValue: 262144  # 256 KiB
+  LambaFnTriggersEnabled:
+    Type: String
+    Description: >-
+      Whether the "Find" AWS Lambda function will run automatically, checking
+      every 10 minutes for AWS resources with scheduled operations, and whether
+      the "Do" function will run automatically, executing queued operations.
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
 
   # Do not validate, in case values accepted by underlying APIs change:
   LogsRetainDays:
@@ -67,28 +91,6 @@ Parameters:
       visibility timeout for operations queue messages.
     Default: 60
 
-  # SqsKmsKeyId:
-  #   Type: String
-  #   Description: >-
-  #     KMS key (key ID, not alias) for SQS queues; using the default service
-  #     key is not recommended
-  QueueMessageBytesMax:
-    Type: Number
-    Description: Operations queue message size limit (bytes)
-    MinValue: 1024
-    Default: 16384
-    MaxValue: 262144  # 256 KiB
-  LambaFnTriggersEnabled:
-    Type: String
-    Description: >-
-      Whether the "Find" AWS Lambda function will run automatically, checking
-      every 10 minutes for AWS resources with scheduled operations, and whether
-      the "Do" function will run automatically, executing queued operations.
-    Default: "true"
-    AllowedValues:
-      - "false"
-      - "true"
-
 Metadata:
 
   AWS::CloudFormation::Interface:
@@ -99,7 +101,7 @@ Metadata:
           # - MainRegion
           - LambdaSourceS3BucketNamePrefix
           - LambaFnTriggersEnabled
-          # - SqsKmsKeyId
+          - SqsKmsKey
       - Label:
           default: AWS Lambda function to find resources with scheduled operations
         Parameters:
@@ -121,7 +123,9 @@ Metadata:
       LambdaSourceS3BucketNamePrefix:
         default: AWS Lambda source code S3 bucket name prefix (before -<region>)
       LambaFnTriggersEnabled:
-        default: AWS Lambda functions enabled?
+        default: Enabled?
+      SqsKmsKey:
+        default: Queue encryption key
       FindLambdaFnMemoryMB:
         default: Memory (MB)
       FindLambdaFnTimeoutSecs:
@@ -143,59 +147,47 @@ Conditions:
 
   LambaFnTriggersEnabledCond: !Equals [ !Ref LambaFnTriggersEnabled, "true" ]
 
-Resources:
+  SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
-  # KmsDecrypt:
-  #   Type: AWS::IAM::ManagedPolicy
-  #   DeletionPolicy: Delete
-  #   Properties:
-  #     Description: !Sub "KMS key ID ${SqsKmsKeyId}: use for decryption (SQS only)"
-  #     PolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Action:
-  #            # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
-  #            - "kms:Decrypt"
-  #           Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/${SqsKmsKeyId}"
-  #           Condition:
-  #              StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+  SqsKmsKeyCustom:
+    Fn::And:
+      - !Not [ !Equals [ !Ref SqsKmsKey, "" ] ]
+      - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
+
+Resources:
 
   OperationFailedQueue:
     Type: AWS::SQS::Queue
     Properties:
       DelaySeconds: 0
-      # KmsMasterKeyId: !Ref SqsKmsKeyId
-      # KmsDataKeyReusePeriodSeconds: 86400  # seconds (24 hours)
+      KmsMasterKeyId:
+        Fn::If:
+          - SqsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Ref SqsKmsKey
+      KmsDataKeyReusePeriodSeconds:
+        Fn::If:
+          - SqsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - 86400  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
       MessageRetentionPeriod: 604800  # seconds (7 days)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: 0  # seconds; dead message retries don't make sense
-      RedriveAllowPolicy:
-        redrivePermission: allowAll
-        # redrivePermission: byQueue + sourceQueueArns would be circular
-
-  OperationFailedQueueReceivePol:
-    Type: AWS::IAM::ManagedPolicy
-    DeletionPolicy: Delete
-    Properties:
-      Description: !Sub "SQS ${OperationFailedQueue.QueueName} messages: receive, change visibility time, delete"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - sqs:ReceiveMessage
-              - sqs:ChangeMessageVisibility*
-              - sqs:DeleteMessage*
-              - sqs:GetQueueAttributes
-            Resource: !GetAtt OperationFailedQueue.Arn
 
   OperationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      # KmsMasterKeyId: !Ref SqsKmsKeyId
-      # KmsDataKeyReusePeriodSeconds: 86400  # seconds (24 hours)
+      KmsMasterKeyId:
+        Fn::If:
+          - SqsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Ref SqsKmsKey
+      KmsDataKeyReusePeriodSeconds:
+        Fn::If:
+          - SqsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - 86400  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
       MessageRetentionPeriod: 1200  # seconds (20 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
@@ -203,40 +195,6 @@ Resources:
       RedrivePolicy:
         maxReceiveCount: 1
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
-
-  OperationQueueSendPol:
-    Type: AWS::IAM::ManagedPolicy
-    DeletionPolicy: Delete
-    Properties:
-      Description: !Sub "SQS ${OperationQueue.QueueName} messages: send"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - sqs:SendMessage*
-            Resource: !GetAtt OperationQueue.Arn
-          # - Effect: Allow
-          #   Action:  # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
-          #    - "kms:GenerateDataKey"
-          #    - "kms:Decrypt"
-          #   Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/${BothKmsMasterKeyId}"
-
-  OperationQueueReceivePol:
-    Type: AWS::IAM::ManagedPolicy
-    DeletionPolicy: Delete
-    Properties:
-      Description: !Sub "SQS ${OperationQueue.QueueName} messages: receive, change visibility time, delete"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - sqs:ReceiveMessage
-              - sqs:ChangeMessageVisibility*
-              - sqs:DeleteMessage*
-              - sqs:GetQueueAttributes  # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-permissions
-            Resource: !GetAtt OperationQueue.Arn
 
   LambdaFnLogGrpCreatePol:
     Type: AWS::IAM::ManagedPolicy
@@ -310,15 +268,31 @@ Resources:
         - !Ref FindLambdaFnEc2ReadPol
         - !Ref FindLambdaFnRdsReadPol
         - !Ref FindLambdaFnCloudFormationReadPol
-        - !Ref OperationQueueSendPol
+
+  SqsKmsEncryptPol:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: SqsKmsKeyCustom
+    Properties:
+      Description: "Custom KMS key: encrypt SQS messages"
+      Roles: [ !Ref FindLambdaFnRole ]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+              - kms:GenerateDataKey
+            Resource: !Ref SqsKmsKey
+            Condition:
+              StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
 
   DoLambdaFnEc2WritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
         Tagged EC2 instances: start, reboot, stop, create image (allows
-        reboot!). Tagged EBS volumes: create snapshot. All EC2 images and EBS
-        snapshots: tag, but cannot tag for deletion, or delete.
+        reboot!). Tagged EBS volumes: create snapshot. EC2 images and EBS
+        snapshots: tag on creation, but can never tag for deletion, or delete.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -370,6 +344,12 @@ Resources:
             Resource:
               - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
               - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+            Condition:
+              StringEquals:
+                # https://aws.amazon.com/blogs/compute/tag-amazon-ebs-snapshots-on-creation-and-implement-stronger-security-policies/
+                ec2:CreateAction:
+                  - CreateImage
+                  - CreateSnapshot
           - Sid: "BackupCreatorCannotTagBackupForDeletion"
             Effect: Deny
             Action: ec2:CreateTags
@@ -492,7 +472,107 @@ Resources:
         - !Ref DoLambdaFnEc2WritePol
         - !Ref DoLambdaFnRdsWritePol
         - !Ref DoLambdaFnCloudFormationWritePol
-        - !Ref OperationQueueReceivePol
+
+  SqsKmsDecryptPol:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: SqsKmsKeyCustom
+    Properties:
+      Description: "Custom KMS key: decrypt SQS messages"
+      Roles: [ !Ref DoLambdaFnRole ]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+              - kms:Decrypt
+            Resource: !Ref SqsKmsKey
+            Condition:
+              StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+
+  OperationFailedQueuePol:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [ !Ref OperationFailedQueue ]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:GetQueueAttributes
+            Resource: !GetAtt OperationFailedQueue.Arn
+          - Sid: DeadLetterSource
+            Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt OperationFailedQueue.Arn
+            Condition:
+              ArnEquals: { aws:SourceArn: !GetAtt OperationQueue.Arn }
+          - Sid: ExclusiveSource
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt OperationFailedQueue.Arn
+            Condition:
+              ArnNotEquals: { aws:SourceArn: !GetAtt OperationQueue.Arn }
+
+  OperationQueuePol:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [ !Ref OperationQueue ]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:GetQueueAttributes
+            Resource: !GetAtt OperationQueue.Arn
+          - Sid: Source
+            Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
+          - Sid: ExclusiveSource
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnNotEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
+          - Sid: Target
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnEquals: { aws:PrincipalArn: !GetAtt DoLambdaFnRole.Arn }
+          - Sid: DeadLetterTarget
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnEquals: { aws:SourceArn: !GetAtt OperationFailedQueue.Arn }
+          - Sid: ExclusiveTargets
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnNotEquals:
+                aws:PrincipalArn: !GetAtt DoLambdaFnRole.Arn
+                aws:SourceArn: !GetAtt OperationFailedQueue.Arn
 
   FindLambdaFn:
     Type: AWS::Lambda::Function
@@ -506,7 +586,7 @@ Resources:
       Runtime: python3.9
       Environment:
         Variables:
-          "QUEUE_URL": !GetAtt OperationQueue.QueueUrl
+          "QUEUE_URL": !Ref OperationQueue
           "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
           "LOG_LEVEL": !Ref LogLevel
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
@@ -613,14 +693,9 @@ Resources:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
       BatchSize: 1
-      # BisectBatchOnFunctionError: False
       Enabled: !Ref LambaFnTriggersEnabled
       EventSourceArn: !GetAtt OperationQueue.Arn
       FunctionName: !GetAtt DoLambdaFn.Arn
-      # MaximumBatchingWindowInSeconds: 0
-      # MaximumRecordAgeInSeconds: 600
-      # MaximumRetryAttempts: 1
-      # ParallelizationFactor: 1
 
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
