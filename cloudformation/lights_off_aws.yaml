@@ -11,20 +11,19 @@ Parameters:
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket (bucket name prefix only) where AWS Lambda function source code
-      is store. A bucket with this name PLUS a region suffix, e.g.,
-      my-bucket-us-east-1, must exist in EACH target region, and must contain
-      the SAME objects, readable by EVERY target AWS account.)
+      S3 bucket where AWS Lambda function source code is stored. A bucket with
+      this name PLUS a region suffix, e.g., my-bucket-us-east-1, must exist in
+      EACH target region, and must contain the SAME objects, readable by EVERY
+      target AWS account.
   LambdaFnFileName:
     Type: String
     Description: >-
-      LightsOff AWS Lamba function source code (Python file name WITHOUT
-      suffixes)
+      AWS Lamba function source code file name (before .py.zip suffixes)
     Default: "lights_off_aws_find_do"
   LogLevel:
     Type: String
     Description: >-
-      Threshold for logging the activities of the Lambda functions. See
+      Threshold for logging the activities of the AWS Lambda functions. See
       https://docs.python.org/3/library/logging.html#levels
     Default: ERROR
     AllowedValues:
@@ -39,34 +38,33 @@ Parameters:
   LogsRetainDays:
     Type: Number
     Description: >-
-      How many days to keep CloudWatch logs for Lights Off AWS Lambda
-      functions. See
+      How many days to keep CloudWatch logs from the AWS Lambda functions. See
       http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
     Default: 7
-  LightsOffFindLambdaFnMemoryMB:
+  FindLambdaFnMemoryMB:
     Type: Number
     Description: >-
-      How many megabytes of memory to allocate to the Lights Off "Find" Lambda
+      How many megabytes of memory to allocate to the "Find" AWS Lambda
       function. Increase only in case of out-of-memory errors.
     Default: 128
-  LightsOffFindLambdaFnTimeoutSecs:
+  FindLambdaFnTimeoutSecs:
     Type: Number
     Description: >-
-      How many seconds before execution of the Lights Off "Find" Lambda
-      function is canceled. Increase only in case of time-out errors.
+      How many seconds before execution of the "Find" AWS Lambda function
+      is canceled. Increase only in case of time-out errors.
     Default: 60
-  LightsOffDoLambdaFnMemoryMB:
+  DoLambdaFnMemoryMB:
     Type: Number
     Description: >-
-      How many megabytes of memory to allocate to the Lights Off "Do" AWS
-      Lambda function. Increase only in case of out-of-memory errors.
+      How many megabytes of memory to allocate to the "Do" AWS Lambda
+      function. Increase only in case of out-of-memory errors.
     Default: 128
-  LightsOffDoLambdaFnTimeoutSecs:
+  DoLambdaFnTimeoutSecs:
     Type: Number
     Description: >-
-      How many seconds before execution of the Lights Off "Do" AWS Lambda
-      function is canceled. Increase only in case of time-out errors. Also
-      determines visibility timeout for Operations queue messages.
+      How many seconds before execution of the "Do" AWS Lambda function is
+      canceled. Increase only in case of time-out errors. Also determines
+      visibility timeout for operations queue messages.
     Default: 60
 
   # SqsKmsKeyId:
@@ -76,37 +74,74 @@ Parameters:
   #     key is not recommended
   QueueMessageBytesMax:
     Type: Number
-    Description: "Queue message size limit (bytes)"
+    Description: Operations queue message size limit (bytes)
     MinValue: 1024
     Default: 16384
     MaxValue: 262144  # 256 KiB
+  LambaFnTriggersEnabled:
+    Type: String
+    Description: >-
+      Whether the "Find" AWS Lambda function will run automatically, checking
+      every 10 minutes for AWS resources with scheduled operations, and whether
+      the "Do" function will run automatically, executing queued operations.
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
 
 Metadata:
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "Basics"
+          default: Essentials
         Parameters:
           # - MainRegion
           - LambdaSourceS3BucketNamePrefix
+          - LambaFnTriggersEnabled
           # - SqsKmsKeyId
-          - QueueMessageBytesMax
       - Label:
-          default: "Lambda Functions"
+          default: AWS Lambda function to find resources with scheduled operations
         Parameters:
-          - LambdaFnFileName
+          - FindLambdaFnMemoryMB
+          - FindLambdaFnTimeoutSecs
+      - Label:
+          default: AWS Lambda function to do scheduled operations
+        Parameters:
+          - DoLambdaFnMemoryMB
+          - DoLambdaFnTimeoutSecs
+      - Label:
+          default: Miscellaneous
+        Parameters:
           - LogsRetainDays
-      - Label:
-          default: "1. Find and queue AWS resources for scheduled operations"
-        Parameters:
-          - LightsOffFindLambdaFnMemoryMB
-          - LightsOffFindLambdaFnTimeoutSecs
-      - Label:
-          default: "2. Perform scheduled operations"
-        Parameters:
-          - LightsOffDoLambdaFnMemoryMB
-          - LightsOffDoLambdaFnTimeoutSecs
+          - LogLevel
+          - QueueMessageBytesMax
+          - LambdaFnFileName
+    ParameterLabels:
+      LambdaSourceS3BucketNamePrefix:
+        default: AWS Lambda source code S3 bucket name prefix (before -<region>)
+      LambaFnTriggersEnabled:
+        default: AWS Lambda functions enabled?
+      FindLambdaFnMemoryMB:
+        default: Memory (MB)
+      FindLambdaFnTimeoutSecs:
+        default: Timeout (seconds)
+      DoLambdaFnMemoryMB:
+        default: Memory (MB)
+      DoLambdaFnTimeoutSecs:
+        default: Timeout (seconds)
+      LogsRetainDays:
+        default: Log retention period (days)
+      LogLevel:
+        default: Log level
+      QueueMessageBytesMax:
+        default: Operation queue message size limit (bytes)
+      LambdaFnFileName:
+        default: AWS Lambda function source file name (before .py.zip)
+
+Conditions:
+
+  LambaFnTriggersEnabledCond: !Equals [ !Ref LambaFnTriggersEnabled, "true" ]
 
 Resources:
 
@@ -140,7 +175,7 @@ Resources:
         redrivePermission: allowAll
         # redrivePermission: byQueue + sourceQueueArns would be circular
 
-  LightsOffOperationFailedQueueReceivePol:
+  OperationFailedQueueReceivePol:
     Type: AWS::IAM::ManagedPolicy
     DeletionPolicy: Delete
     Properties:
@@ -164,7 +199,7 @@ Resources:
       MaximumMessageSize: !Ref QueueMessageBytesMax
       MessageRetentionPeriod: 1200  # seconds (20 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
-      VisibilityTimeout: !Ref LightsOffDoLambdaFnTimeoutSecs
+      VisibilityTimeout: !Ref DoLambdaFnTimeoutSecs
       RedrivePolicy:
         maxReceiveCount: 1
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
@@ -203,7 +238,7 @@ Resources:
               - sqs:GetQueueAttributes  # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-permissions
             Resource: !GetAtt OperationQueue.Arn
 
-  LightsOffLambdaFnLogGrpCreatePol:
+  LambdaFnLogGrpCreatePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
@@ -217,7 +252,7 @@ Resources:
               - logs:CreateLogGroup
             Resource: "*"
 
-  LightsOffLambdaFnFindEc2ReadPol:
+  FindLambdaFnEc2ReadPol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: "EC2 instances, tags; EBS volumes: describe"
@@ -231,7 +266,7 @@ Resources:
               - ec2:DescribeTags
             Resource: "*"
 
-  LightsOffLambdaFnFindRdsReadPol:
+  FindLambdaFnRdsReadPol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: "RDS database instances, clusters: describe, get tags"
@@ -250,7 +285,7 @@ Resources:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
 
-  LightsOffLambdaFnFindCloudFormationReadPol:
+  FindLambdaFnCloudFormationReadPol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: "CloudFormation stacks: describe"
@@ -261,7 +296,7 @@ Resources:
             Action: cloudformation:DescribeStacks
             Resource: "*"
 
-  LightsOffFindLambdaFnRole:
+  FindLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -271,19 +306,19 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LightsOffLambdaFnLogGrpCreatePol
-        - !Ref LightsOffLambdaFnFindEc2ReadPol
-        - !Ref LightsOffLambdaFnFindRdsReadPol
-        - !Ref LightsOffLambdaFnFindCloudFormationReadPol
+        - !Ref LambdaFnLogGrpCreatePol
+        - !Ref FindLambdaFnEc2ReadPol
+        - !Ref FindLambdaFnRdsReadPol
+        - !Ref FindLambdaFnCloudFormationReadPol
         - !Ref OperationQueueSendPol
 
-  LightsOffDoLambdaFnEc2WritePol:
+  DoLambdaFnEc2WritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
-        Tagged EC2 instances: start, reboot, stop. All EC2 instances: create
-        image (allows reboot!). All EC2 EBS volumes: create snapshot. All EC2
-        images and EBS snapshots: tag, but cannot tag for deletion, or delete.
+        Tagged EC2 instances: start, reboot, stop, create image (allows
+        reboot!). Tagged EBS volumes: create snapshot. All EC2 images and EBS
+        snapshots: tag, but cannot tag for deletion, or delete.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -305,42 +340,52 @@ Resources:
           - Sid: "DangerCanForceReboot"
             Effect: Allow
             Action: ec2:CreateImage
-            Resource: "*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
           - Effect: Allow
             Action: ec2:CreateImage
-            Resource: "*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-reboot-backup": "*" }
+          - Effect: Allow
+            Action: ec2:CreateImage
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
           - Effect: Allow
             Action: ec2:CreateSnapshot
             Resource:
               - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
           - Effect: Allow
+            Action: ec2:CreateSnapshot
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+          - Effect: Allow
             Action: ec2:CreateTags
             Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:image/*"
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*"
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
           - Sid: "BackupCreatorCannotTagBackupForDeletion"
             Effect: Deny
             Action: ec2:CreateTags
             Resource:
-              - "arn:*:ec2:*:*:image/*"
-              - "arn:*:ec2:*:*:snapshot/*"
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
             Condition:
               ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
-          - Sid: "BackupCreatorCannotDeleteBackup"
+          - Sid: "BackupCreatorCannotDeleteImageOrSnapshot"
             Effect: Deny
             Action:
               - ec2:DeregisterImage
               - ec2:DeleteSnapshot
             Resource: "*"
 
-  LightsOffDoLambdaFnRdsWritePol:
+  DoLambdaFnRdsWritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
@@ -374,31 +419,48 @@ Resources:
             Action: rds:CreateDBSnapshot
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-backup": "*" }
+          - Effect: Allow
+            Action: rds:CreateDBSnapshot
+            Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+          - Effect: Allow
+            Action: rds:CreateDBClusterSnapshot
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
           - Effect: Allow
             Action: rds:CreateDBClusterSnapshot
             Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
           - Effect: Allow
             Action: rds:AddTagsToResource
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
           - Sid: "BackupCreatorCannotTagBackupForDeletion"
             Effect: Deny
             Action: rds:AddTagsToResource
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
             Condition:
               ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
-          - Sid: "BackupCreatorCannotDeleteBackup"
+          - Sid: "BackupCreatorCannotDeleteDBSnapshot"
             Effect: Deny
             Action: rds:DeleteDBSnapshot
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+          - Sid: "BackupCreatorCannotDeleteDBClusterSnapshotBackup"
+            Effect: Deny
+            Action: rds:DeleteDBClusterSnapshot
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
 
-  LightsOffLambdaFnFindCloudFormationWritePol:
+  DoLambdaFnCloudFormationWritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: "Tagged CloudFormation stacks: update"
@@ -416,7 +478,7 @@ Resources:
             Condition:
               StringLike: { "aws:ResourceTag/sched-toggle-param-true": "*" }
 
-  LightsOffDoLambdaFnRole:
+  DoLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -426,19 +488,21 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LightsOffLambdaFnLogGrpCreatePol
-        - !Ref LightsOffDoLambdaFnEc2WritePol
-        - !Ref LightsOffDoLambdaFnRdsWritePol
-        - !Ref LightsOffLambdaFnFindCloudFormationWritePol
+        - !Ref LambdaFnLogGrpCreatePol
+        - !Ref DoLambdaFnEc2WritePol
+        - !Ref DoLambdaFnRdsWritePol
+        - !Ref DoLambdaFnCloudFormationWritePol
         - !Ref OperationQueueReceivePol
 
-  LightsOffFindLambdaFn:
+  FindLambdaFn:
     Type: AWS::Lambda::Function
     Properties:
-      Role: !GetAtt LightsOffFindLambdaFnRole.Arn
+      Role: !GetAtt FindLambdaFnRole.Arn
       Code:
         S3Bucket: !Sub "${LambdaSourceS3BucketNamePrefix}-${AWS::Region}"
         S3Key: !Sub "${LambdaFnFileName}.py.zip"
+      Architectures:
+        - arm64
       Runtime: python3.9
       Environment:
         Variables:
@@ -447,25 +511,25 @@ Resources:
           "LOG_LEVEL": !Ref LogLevel
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
       ReservedConcurrentExecutions: 1  # Only one run at a time!
-      Timeout: !Ref LightsOffFindLambdaFnTimeoutSecs
-      MemorySize: !Ref LightsOffFindLambdaFnMemoryMB
+      Timeout: !Ref FindLambdaFnTimeoutSecs
+      MemorySize: !Ref FindLambdaFnMemoryMB
 
-  LightsOffFindLambdaFnLogGrp:
+  FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain  # Might want to review after function is deleted
     Properties:
       # Lambda names the log group after the function, so a CloudWatch-assigned
       # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${LightsOffFindLambdaFn}"
+      LogGroupName: !Sub "/aws/lambda/${FindLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
 
-  LightsOffLambdaFnFindLogWritePol:
+  FindLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
-        LightsOff Find Lambda function log streams: create, and put events;
-        based on AWSLambdaBasicExecutionRole
-      Roles: [ !Ref LightsOffFindLambdaFnRole ]
+        Find Lambda function log streams: create, and put events; based on
+        AWSLambdaBasicExecutionRole
+      Roles: [ !Ref FindLambdaFnRole ]
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -473,61 +537,67 @@ Resources:
             Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LightsOffFindLambdaFnLogGrp}:log-stream:*"
+            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
             # !GetAtt LogGroup.Arn ends with :* ,
             # complicating conversion to log stream ARN
 
-  LightsOffFindLambdaFnSched:
+  FindLambdaFnSched:
     Type: AWS::Events::Rule
     Properties:
       Description: >-
-        Every 10 minutes (do not change!): run LightsOff Find Lambda function
+        Every 10 minutes (do not change!): run Find AWS Lambda function
       ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
-      State: "ENABLED"
-      Targets: [ { Arn: !GetAtt LightsOffFindLambdaFn.Arn, Id: !Ref LightsOffFindLambdaFn } ]
+      State:
+        Fn::If:
+          - LambaFnTriggersEnabledCond
+          - ENABLED
+          - DISABLED
+      Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
 
-  LightsOffFindLambdaFnPerm:
+  FindLambdaFnPerm:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref LightsOffFindLambdaFn
+      FunctionName: !Ref FindLambdaFn
       Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt LightsOffFindLambdaFnSched.Arn
+      SourceArn: !GetAtt FindLambdaFnSched.Arn
 
   ############################################################################
 
-  LightsOffDoLambdaFn:
+  DoLambdaFn:
     Type: AWS::Lambda::Function
     Properties:
-      Role: !GetAtt LightsOffDoLambdaFnRole.Arn
+      Role: !GetAtt DoLambdaFnRole.Arn
       Code:
         S3Bucket: !Sub "${LambdaSourceS3BucketNamePrefix}-${AWS::Region}"
         S3Key: !Sub "${LambdaFnFileName}.py.zip"
+      Architectures:
+        - arm64
       Runtime: python3.9
       Environment:
         Variables:
           "LOG_LEVEL": !Ref LogLevel
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_do"
       ReservedConcurrentExecutions: 5
-      Timeout: !Ref LightsOffDoLambdaFnTimeoutSecs
-      MemorySize: !Ref LightsOffDoLambdaFnMemoryMB
+      Timeout: !Ref DoLambdaFnTimeoutSecs
+      MemorySize: !Ref DoLambdaFnMemoryMB
 
-  LightsOffDoLambdaFnLogGrp:
+  DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain  # Might want to review after function is deleted
     Properties:
       # Lambda names the log group after the function, so a CloudWatch-assigned
       # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${LightsOffDoLambdaFn}"
+      LogGroupName: !Sub "/aws/lambda/${DoLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
 
-  LightsOffDoLambdaFnLogWritePol:
+  DoLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: >-
-        LightsOff Do Lambda function log streams: create, and put events;
-        based on AWSLambdaBasicExecutionRole
-      Roles: [ !Ref LightsOffDoLambdaFnRole ]
+        Do Lambda function log streams: create, and put events; based on
+        AWSLambdaBasicExecutionRole
+      Roles: [ !Ref DoLambdaFnRole ]
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -535,27 +605,27 @@ Resources:
             Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LightsOffDoLambdaFnLogGrp}:log-stream:*"
+            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
             # !GetAtt LogGroup.Arn ends with :* ,
             # complicating conversion to log stream ARN
 
-  LightsOffDoLambdaFnSqsMapping:
+  DoLambdaFnSqsMapping:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
       BatchSize: 1
       # BisectBatchOnFunctionError: False
-      Enabled: True
+      Enabled: !Ref LambaFnTriggersEnabled
       EventSourceArn: !GetAtt OperationQueue.Arn
-      FunctionName: !GetAtt LightsOffDoLambdaFn.Arn
+      FunctionName: !GetAtt DoLambdaFn.Arn
       # MaximumBatchingWindowInSeconds: 0
       # MaximumRecordAgeInSeconds: 600
       # MaximumRetryAttempts: 1
       # ParallelizationFactor: 1
 
-  LightsOffDoLambdaFnInvokeLambdaPerm:
+  DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref LightsOffDoLambdaFn
+      FunctionName: !Ref DoLambdaFn
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
