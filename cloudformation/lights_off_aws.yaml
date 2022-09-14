@@ -20,7 +20,7 @@ Parameters:
     Description: >-
       LightsOff AWS Lamba function source code (Python file name WITHOUT
       suffixes)
-    Default: "aws_lights_off_find_do"
+    Default: "lights_off_aws_find_do"
   LogLevel:
     Type: String
     Description: >-
