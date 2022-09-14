@@ -241,7 +241,7 @@ SPECS = {
           "op_kwargs_update_fn": stack_update_kwargs_make,
         },
         tag_key_join("toggle", "param", "false"): {
-          "op_method_name": "upate_stack",
+          "op_method_name": "update_stack",
           "op_kwargs_update_fn": stack_update_kwargs_make,
         },
       },
