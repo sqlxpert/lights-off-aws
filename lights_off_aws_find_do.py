@@ -298,7 +298,7 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   return (cycle_start, cycle_cutoff)
 
 
-def tags_check(ops_tag_keys, sched_regexp, tags_list):
+def tags_scan(ops_tag_keys, sched_regexp, tags_list):
   """Use tags to determine which operations are scheduled for current cycle
   """
   name_from_tag = ""
@@ -482,7 +482,7 @@ def rsrcs_find(
       rsrc_id = rsrc[rsrc_id_key]
       tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
-      (op_tags_matched, name_from_tag) = tags_check(
+      (op_tags_matched, name_from_tag) = tags_scan(
         ops_tag_keys, sched_regexp, tags_list
       )
       op_tags_matched_count = len(op_tags_matched)
