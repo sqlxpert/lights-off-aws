@@ -305,10 +305,9 @@ def tags_check(ops_tag_keys, sched_regexp, tags_list):
   op_tags_matched = []
   for tag_dict in tags_list:
     tag_key = tag_dict["Key"]
-    tag_value = tag_dict["Value"]
     if tag_key == "Name":  # EC2 resource name shown in Console
-      name_from_tag = tag_value
-    elif tag_key in ops_tag_keys and sched_regexp.search(tag_value):
+      name_from_tag = tag_dict["Value"]
+    elif tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
       op_tags_matched.append(tag_key)
   return (op_tags_matched, name_from_tag)
 
