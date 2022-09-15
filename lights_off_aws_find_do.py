@@ -580,32 +580,32 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
 
-  msg = event["Records"][0]
+  for msg in event.get("Records", []):  # 0 or 1 messages expected
 
-  if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
-    op_log(event)
-    raise RuntimeError("Unrecognized queue message format")
-  if (
-    int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-    > int(msg_attr_str_decode(msg, "expires"))
-  ):
-    op_log(event)
-    raise RuntimeError("Late; schedule fewer operations per 10-min cycle")
+    if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
+      op_log(event)
+      raise RuntimeError("Unrecognized queue message format")
+    if (
+      int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+      > int(msg_attr_str_decode(msg, "expires"))
+    ):
+      op_log(event)
+      raise RuntimeError("Late; schedule fewer operations per 10-min cycle")
 
-  svc_client = svc_client_get(msg_attr_str_decode(msg, "svc"))
-  op_method = getattr(svc_client, msg_attr_str_decode(msg, "op_method_name"))
-  op_kwargs = json.loads(msg["body"])
-  try:
-    resp = op_method(**op_kwargs)
-  except Exception:
-    op_log(event)
-    raise
-  else:
-    if boto3_success(resp):
-      op_log(event, resp=resp, log_level=logging.INFO)
+    svc_client = svc_client_get(msg_attr_str_decode(msg, "svc"))
+    op_method = getattr(svc_client, msg_attr_str_decode(msg, "op_method_name"))
+    op_kwargs = json.loads(msg["body"])
+    try:
+      resp = op_method(**op_kwargs)
+    except Exception:
+      op_log(event)
+      raise
     else:
-      op_log(event, resp=resp)
-      raise RuntimeError("Miscellaneous AWS erorr")
+      if boto3_success(resp):
+        op_log(event, resp=resp, log_level=logging.INFO)
+      else:
+        op_log(event, resp=resp)
+        raise RuntimeError("Miscellaneous AWS erorr")
 
 
 # TODO: Remove (testing only)
