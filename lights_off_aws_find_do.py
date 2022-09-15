@@ -37,7 +37,7 @@ QUEUE_MSG_FMT_VERSION = "01"
 TAG_KEY_PREFIX = "sched"
 TAG_KEY_DELIM = "-"
 TAG_KEYS_NO_INHERIT_REGEXP = re.compile(
-  rf"^((aws|ec2|rds):|Name|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
+  rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
 
 # 1. Specification Helpers ###################################################
@@ -298,18 +298,15 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   return (cycle_start, cycle_cutoff)
 
 
-def tags_scan(ops_tag_keys, sched_regexp, tags_list):
-  """Use tags to determine which operations are scheduled for current cycle
+def op_tags_match(ops_tag_keys, sched_regexp, tags_list):
+  """Scan tags to determine which operations are scheduled for current cycle
   """
-  name_from_tag = ""
   op_tags_matched = []
   for tag_dict in tags_list:
     tag_key = tag_dict["Key"]
-    if tag_key == "Name":  # EC2 resource name shown in Console
-      name_from_tag = tag_dict["Value"]
-    elif tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
+    if tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
       op_tags_matched.append(tag_key)
-  return (op_tags_matched, name_from_tag)
+  return op_tags_matched
 
 
 def msg_attrs_str_encode(attrs_dict_in):
@@ -403,42 +400,54 @@ def unique_suffix(
 
 def op_kwargs_child(
   parent_id,
-  parent_name_from_tag,
+  parent_tags_list,
   op,
   specs_child_rsrc_type,
   cycle_start_str,
-  parent_tags_list,
   # Prefix image and snapshot names, because some Console pages don't show
   # tags ("z..." will sort after most manually-created resources):
   child_name_prefix=f"z{TAG_KEY_PREFIX}",
   name_delim="-",
-  unsafe_char_fill="X"
+  unsafe_char_fill="X",
+  base_name_chars=23
 ):  # pylint: disable=too-many-arguments
-  """Construct, return child-related kwargs
+  """Return _create kwargs related to a child resource (image, snapshot)
   """
+
+  child_tags_list = []
+  parent_name_from_tag = ""
+  for parent_tag_dict in parent_tags_list:
+    parent_tag_key = parent_tag_dict["Key"]
+    if parent_tag_key == "Name":
+      parent_name_from_tag = parent_tag_dict["Value"]
+    elif not TAG_KEYS_NO_INHERIT_REGEXP.match(parent_tag_key):
+      child_tags_list.append(parent_tag_dict)
+
+  parent_name = parent_name_from_tag if parent_name_from_tag else parent_id
+  parent_name = parent_name[
+    :specs_child_rsrc_type["name_chars_max"] - base_name_chars
+  ]
+  parent_name = parent_name.strip(name_delim)  # Will prevent -- in child_name
+
+  # base_name_chars should be the length of this string join, but with "" for
+  # parent_name (to leave space for prefix, timestamp, and random suffix):
   child_name = name_delim.join([
-    child_name_prefix,
-    parent_name_from_tag if parent_name_from_tag else parent_id,
-    cycle_start_str,
-    unique_suffix()
+    child_name_prefix, parent_name, cycle_start_str, unique_suffix()
   ])
   if "name_chars_unsafe_regexp" in specs_child_rsrc_type:
     child_name = specs_child_rsrc_type["name_chars_unsafe_regexp"].sub(
       unsafe_char_fill, child_name
     )
-  child_tags_list = [
-    {"Key": tag_key, "Value": tag_value}
-    for tag_key, tag_value in {
-      tag_key_join("cycle", "start"): cycle_start_str,
-      tag_key_join("parent", "id"): parent_id,
-      tag_key_join("parent", "name"): parent_name_from_tag,
-      tag_key_join("op"): op,
-      "Name": child_name,
-    }.items()
-  ]
-  for parent_tag_dict in parent_tags_list:
-    if not TAG_KEYS_NO_INHERIT_REGEXP.match(parent_tag_dict["Key"]):
-      child_tags_list.append(parent_tag_dict)
+
+  for (child_tag_key, child_tag_value) in (
+    ("Name", child_name),  # Shown in EC2 Console / searchable in any service
+    (tag_key_join("cycle", "start"), cycle_start_str),
+    (tag_key_join("parent", "id"), parent_id),
+    (tag_key_join("parent", "name"), parent_name_from_tag),
+    (tag_key_join("op"), op),
+  ):
+    child_tags_list.append({"Key": child_tag_key, "Value": child_tag_value})
+
   return specs_child_rsrc_type["op_kwargs_update_child_fn"](
     child_name, child_tags_list
   )
@@ -482,9 +491,7 @@ def rsrcs_find(
       rsrc_id = rsrc[rsrc_id_key]
       tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
-      (op_tags_matched, name_from_tag) = tags_scan(
-        ops_tag_keys, sched_regexp, tags_list
-      )
+      op_tags_matched = op_tags_match(ops_tag_keys, sched_regexp, tags_list)
       op_tags_matched_count = len(op_tags_matched)
 
       if op_tags_matched_count == 1:
@@ -502,11 +509,10 @@ def rsrcs_find(
         if "specs_child_rsrc_type" in specs_op:
           op_kwargs.update(op_kwargs_child(
             rsrc_id,
-            name_from_tag,
+            tags_list,
             op,
             specs_op["specs_child_rsrc_type"],
-            cycle_start_str,
-            tags_list
+            cycle_start_str
           ))
         op_queue(
           svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str
