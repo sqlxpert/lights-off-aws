@@ -263,6 +263,9 @@ def svc_client_get(svc):
   """
   if svc_clients.get(svc, None) is None:
     svc_clients[svc] = boto3.client(svc)
+    # boto3 method references can only be resolved at run-time,
+    # against an instance of an AWS service's Client class.
+    # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
   return svc_clients[svc]
 
 
@@ -532,7 +535,6 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
     datetime.datetime.now(datetime.timezone.utc)
   )
   cycle_start_str = cycle_start.strftime("%Y%m%dT%H%MZ")
-  print(cycle_cutoff.timestamp())
   cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
   sched_regexp = re.compile(cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT))
   logging.info(json.dumps({"type": "START", "cycle_start": cycle_start_str}))
@@ -541,9 +543,6 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   ))
 
   for (svc, specs_svc) in SPECS.items():
-    # boto3 method references can only be resolved at run-time,
-    # against an instance of an AWS service's Client class.
-    # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
     for (rsrc_type, specs_rsrc_type) in specs_svc.items():
       rsrcs_find(
         svc,
