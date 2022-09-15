@@ -36,6 +36,9 @@ QUEUE_MSG_FMT_VERSION = "01"
 
 TAG_KEY_PREFIX = "sched"
 TAG_KEY_DELIM = "-"
+TAG_KEYS_NO_INHERIT_REGEXP = re.compile(
+  rf"^((aws|ec2|rds):|Name|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
+)
 
 # 1. Specification Helpers ###################################################
 
@@ -57,21 +60,19 @@ def describe_kwargs_make(filters_dict_in):
   }
 
 
-def stack_update_kwargs_make(stack_rsrc, stack_op):
+def stack_update_kwargs_make(stack_rsrc, update_stack_op):
   """Take a describe_stack item and an operation, return update_stack kwargs
 
-  Preserves previous parameter values except for Toggle, whose value is set to
-  "true" or "false" (strings, because CloudFormation does lacks a Boolean
+  Preserves previous parameter values except for Enabled, whose value is set
+  to "true" or "false" (strings, because CloudFormation does lacks a Boolean
   parameter type) depending on the operation.
-
-  op MUST be PREFIX-toggle-param-true or -false!
   """
   stack_params_out = [{
-    "ParameterKey": "Toggle",
-    "ParameterValue": stack_op.split(TAG_KEY_DELIM)[-1],  # "true" or "false"
+    "ParameterKey": "Enabled",
+    "ParameterValue": update_stack_op.split(TAG_KEY_DELIM)[-1],  # -true/false
   }]
   for stack_param_in in stack_rsrc.get("Parameters", []):
-    if stack_param_in["ParameterKey"] != "Toggle":
+    if stack_param_in["ParameterKey"] != "Enabled":
       stack_params_out.append({
         "ParameterKey": stack_param_in["ParameterKey"],
         "UsePreviousValue": True,
@@ -83,26 +84,28 @@ def stack_update_kwargs_make(stack_rsrc, stack_op):
 
 # 2. Data-Driven Specifications ##############################################
 
+# SPECS dict defines:
 #  - search conditions for AWS resources (instances, volumes, stacks)
-#  - supported operations
+#  - operations supported
 #  - rules for naming and tagging child resources (images, snapshots)
 # Optional keys hide AWS API inconsistencies:
 #  - levels between response object and individual resource
 #  - resource identifier names
 #  - method names
+# Structure: AWS service (svc): resource type (rsrc_type): specifications
 
 
 SPECS_CHILD = {
   "ec2": {
 
     "Image": {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_encoded: {
+      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "Name": child_name,
         "Description": child_name,
         # Set Name and Description, because some Console pages show only one!
         "TagSpecifications": [
-          {"ResourceType": "image", "Tags": child_tags_encoded},
-          {"ResourceType": "snapshot", "Tags": child_tags_encoded},
+          {"ResourceType": "image", "Tags": child_tags_list},
+          {"ResourceType": "snapshot", "Tags": child_tags_list},
         ],
       },
       "name_chars_unsafe_regexp": (
@@ -112,10 +115,10 @@ SPECS_CHILD = {
     },
 
     "Snapshot": {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_encoded: {
+      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "Description": child_name,
         "TagSpecifications": [
-          {"ResourceType": "snapshot", "Tags": child_tags_encoded},
+          {"ResourceType": "snapshot", "Tags": child_tags_list},
         ],
       },
       # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.create_snapshot
@@ -127,9 +130,9 @@ SPECS_CHILD = {
   "rds": {
 
     "DBSnapshot": {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_encoded: {
+      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "DBSnapshotIdentifier": child_name,
-        "Tags": child_tags_encoded,
+        "Tags": child_tags_list,
       },
       # http://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_snapshot
       # Standard re module seems not to support Unicode character categories:
@@ -140,9 +143,9 @@ SPECS_CHILD = {
     },
 
     "DBClusterSnapshot": {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_encoded: {
+      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "DBClusterSnapshotIdentifier": child_name,
-        "Tags": child_tags_encoded,
+        "Tags": child_tags_list,
       },
       # http://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_cluster_snapshot
       "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]"),
@@ -236,11 +239,11 @@ SPECS = {
     "Stack": {
       "rsrc_id_key_irregular": "StackName",
       "ops": {
-        tag_key_join("toggle", "param", "true"): {
+        tag_key_join("enabled", "true"): {
           "op_method_name": "update_stack",
           "op_kwargs_update_fn": stack_update_kwargs_make,
         },
-        tag_key_join("toggle", "param", "false"): {
+        tag_key_join("enabled", "false"): {
           "op_method_name": "update_stack",
           "op_kwargs_update_fn": stack_update_kwargs_make,
         },
@@ -292,17 +295,17 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   return (cycle_start, cycle_cutoff)
 
 
-def rsrc_tags_check(ops_tag_keys, sched_regexp, rsrc):
-  """Determine which operations are scheduled for the current cycle
+def rsrc_tags_check(ops_tag_keys, sched_regexp, tags_list):
+  """Use tags to determine which operations are scheduled for current cycle
   """
   result = {
+    "tags_list": tags_list,
     "name_from_tag": "",
     "op_tags_matched": [],
   }
-  # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
-  for tag_pair in rsrc.get("Tags", rsrc.get("TagList", [])):
-    tag_key = tag_pair["Key"]
-    tag_value = tag_pair["Value"]
+  for tag_dict in tags_list:
+    tag_key = tag_dict["Key"]
+    tag_value = tag_dict["Value"]
     if tag_key == "Name":  # EC2 resource name shown in Console
       result["name_from_tag"] = tag_value
     elif tag_key in ops_tag_keys and sched_regexp.search(tag_value):
@@ -405,6 +408,7 @@ def op_kwargs_child(
   op,
   specs_child_rsrc_type,
   cycle_start_str,
+  parent_tags_list,
   # Prefix image and snapshot names, because some Console pages don't show
   # tags ("z..." will sort after most manually-created resources):
   child_name_prefix=f"z{TAG_KEY_PREFIX}",
@@ -424,7 +428,7 @@ def op_kwargs_child(
       unsafe_char_fill,
       child_name
     )
-  child_tags = [
+  child_tags_list = [
     {"Key": tag_key, "Value": tag_value}
     for tag_key, tag_value in {
       tag_key_join("cycle", "start"): cycle_start_str,
@@ -434,9 +438,12 @@ def op_kwargs_child(
       "Name": child_name,
     }.items()
   ]
+  for parent_tag_dict in parent_tags_list:
+    if not TAG_KEYS_NO_INHERIT_REGEXP.match(parent_tag_dict["Key"]):
+      child_tags_list.append(parent_tag_dict)
   return specs_child_rsrc_type["op_kwargs_update_child_fn"](
     child_name,
-    child_tags
+    child_tags_list
   )
 
 
@@ -478,7 +485,12 @@ def rsrcs_find(
         rsrc_type + "Id"
       )
       rsrc_id = rsrc[rsrc_id_key]
-      rsrc_tags_checked = rsrc_tags_check(ops_tag_keys, sched_regexp, rsrc)
+      rsrc_tags_checked = rsrc_tags_check(
+        ops_tag_keys,
+        sched_regexp,
+        rsrc.get("Tags", rsrc.get("TagList", []))
+        # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
+      )
       op_tags_matched_count = len(rsrc_tags_checked["op_tags_matched"])
 
       if op_tags_matched_count == 1:
@@ -499,7 +511,8 @@ def rsrcs_find(
             rsrc_tags_checked["name_from_tag"],
             op,
             specs_op["specs_child_rsrc_type"],
-            cycle_start_str
+            cycle_start_str,
+            rsrc_tags_checked["tags_list"]
           ))
         op_queue(
           svc,
