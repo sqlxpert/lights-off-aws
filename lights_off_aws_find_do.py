@@ -295,22 +295,19 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   return (cycle_start, cycle_cutoff)
 
 
-def rsrc_tags_check(ops_tag_keys, sched_regexp, tags_list):
+def tags_check(ops_tag_keys, sched_regexp, tags_list):
   """Use tags to determine which operations are scheduled for current cycle
   """
-  result = {
-    "tags_list": tags_list,
-    "name_from_tag": "",
-    "op_tags_matched": [],
-  }
+  name_from_tag = ""
+  op_tags_matched = []
   for tag_dict in tags_list:
     tag_key = tag_dict["Key"]
     tag_value = tag_dict["Value"]
     if tag_key == "Name":  # EC2 resource name shown in Console
-      result["name_from_tag"] = tag_value
+      name_from_tag = tag_value
     elif tag_key in ops_tag_keys and sched_regexp.search(tag_value):
-      result["op_tags_matched"].append(tag_key)
-  return result
+      op_tags_matched.append(tag_key)
+  return (op_tags_matched, name_from_tag)
 
 
 def msg_attrs_str_encode(attrs_dict_in):
@@ -382,10 +379,10 @@ def op_queue(svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str):
     )
   except botocore.exceptions.ClientError as sqs_exception:
     sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
-    # Try to queue next operation
+    # Recoverable, try to queue next operation
   except Exception:
     sqs_send_log(op_msg_attrs, op_kwargs)
-    raise  # Stop queueing operations
+    raise  # Fatal, stop queueing operations
   else:
     sqs_send_log(op_msg_attrs, op_kwargs, resp=sqs_resp)
 
@@ -425,8 +422,7 @@ def op_kwargs_child(
   ])
   if "name_chars_unsafe_regexp" in specs_child_rsrc_type:
     child_name = specs_child_rsrc_type["name_chars_unsafe_regexp"].sub(
-      unsafe_char_fill,
-      child_name
+      unsafe_char_fill, child_name
     )
   child_tags_list = [
     {"Key": tag_key, "Value": tag_value}
@@ -442,8 +438,7 @@ def op_kwargs_child(
     if not TAG_KEYS_NO_INHERIT_REGEXP.match(parent_tag_dict["Key"]):
       child_tags_list.append(parent_tag_dict)
   return specs_child_rsrc_type["op_kwargs_update_child_fn"](
-    child_name,
-    child_tags_list
+    child_name, child_tags_list
   )
 
 
@@ -469,8 +464,7 @@ def rsrcs_find(
   svc_client = svc_client_get(svc)
   paginator = svc_client.get_paginator(
     specs_rsrc_type.get(
-      "paginator_name_irregular",
-      "describe_" + rsrc_type.lower() + "s"
+      "paginator_name_irregular", "describe_" + rsrc_type.lower() + "s"
   ))
   for resp in paginator.paginate(**describe_kwargs):
 
@@ -481,20 +475,18 @@ def rsrcs_find(
     for rsrc in rsrcs:
 
       rsrc_id_key = specs_rsrc_type.get(
-        "rsrc_id_key_irregular",
-        rsrc_type + "Id"
+        "rsrc_id_key_irregular", rsrc_type + "Id"
       )
       rsrc_id = rsrc[rsrc_id_key]
-      rsrc_tags_checked = rsrc_tags_check(
-        ops_tag_keys,
-        sched_regexp,
-        rsrc.get("Tags", rsrc.get("TagList", []))
-        # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
+      tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
+      # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
+      (op_tags_matched, name_from_tag) = tags_check(
+        ops_tag_keys, sched_regexp, tags_list
       )
-      op_tags_matched_count = len(rsrc_tags_checked["op_tags_matched"])
+      op_tags_matched_count = len(op_tags_matched)
 
       if op_tags_matched_count == 1:
-        op = rsrc_tags_checked["op_tags_matched"][0]
+        op = op_tags_matched[0]
         specs_op = specs_rsrc_type["ops"][op]
         op_method_name = specs_op["op_method_name"]
         if op_method_name[-1] == "s":
@@ -508,17 +500,14 @@ def rsrcs_find(
         if "specs_child_rsrc_type" in specs_op:
           op_kwargs.update(op_kwargs_child(
             rsrc_id,
-            rsrc_tags_checked["name_from_tag"],
+            name_from_tag,
             op,
             specs_op["specs_child_rsrc_type"],
             cycle_start_str,
-            rsrc_tags_checked["tags_list"]
+            tags_list
           ))
         op_queue(
-          svc,
-          op_method_name,
-          op_kwargs,
-          cycle_cutoff_epoch_str
+          svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str
         )
 
       elif op_tags_matched_count > 1:
@@ -527,7 +516,7 @@ def rsrcs_find(
           "svc": svc,
           "rsrc_type": rsrc_type,
           "rsrc_id": rsrc_id,
-          "op_tags_matched": rsrc_tags_checked["op_tags_matched"],
+          "op_tags_matched": op_tags_matched,
           "cycle_start_str": cycle_start_str,
         }))
 
@@ -548,8 +537,7 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   sched_regexp = re.compile(cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT))
   logging.info(json.dumps({"type": "START", "cycle_start": cycle_start_str}))
   logging.info(json.dumps(
-    {"type": "SCHED_REGEXP", "sched_regexp": sched_regexp},
-    default=str
+    {"type": "SCHED_REGEXP", "sched_regexp": sched_regexp}, default=str
   ))
 
   for (svc, specs_svc) in SPECS.items():
