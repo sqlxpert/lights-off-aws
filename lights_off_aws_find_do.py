@@ -404,14 +404,21 @@ def op_kwargs_child(
   op,
   specs_child_rsrc_type,
   cycle_start_str,
-  # Prefix image and snapshot names, because some Console pages don't show
-  # tags ("z..." will sort after most manually-created resources):
   child_name_prefix=f"z{TAG_KEY_PREFIX}",
   name_delim="-",
   unsafe_char_fill="X",
   base_name_chars=23
 ):  # pylint: disable=too-many-arguments
-  """Return _create kwargs related to a child resource (image, snapshot)
+  """Return boto3 _create method kwargs (name, tags) for an image or snapshot
+
+  Child resource name example: zsched-ParentNameOrID-20221101T1450Z-acefg
+  - Prefix, for convenient sorting and grouping in Console ("z..." will sort
+    after most manually-created resources)
+  - Use abbreviated ISO 8601 date and time, again for sorting and grouping
+  - Identify parent resource by its Name tag value (an EC2 convention) or ID
+  - Add random suffix to make name collisions nearly impossible
+  - Truncate parent portion to spare other parts of child resource name,
+    maximizing information value and preventing name collision errors
   """
 
   child_tags_list = []
