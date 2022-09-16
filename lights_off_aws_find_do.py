@@ -84,15 +84,24 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
 
 # 2. Data-Driven Specifications ##############################################
 
-# SPECS dict defines:
+# Hierarchical dicts specify:
 #  - search conditions for AWS resources (instances, volumes, stacks)
 #  - operations supported
 #  - rules for naming and tagging child resources (images, snapshots)
 # Optional keys hide AWS API inconsistencies:
 #  - levels between response object and individual resource
-#  - resource identifier names
+#  - resource identifier keys
 #  - method names
-# Structure: AWS service (svc): resource type (rsrc_type): specifications
+# SPECS_CHILD:
+#   AWS service - string:
+#     AWS resource type - string:
+#       specification key - string:
+#         specification value - type varies
+# SPECS:
+#   AWS service - string (svc):
+#     AWS resource type - string (rsrc_type):
+#       specification key - string:
+#         specification value - type varies
 
 
 SPECS_CHILD = {
@@ -148,7 +157,7 @@ SPECS_CHILD = {
         "Tags": child_tags_list,
       },
       # http://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_cluster_snapshot
-      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]"),
+      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9\-]"),
       "name_chars_max": 63,
     },
   },
@@ -336,7 +345,6 @@ def msg_body_encode(msg_in):
 def sqs_send_log(msg_attrs, msg_body, resp=None, exception=None):
   """Log SQS send_message attempt at appropriate level
   """
-
   log_level = logging.INFO
   if exception is not None:
     log_level = logging.ERROR
@@ -362,16 +370,14 @@ def sqs_send_log(msg_attrs, msg_body, resp=None, exception=None):
 def op_queue(svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str):
   """Send an operation message to the SQS queue
   """
-
   op_msg_attrs = msg_attrs_str_encode({
     "version": QUEUE_MSG_FMT_VERSION,
     "expires": cycle_cutoff_epoch_str,
     "svc": svc,
     "op_method_name": op_method_name,
   })
-  sqs_client = svc_client_get("sqs")
   try:
-    sqs_resp = sqs_client.send_message(
+    sqs_resp = svc_client_get("sqs").send_message(
       QueueUrl=QUEUE_URL,
       MessageAttributes=op_msg_attrs,
       MessageBody=msg_body_encode(op_kwargs),
@@ -389,7 +395,7 @@ def op_queue(svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str):
 def unique_suffix(
   char_count=5,
   chars_allowed="acefgrtxy3478"  # Small but unambiguous; more varied:
-  # chars=string.ascii_lowercase + string.digits
+  # chars_allowed=string.ascii_lowercase + string.digits
   # http://pwgen.cvs.sourceforge.net/viewvc/pwgen/src/pw_rand.c
   # https://ux.stackexchange.com/questions/21076
 ):
@@ -420,7 +426,6 @@ def op_kwargs_child(
   - Truncate parent portion to spare other parts of child resource name,
     maximizing information value and preventing name collision errors
   """
-
   child_tags_list = []
   parent_name_from_tag = ""
   for parent_tag_dict in parent_tags_list:
@@ -470,31 +475,31 @@ def rsrcs_find(
 ):  # pylint: disable=too-many-arguments
   """Find parent resources to operate on, and send details to queue.
   """
+  describe_method_name = specs_rsrc_type.get(
+    "paginator_name_irregular", "describe_" + rsrc_type.lower() + "s"
+  )
 
-  ops_tag_keys = list(specs_rsrc_type["ops"].keys())
+  rsrcs_key = f"{rsrc_type}s"
+  rsrc_id_key = specs_rsrc_type.get("rsrc_id_key_irregular", f"{rsrc_type}Id")
+  rsrc_ids_key = f"{rsrc_id_key}s"
+
+  ops_tag_keys = specs_rsrc_type["ops"].keys()
+
   if "describe_filters" in specs_rsrc_type:
     describe_kwargs = describe_kwargs_make(
-      specs_rsrc_type["describe_filters"] | {"tag-key": ops_tag_keys}
+      specs_rsrc_type["describe_filters"] | {"tag-key": list(ops_tag_keys)}
     )
   else:
     describe_kwargs = {}
 
-  svc_client = svc_client_get(svc)
-  paginator = svc_client.get_paginator(
-    specs_rsrc_type.get(
-      "paginator_name_irregular", "describe_" + rsrc_type.lower() + "s"
-  ))
+  paginator = svc_client_get(svc).get_paginator(describe_method_name)
   for resp in paginator.paginate(**describe_kwargs):
-
     if "flatten_fn" in specs_rsrc_type:
       rsrcs = specs_rsrc_type["flatten_fn"](resp)
     else:
-      rsrcs = resp[rsrc_type + "s"]
+      rsrcs = resp[rsrcs_key]
     for rsrc in rsrcs:
 
-      rsrc_id_key = specs_rsrc_type.get(
-        "rsrc_id_key_irregular", rsrc_type + "Id"
-      )
       rsrc_id = rsrc[rsrc_id_key]
       tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
@@ -507,7 +512,7 @@ def rsrcs_find(
         op_method_name = specs_op["op_method_name"]
         if op_method_name[-1] == "s":
           # One resource at a time, to avoid partial completion risk
-          op_kwargs = {rsrc_id_key + "s": [rsrc_id]}
+          op_kwargs = {rsrc_ids_key: [rsrc_id]}
         else:
           op_kwargs = {rsrc_id_key: rsrc_id}
         op_kwargs.update(specs_op.get("op_kwargs_static", {}))
@@ -539,7 +544,6 @@ def rsrcs_find(
 def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   """Find and queue AWS resources for scheduled operations, based on tags
   """
-
   logging.info(
     json.dumps({"type": "LAMBDA_EVENT", "lambda_event": event}, default=str)
   )
@@ -591,7 +595,6 @@ def op_log(event, resp=None, log_level=logging.ERROR):
 def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
-
   for msg in event.get("Records", []):  # 0 or 1 messages expected
 
     if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
