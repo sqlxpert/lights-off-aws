@@ -40,7 +40,15 @@ TAG_KEYS_NO_INHERIT_REGEXP = re.compile(
   rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
 
-# 1. Specification Helpers ###################################################
+
+# 1. Custom Exceptions #######################################################
+
+class SQSMessageTooLong(ValueError):
+  """JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
+  """
+
+
+# 2. Specification Helpers ###################################################
 
 
 def tag_key_join(*args):
@@ -50,7 +58,7 @@ def tag_key_join(*args):
 
 
 def describe_kwargs_make(filters_dict_in):
-  """Take a filter: vals dict, return boto3 _describe method kwargs
+  """Take a filter: values dict, return boto3 _describe method kwargs
   """
   return {
     "Filters": [
@@ -82,7 +90,7 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
     "Parameters": stack_params_out,
   }
 
-# 2. Data-Driven Specifications ##############################################
+# 3. Data-Driven Specifications ##############################################
 
 # Hierarchical dicts specify:
 #  - search conditions for AWS resources (instances, volumes, stacks)
@@ -117,7 +125,7 @@ SPECS_CHILD = {
         ],
       },
       "name_chars_unsafe_regexp": (
-        re.compile(r"[^a-zA-Z0-9\(\)\[\] \./\-'@_]")
+        re.compile(r"[^a-zA-Z0-9()[\] ./'@_-]")
       ),
       "name_chars_max": 128,
     },
@@ -142,11 +150,7 @@ SPECS_CHILD = {
         "DBSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      # http://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_snapshot
-      # Standard re module seems not to support Unicode character categories:
-      # "name_chars_unsafe_regexp": re.compile(r"[^\p{L}\p{Z}\p{N}_.:/=+\-]"),
-      # Simplification (may give unexpected results with Unicode characters):
-      "name_chars_unsafe_regexp": re.compile(r"[^\w.:/=+\-]"),
+      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]|--"),
       "name_chars_max": 255,
     },
 
@@ -155,8 +159,7 @@ SPECS_CHILD = {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      # http://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_cluster_snapshot
-      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9\-]"),
+      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]|--"),
       "name_chars_max": 63,
     },
   },
@@ -263,7 +266,7 @@ SPECS = {
   },
 }
 
-# 3. Shared Lambda Function Handler Code #####################################
+# 4. Shared Lambda Function Handler Code #####################################
 
 svc_clients = {}
 
@@ -292,7 +295,7 @@ def boto3_success(resp):
     resp.get("ResponseMetadata", {}).get("HTTPStatusCode", 0) == 200
   ])
 
-# 4. Find Resources Lambda Function Handler Code #############################
+# 5. Find Resources Lambda Function Handler Code #############################
 
 
 def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
@@ -336,7 +339,7 @@ def msg_body_encode(msg_in):
   msg_out = json.dumps(msg_in)
   msg_out_len = len(bytes(msg_out, "utf-8"))
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
-    raise RuntimeError(
+    raise SQSMessageTooLong(
       f"JSON string too long: {msg_out_len} exceeds {QUEUE_MSG_BYTES_MAX}; "
       f"increase QUEUE_MSG_BYTES_MAX\n"
     )
@@ -383,12 +386,15 @@ def op_queue(svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str):
       MessageAttributes=op_msg_attrs,
       MessageBody=msg_body_encode(op_kwargs),
     )
-  except botocore.exceptions.ClientError as sqs_exception:
+  except (
+    botocore.exceptions.ClientError,
+    SQSMessageTooLong,
+  ) as sqs_exception:
     sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
     # Recoverable, try to queue next operation
   except Exception:
     sqs_send_log(op_msg_attrs, op_kwargs)
-    raise  # Fatal, stop queueing operations
+    raise  # Unrecoverable, stop queueing operations
   else:
     sqs_send_log(op_msg_attrs, op_kwargs, resp=sqs_resp)
 
@@ -419,13 +425,11 @@ def op_kwargs_child(
   """Return boto3 _create method kwargs (name, tags) for an image or snapshot
 
   Child resource name example: zsched-ParentNameOrID-20221101T1450Z-acefg
-  - Prefix, for convenient sorting and grouping in Console ("z..." will sort
-    after most manually-created resources)
-  - Use abbreviated ISO 8601 date and time, again for sorting and grouping
+  - Prefix, for sorting and grouping in Console ("z..." will sort last)
+  - Use ISO 8601 date and time, for sorting, grouping, and search
   - Identify parent resource by its Name tag value (an EC2 convention) or ID
   - Add random suffix to make name collisions nearly impossible
-  - Truncate parent portion to spare other parts of child resource name,
-    maximizing information value and preventing name collisions
+  - Truncate parent portion to spare other parts of child name
   """
   child_tags_list = []
   parent_name_from_tag = ""
@@ -440,7 +444,6 @@ def op_kwargs_child(
   parent_name = parent_name[
     :specs_child_rsrc_type["name_chars_max"] - base_name_chars
   ]
-  parent_name = parent_name.strip(name_delim)  # Will prevent -- in child_name
 
   # base_name_chars should be the length of this string join, but with "" for
   # parent_name (to leave space for prefix, timestamp, and random suffix):
@@ -570,7 +573,7 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
         cycle_cutoff_epoch_str
       )
 
-# 5. "Do" Operations Lambda Function Handler Code ############################
+# 6. "Do" Operations Lambda Function Handler Code ############################
 
 
 def msg_attr_str_decode(msg, attr_name):
