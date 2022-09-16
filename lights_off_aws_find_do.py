@@ -91,15 +91,14 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
 # Optional keys hide AWS API inconsistencies:
 #  - levels between response object and individual resource
 #  - resource identifier keys
-#  - method names
 # SPECS_CHILD:
 #   AWS service - string:
-#     AWS resource type - string:
+#     AWS resource type - tuple of strings:
 #       specification key - string:
 #         specification value - type varies
 # SPECS:
 #   AWS service - string (svc):
-#     AWS resource type - string (rsrc_type):
+#     AWS resource type - tuple of strings (rsrc_type_words):
 #       specification key - string:
 #         specification value - type varies
 
@@ -107,7 +106,7 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
 SPECS_CHILD = {
   "ec2": {
 
-    "Image": {
+    ("Image", ): {
       "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "Name": child_name,
         "Description": child_name,
@@ -123,7 +122,7 @@ SPECS_CHILD = {
       "name_chars_max": 128,
     },
 
-    "Snapshot": {
+    ("Snapshot", ): {
       "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "Description": child_name,
         "TagSpecifications": [
@@ -138,7 +137,7 @@ SPECS_CHILD = {
   },
   "rds": {
 
-    "DBSnapshot": {
+    ("DB", "Snapshot"): {
       "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "DBSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
@@ -151,7 +150,7 @@ SPECS_CHILD = {
       "name_chars_max": 255,
     },
 
-    "DBClusterSnapshot": {
+    ("DB", "Cluster", "Snapshot"): {
       "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
@@ -166,7 +165,7 @@ SPECS_CHILD = {
 SPECS = {
   "ec2": {
 
-    "Instance": {
+    ("Instance", ): {
       "describe_filters": {
         "instance-state-name": ["running", "stopping", "stopped"],
       },
@@ -175,6 +174,7 @@ SPECS = {
         for reservation in resp["Reservations"]
         for instance in reservation["Instances"]
       ),
+      "rsrc_id_key_suffix": "Id",
       "ops": {
         tag_key_join("start"): {"op_method_name": "start_instances"},
         tag_key_join("reboot"): {"op_method_name": "reboot_instances"},
@@ -185,24 +185,25 @@ SPECS = {
         },
         tag_key_join("backup"): {
           "op_method_name": "create_image",
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"]["Image"],
+          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Image", )],
         },
         tag_key_join("reboot", "backup"): {
           "op_method_name": "create_image",
           "op_kwargs_static": {"NoReboot": False},
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"]["Image"],
+          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Image", )],
         },
       },
     },
 
-    "Volume": {
+    ("Volume", ): {
       "describe_filters": {
         "status": ["available", "in-use"],
       },
+      "rsrc_id_key_suffix": "Id",
       "ops": {
         tag_key_join("backup"): {
           "op_method_name": "create_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"]["Snapshot"],
+          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Snapshot", )],
         },
       },
     },
@@ -210,9 +211,8 @@ SPECS = {
   },
   "rds": {
 
-    "DBInstance": {
-      "paginator_name_irregular": "describe_db_instances",
-      "rsrc_id_key_irregular": "DBInstanceIdentifier",
+    ("DB", "Instance"): {
+      "rsrc_id_key_suffix": "Identifier",
       "ops": {
         tag_key_join("start"): {"op_method_name": "start_db_instance"},
         tag_key_join("stop"): {"op_method_name": "stop_db_instance"},
@@ -223,21 +223,22 @@ SPECS = {
         },
         tag_key_join("backup"): {
           "op_method_name": "create_db_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["rds"]["DBSnapshot"],
+          "specs_child_rsrc_type": SPECS_CHILD["rds"][("DB", "Snapshot")],
         },
       },
     },
 
-    "DBCluster": {
-      "paginator_name_irregular": "describe_db_clusters",
-      "rsrc_id_key_irregular": "DBClusterIdentifier",
+    ("DB", "Cluster"): {
+      "rsrc_id_key_suffix": "Identifier",
       "ops": {
         tag_key_join("start"): {"op_method_name": "start_db_cluster"},
         tag_key_join("stop"): {"op_method_name": "stop_db_cluster"},
         tag_key_join("reboot"): {"op_method_name": "reboot_db_cluster"},
         tag_key_join("backup"): {
           "op_method_name": "create_db_cluster_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["rds"]["DBClusterSnapshot"],
+          "specs_child_rsrc_type": SPECS_CHILD["rds"][
+            ("DB", "Cluster", "Snapshot")
+          ],
         },
       },
     },
@@ -245,8 +246,8 @@ SPECS = {
   },
   "cloudformation": {
 
-    "Stack": {
-      "rsrc_id_key_irregular": "StackName",
+    ("Stack", ): {
+      "rsrc_id_key_suffix": "Name",
       "ops": {
         tag_key_join("enabled", "true"): {
           "op_method_name": "update_stack",
@@ -424,7 +425,7 @@ def op_kwargs_child(
   - Identify parent resource by its Name tag value (an EC2 convention) or ID
   - Add random suffix to make name collisions nearly impossible
   - Truncate parent portion to spare other parts of child resource name,
-    maximizing information value and preventing name collision errors
+    maximizing information value and preventing name collisions
   """
   child_tags_list = []
   parent_name_from_tag = ""
@@ -467,20 +468,20 @@ def op_kwargs_child(
 
 def rsrcs_find(
   svc,
-  rsrc_type,
+  rsrc_type_words,
   specs_rsrc_type,
   sched_regexp,
   cycle_start_str,
   cycle_cutoff_epoch_str
-):  # pylint: disable=too-many-arguments
+):  # pylint: disable=too-many-arguments,too-many-locals
   """Find parent resources to operate on, and send details to queue.
   """
-  describe_method_name = specs_rsrc_type.get(
-    "paginator_name_irregular", "describe_" + rsrc_type.lower() + "s"
-  )
+  rsrc_type_in_method_name = "_".join(rsrc_type_words).lower()
+  describe_method_name = f"describe_{rsrc_type_in_method_name}s"
 
-  rsrcs_key = f"{rsrc_type}s"
-  rsrc_id_key = specs_rsrc_type.get("rsrc_id_key_irregular", f"{rsrc_type}Id")
+  rsrc_type_in_keys = "".join(rsrc_type_words)
+  rsrcs_key = f"{rsrc_type_in_keys}s"
+  rsrc_id_key = rsrc_type_in_keys + specs_rsrc_type["rsrc_id_key_suffix"]
   rsrc_ids_key = f"{rsrc_id_key}s"
 
   ops_tag_keys = specs_rsrc_type["ops"].keys()
@@ -534,7 +535,7 @@ def rsrcs_find(
         logging.error(json.dumps({
           "type": "MULTIPLE_OPS",
           "svc": svc,
-          "rsrc_type": rsrc_type,
+          "rsrc_type": rsrc_type_in_keys,
           "rsrc_id": rsrc_id,
           "op_tags_matched": op_tags_matched,
           "cycle_start_str": cycle_start_str,
@@ -559,10 +560,10 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   ))
 
   for (svc, specs_svc) in SPECS.items():
-    for (rsrc_type, specs_rsrc_type) in specs_svc.items():
+    for (rsrc_type_words, specs_rsrc_type) in specs_svc.items():
       rsrcs_find(
         svc,
-        rsrc_type,
+        rsrc_type_words,
         specs_rsrc_type,
         sched_regexp,
         cycle_start_str,
