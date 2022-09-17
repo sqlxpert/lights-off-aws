@@ -36,7 +36,7 @@ QUEUE_MSG_FMT_VERSION = "01"
 
 TAG_KEY_PREFIX = "sched"
 TAG_KEY_DELIM = "-"
-TAG_KEYS_NO_INHERIT_REGEXP = re.compile(
+TAG_KEYS_NO_INHERIT_REGEXP = (
   rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
 
@@ -57,13 +57,13 @@ def tag_key_join(*args):
   return TAG_KEY_DELIM.join([TAG_KEY_PREFIX] + list(args))
 
 
-def describe_kwargs_make(filters_dict_in):
-  """Take a filter: values dict, return boto3 _describe method kwargs
+def describe_kwargs_make(status_filter_pairs):
+  """Take (filter, values) pairs, return boto3 _describe method kwargs
   """
   return {
     "Filters": [
-      {"Name": filter_name, "Values": filter_values}
-      for (filter_name, filter_values) in filters_dict_in.items()
+      {"Name": filter_name, "Values": list(filter_values)}
+      for (filter_name, filter_values) in status_filter_pairs
     ]
   }
 
@@ -96,15 +96,7 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
 #  - search conditions for AWS resources (instances, volumes, stacks)
 #  - operations supported
 #  - rules for naming and tagging child resources (images, snapshots)
-# Optional keys hide AWS API inconsistencies:
-#  - levels between response object and individual resource
-#  - resource identifier keys
-# SPECS_CHILD:
-#   AWS service - string:
-#     AWS resource type - tuple of strings:
-#       specification key - string:
-#         specification value - type varies
-# SPECS:
+# SPECS_CHILD / SPECS structure:
 #   AWS service - string (svc):
 #     AWS resource type - tuple of strings (rsrc_type_words):
 #       specification key - string:
@@ -120,13 +112,11 @@ SPECS_CHILD = {
         "Description": child_name,
         # Set Name and Description, because some Console pages show only one!
         "TagSpecifications": [
-          {"ResourceType": "image", "Tags": child_tags_list},
-          {"ResourceType": "snapshot", "Tags": child_tags_list},
+          {"Tags": child_tags_list, "ResourceType": "image"},
+          {"Tags": child_tags_list, "ResourceType": "snapshot", },
         ],
       },
-      "name_chars_unsafe_regexp": (
-        re.compile(r"[^a-zA-Z0-9()[\] ./'@_-]")
-      ),
+      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9()[\] ./'@_-]",
       "name_chars_max": 128,
     },
 
@@ -134,7 +124,7 @@ SPECS_CHILD = {
       "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
         "Description": child_name,
         "TagSpecifications": [
-          {"ResourceType": "snapshot", "Tags": child_tags_list},
+          {"Tags": child_tags_list, "ResourceType": "snapshot"},
         ],
       },
       # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.create_snapshot
@@ -150,7 +140,7 @@ SPECS_CHILD = {
         "DBSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]|--"),
+      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9-]|--",
       "name_chars_max": 255,
     },
 
@@ -159,7 +149,7 @@ SPECS_CHILD = {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      "name_chars_unsafe_regexp": re.compile(r"[^a-zA-Z0-9-]|--"),
+      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9-]|--",
       "name_chars_max": 63,
     },
   },
@@ -169,9 +159,9 @@ SPECS = {
   "ec2": {
 
     ("Instance", ): {
-      "describe_filters": {
-        "instance-state-name": ["running", "stopping", "stopped"],
-      },
+      "status_filter_pair": (
+        "instance-state-name", ("running", "stopping", "stopped")
+      ),
       "flatten_fn": lambda resp: (
         instance
         for reservation in resp["Reservations"]
@@ -199,9 +189,7 @@ SPECS = {
     },
 
     ("Volume", ): {
-      "describe_filters": {
-        "status": ["available", "in-use"],
-      },
+      "status_filter_pair": ("status", ("available", "in-use")),
       "rsrc_id_key_suffix": "Id",
       "ops": {
         tag_key_join("backup"): {
@@ -418,9 +406,9 @@ def op_kwargs_child(
   specs_child_rsrc_type,
   cycle_start_str,
   child_name_prefix=f"z{TAG_KEY_PREFIX}",
-  name_delim="-",
-  unsafe_char_fill="X",
-  base_name_chars=23
+  name_delim=TAG_KEY_DELIM,
+  base_name_chars=23,
+  unsafe_char_fill="X"
 ):  # pylint: disable=too-many-arguments
   """Return boto3 _create method kwargs (name, tags) for an image or snapshot
 
@@ -437,7 +425,7 @@ def op_kwargs_child(
     parent_tag_key = parent_tag_dict["Key"]
     if parent_tag_key == "Name":
       parent_name_from_tag = parent_tag_dict["Value"]
-    elif not TAG_KEYS_NO_INHERIT_REGEXP.match(parent_tag_key):
+    elif not re.match(TAG_KEYS_NO_INHERIT_REGEXP, parent_tag_key):
       child_tags_list.append(parent_tag_dict)
 
   parent_name = parent_name_from_tag if parent_name_from_tag else parent_id
@@ -451,8 +439,10 @@ def op_kwargs_child(
     child_name_prefix, parent_name, cycle_start_str, unique_suffix()
   ])
   if "name_chars_unsafe_regexp" in specs_child_rsrc_type:
-    child_name = specs_child_rsrc_type["name_chars_unsafe_regexp"].sub(
-      unsafe_char_fill, child_name
+    child_name = re.sub(
+      specs_child_rsrc_type["name_chars_unsafe_regexp"],
+      unsafe_char_fill,
+      child_name
     )
 
   for (child_tag_key, child_tag_value) in (
@@ -489,10 +479,10 @@ def rsrcs_find(
 
   ops_tag_keys = specs_rsrc_type["ops"].keys()
 
-  if "describe_filters" in specs_rsrc_type:
-    describe_kwargs = describe_kwargs_make(
-      specs_rsrc_type["describe_filters"] | {"tag-key": list(ops_tag_keys)}
-    )
+  if "status_filter_pair" in specs_rsrc_type:
+    describe_kwargs = describe_kwargs_make((
+      specs_rsrc_type["status_filter_pair"], ("tag-key", ops_tag_keys)
+    ))
   else:
     describe_kwargs = {}
 
