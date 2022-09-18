@@ -90,15 +90,18 @@ over the years, but Lights Out still has advantages:
 
 ## Tag Keys (Operations)
 
-| |Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Change Stack Parameter|
+| |Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Update Stack Parameter|
 |--|--|--|--|--|--|--|--|
 ||`sched-start`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
-||`sched-stop`|||||`sched-set-Enable-false`|
+||`sched-stop`||||||`sched-set-Enable-false`|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot|||||
 |[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot||&check;|&check;||
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||database cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
+
+* Not all EC2 instance types and operating systems support hibernation.
+* Not all RDS database cluster engines support reboot.
 
 ## Tag Values (Schedules)
 
@@ -161,14 +164,12 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 ### Naming
 
-* The name of the child consists of several parts, separated by hyphens (`-`):
-
-  |#|Part|Example|Purpose|
-  |--|--|--|--|
-  |1|Prefix|`zsched`|Identifies and groups resources created by Lights Off. `z` is intended to sort after most manually-created images and snapshots.|
-  |2|Parent name or identifier|`webserver`|Conveniently identifies the parent. Derived from the `Name` tag, the logical name, or the physical identifier. Multiple children of the same parent will sort together, by creation date and time.|
-  |3|Date and time|`20171231T1400Z`|Groups children created at the same time. The minute is always a multiple of 10. The time zone is always UTC (Z).|
-  |4|Random suffix|`g3a8a`|Guarantees unique names. 5 characters are chosen from a small set of unambiguous letters and numbers.|
+|#|Part|Example|Purpose|
+|--|--|--|--|
+|1|Prefix|`zsched`|Identifies and groups resources created by Lights Off. `z` is intended to sort after most manually-created images and snapshots.|
+|2|Parent name or identifier|`webserver`|Conveniently identifies the parent. Derived from the `Name` tag, the logical name, or the physical identifier. Multiple children of the same parent will sort together, by creation date and time.|
+|3|Date and time|`20171231T1400Z`|Groups children created at the same time. The minute is always a multiple of 10. The time zone is always UTC (Z).|
+|4|Random suffix|`g3a8a`|Guarantees unique names. 5 characters are chosen from a small set of unambiguous letters and numbers.|
 
 * The parent name or identifiere may contain additional, internal hyphens.
 * Characters forbidden by AWS are replaced with X.
@@ -177,15 +178,13 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 ### Special Tags
 
-* Special tags are added to the child:
-
-  |Tag|Description|
-  |--|--|
-  |`Name`|The friendly name of the child. In the EC2 Console, the `Name` column is determined from `Name` tag values.|
-  |`sched-parent-name`|The `Name` tag value from the parent. May be blank.|
-  |`sched-parent-id`|The identifier of the parent instance, volume, database or database cluster.|
-  |`sched-op`|The operation tag key (for example, `sched-backup`) that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
-  |`sched-cycle-start`|The date and time when the child was created. The minute is always a multiple of 10. The time zone is always UTC (Z).|
+|Tag|Description|
+|--|--|
+|`Name`|The friendly name of the child. In the EC2 Console, the `Name` column is determined from `Name` tag values.|
+|`sched-parent-name`|The `Name` tag value from the parent. May be blank.|
+|`sched-parent-id`|The identifier of the parent instance, volume, database or database cluster.|
+|`sched-op`|The operation tag key (for example, `sched-backup`) that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
+|`sched-cycle-start`|The date and time when the child was created. The minute is always a multiple of 10. The time zone is always UTC (Z).|
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary from service to service, as do the search
