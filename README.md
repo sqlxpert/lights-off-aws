@@ -105,7 +105,7 @@ over the years, but Lights Out still has advantages:
 * Clock: always 24-hour
 * Last digit of minute: always 0 (Scheduled operations occur during a
   10-minute cycle.)
-* 2 digits: always required for hour values, minute values, and numeric day of
+* 2 digits: always required for hour, minute, and numeric day of
   month values (Use a leading zero if necessary.)
 * Wildcard: single underscore `_` (RDS does not allow asterisks in tags.)
 * Term separator: space (RDS does not allow commas in tags.)
@@ -121,7 +121,7 @@ over the years, but Lights Out still has advantages:
   |Day of month|`d=01`|`d=31`|`d=_`|
   |Weekday|`u=1` (Monday)|`u=7` (Sunday)||
   |Hour|`H=00`|`H=23`|`H=_`|
-  |Minute (multiples of 10 only)|`M=00`|`M=50`||
+  |Minute (multiples of 10)|`M=00`|`M=50`||
   |Once a day|`H:M=00:00`|`H:M=23:50`||
   |Once a week|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
   |Once a month|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
@@ -129,7 +129,7 @@ over the years, but Lights Out still has advantages:
 * Multiple values: repeat the term (For example, `d=01 d=15` means _the
   1st and the 15th days of the month_.)
 * Multiple operations on the same resource, at the same time: none will
-  happen, and the error will be logged
+  happen, and an error will be logged
 * End-of-month: some months lack `d=29` through `d=31` ; consider
   `dTH:M=01T00:00`
 * Standards: letters match
@@ -140,12 +140,12 @@ over the years, but Lights Out still has advantages:
 
 * Examples:
 
-  |Schedule Tag Value|Demonstrates|Timing|
+  |Schedule Tag Value|Demonstrates|Times|
   |--|--|--|
-  |`d=_ H:M=14:20`|Once-a-day event|Between 14:20 and 14:30, every day|
-  |`uTH:M=1T14:20`|Once-a-week event|Between 14:20 and 14:30, every Monday.|
-  |`dTH:M=28T14:20`|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
-  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
+  |`d=_ H:M=14:20`|Once a day|Between 14:20 and 14:30, every day|
+  |`uTH:M=1T14:20`|Once a week|Between 14:20 and 14:30, every Monday|
+  |`dTH:M=28T14:20`|Once a month|Between 14:20 and 14:30 on the 28th day of every month|
+  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron-style|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
   |`d=_ H=_ M=15 M=45 H:M=08:50`|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
   |`d=_ H=11 M=00 uTH:M=2T03:30 uTH:M=5T07:20`|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
   |`u=3 H=22 M=15 dTH:M=00T05:20`|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
