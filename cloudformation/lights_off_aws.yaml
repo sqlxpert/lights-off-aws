@@ -47,7 +47,7 @@ Parameters:
     MinValue: 1024
     Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
-  LambaFnTriggersEnabled:
+  Enable:
     Type: String
     Description: >-
       Whether the "Find" AWS Lambda function will run automatically, checking
@@ -110,7 +110,7 @@ Metadata:
         Parameters:
           # - MainRegion
           - LambdaSourceS3BucketNamePrefix
-          - LambaFnTriggersEnabled
+          - Enable
           - SqsKmsKey
       - Label:
           default: >-
@@ -134,7 +134,7 @@ Metadata:
       LambdaSourceS3BucketNamePrefix:
         default: >-
           AWS Lambda source code S3 bucket name prefix (before -<region>)
-      LambaFnTriggersEnabled:
+      Enable:
         default: Enabled?
       SqsKmsKey:
         default: Queue encryption key
@@ -157,7 +157,7 @@ Metadata:
 
 Conditions:
 
-  LambaFnTriggersEnabledCond: !Equals [ !Ref LambaFnTriggersEnabled, "true" ]
+  EnableCond: !Equals [ !Ref Enable, "true" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
@@ -629,7 +629,7 @@ Resources:
       ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
       State:
         Fn::If:
-          - LambaFnTriggersEnabledCond
+          - EnableCond
           - ENABLED
           - DISABLED
       Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
@@ -692,7 +692,7 @@ Resources:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
       BatchSize: 1
-      Enabled: !Ref LambaFnTriggersEnabled
+      Enabled: !Ref Enable
       EventSourceArn: !GetAtt OperationQueue.Arn
       FunctionName: !GetAtt DoLambdaFn.Arn
 
