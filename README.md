@@ -135,10 +135,10 @@ and AWS Systems Manager:
   |Day of month|<kbd>d=01</kbd>|<kbd>d=31</kbd>|<kbd>d=\_</kbd>|
   |Weekday|<kbd>u=1</kbd> (Monday)|<kbd>u=7</kbd> (Sunday)||
   |Hour|<kbd>H=00</kbd>|<kbd>H=23</kbd>|<kbd>H=\_</kbd>|
-  |Minute|<kbd>M=00</kbd>|<kbd>M=59</kbd>||
-  |Hour and minute|<kbd>H:M=00:00</kbd>|<kbd>H:M=23:59</kbd>||
-  |Day of month, hour and minute|<kbd>dTH:M=01T00:00</kbd>|<kbd>dTH:M=31T23:59</kbd>||
-  |Weekday, hour and minute|<kbd>uTH:M=1T00:00</kbd>|<kbd>uTH:M=7T23:59</kbd>||
+  |Minute (multiple of 10 only)|<kbd>M=00</kbd>|<kbd>M=50</kbd>||
+  |Hour and minute|<kbd>H:M=00:00</kbd>|<kbd>H:M=23:50</kbd>||
+  |Day of month, hour and minute|<kbd>dTH:M=00T00:00</kbd>|<kbd>dTH:M=31T23:50</kbd>||
+  |Weekday, hour and minute|<kbd>uTH:M=1T00:00</kbd>|<kbd>uTH:M=7T23:50</kbd>||
 
   * Day, hour and minute must _all_ be specified in the tag value.
   * To specify multiple values, repeat a component. For example, <kbd>d=01&nbsp;d=11&nbsp;d=21</kbd> means _the 1st, 11th and 21st days of the month_.
@@ -150,13 +150,13 @@ and AWS Systems Manager:
 
   |Schedule Tag Value|Demonstrates|Timing|
   |--|--|--|
-  |<samp>d=\_&nbsp;H:M=14:25</samp>|Once-a-day event|Between 14:20 and 14:30, every day|
-  |<samp>uTH:M=1T14:25</samp>|Once-a-week event|Between 14:20 and 14:30, every Monday.|
-  |<samp>dTH:M=28T14:25</samp>|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
-  |<samp>d=1&nbsp;d=8&nbsp;d=15&nbsp;d=22&nbsp;H=03&nbsp;H=19&nbsp;M=01</samp>|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
+  |<samp>d=\_&nbsp;H:M=14:20</samp>|Once-a-day event|Between 14:20 and 14:30, every day|
+  |<samp>uTH:M=1T14:20</samp>|Once-a-week event|Between 14:20 and 14:30, every Monday.|
+  |<samp>dTH:M=28T14:20</samp>|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
+  |<samp>d=1&nbsp;d=8&nbsp;d=15&nbsp;d=22&nbsp;H=03&nbsp;H=19&nbsp;M=00</samp>|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
   |<samp>d=\_&nbsp;H=\_&nbsp;M=15&nbsp;M=45&nbsp;H:M=08:50</samp>|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
   |<samp>d=\_&nbsp;H=11&nbsp;M=00&nbsp;uTH:M=2T03:30&nbsp;uTH:M=5T07:20</samp>|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
-  |<samp>u=3&nbsp;H=22&nbsp;M=15&nbsp;dTH:M=01T05:20</samp>|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
+  |<samp>u=3&nbsp;H=22&nbsp;M=15&nbsp;dTH:M=00T05:20</samp>|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
 
 ## Output
 
