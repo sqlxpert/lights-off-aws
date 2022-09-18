@@ -17,7 +17,7 @@ For AWS users who forget to turn off the lights:
 
 Jump to:
 [Installation](#quick-start) &bull;
-[Operations](#tag-keys-operations)) &bull;
+[Operations](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security-model) &bull;
 [Multi-region/multi-account](#advanced-installation)
