@@ -44,7 +44,7 @@ and AWS Systems Manager:
 
   |Key|Value|Note|
   |--|--|--|
-  |<kbd>sched-backup</kbd>|<kbd>d=_&nbsp;H:M=11:30</kbd>|Replace 11:30 with [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) + 20 minutes|
+  |<kbd>sched-backup</kbd>|<kbd>d=\_&nbsp;H:M=11:30</kbd>|Replace 11:30 with [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) + 20 minutes|
 
 3. Go to the
    [S3 Console](https://console.aws.amazon.com/s3/home).
@@ -106,7 +106,7 @@ and AWS Systems Manager:
 
 ## Enabling Operations
 
-| |Start|Create Image|Reboot then Create Image|Reboot then Fail Over|Reboot|Create Snapshot|Create Snapshot then Stop|Stop|
+| |Start|Create Image|Reboot then Create Image|Reboot then Fail Over|Reboot|Create Snapshot|Stop|
 |--|--|--|--|--|--|--|--|--|
 |_Enabling&nbsp;Tag_&nbsp;&rarr;|<kbd>sched-start</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-reboot-backup</kbd>|<kbd>sched-reboot-failover</kbd>|<kbd>sched-reboot</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-stop</kbd>|
 |[EC2&nbsp;instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||&check;|&check;|
@@ -131,10 +131,10 @@ and AWS Systems Manager:
 * Values: one or more components:
 
   |Name|Minimum|Maximum|Wildcard|
-  |--|--|--|--|--|
-  |Day of month|<kbd>d=01</kbd>|<kbd>d=31</kbd>|
+  |--|--|--|--|
+  |Day of month|<kbd>d=01</kbd>|<kbd>d=31</kbd>|<kbd>d=\_</kbd>|
   |Weekday|<kbd>u=1</kbd> (Monday)|<kbd>u=7</kbd> (Sunday)||
-  |Hour|<kbd>H=00</kbd>|<kbd>H=23</kbd>|
+  |Hour|<kbd>H=00</kbd>|<kbd>H=23</kbd>|<kbd>H=\_</kbd>|
   |Minute|<kbd>M=00</kbd>|<kbd>M=59</kbd>||
   |Hour and minute|<kbd>H:M=00:00</kbd>|<kbd>H:M=23:59</kbd>||
   |Day of month, hour and minute|<kbd>dTH:M=01T00:00</kbd>|<kbd>dTH:M=31T23:59</kbd>||
@@ -142,7 +142,7 @@ and AWS Systems Manager:
 
   * Day, hour and minute must _all_ be specified in the tag value.
   * To specify multiple values, repeat a component. For example, <kbd>d=01&nbsp;d=11&nbsp;d=21</kbd> means _the 1st, 11th and 21st days of the month_.
-  * Wildcards: <kbd>d=_</kbd> means _every day of the month_ and <kbd>h=_</kbd>, _every hour of the day_.
+  * Wildcards: <kbd>d=\_</kbd> means _every day of the month_ and <kbd>H=\_</kbd>, _every hour of the day_.
   * For consistent one-day-a-month scheduling, avoid <kbd>d=29</kbd> through <kbd>d=31</kbd>.
   * The letters match [<code>strftime</code>](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html) and the weekday numbers are [ISO 8601-standard](https://en.wikipedia.org/wiki/ISO_8601#Week_dates) (differs from cron).
 
@@ -150,12 +150,12 @@ and AWS Systems Manager:
 
   |Schedule Tag Value|Demonstrates|Timing|
   |--|--|--|
-  |<samp>d=\*&nbsp;H:M=14:25</samp>|Once-a-day event|Between 14:20 and 14:30, every day|
+  |<samp>d=\_&nbsp;H:M=14:25</samp>|Once-a-day event|Between 14:20 and 14:30, every day|
   |<samp>uTH:M=1T14:25</samp>|Once-a-week event|Between 14:20 and 14:30, every Monday.|
   |<samp>dTH:M=28T14:25</samp>|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
   |<samp>d=1&nbsp;d=8&nbsp;d=15&nbsp;d=22&nbsp;H=03&nbsp;H=19&nbsp;M=01</samp>|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
-  |<samp>d=\*&nbsp;H=\*&nbsp;M=15&nbsp;M=45&nbsp;H:M=08:50</samp>|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
-  |<samp>d=\*&nbsp;H=11&nbsp;M=00&nbsp;uTH:M=2T03:30&nbsp;uTH:M=5T07:20</samp>|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
+  |<samp>d=\_&nbsp;H=\_&nbsp;M=15&nbsp;M=45&nbsp;H:M=08:50</samp>|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
+  |<samp>d=\_&nbsp;H=11&nbsp;M=00&nbsp;uTH:M=2T03:30&nbsp;uTH:M=5T07:20</samp>|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
   |<samp>u=3&nbsp;H=22&nbsp;M=15&nbsp;dTH:M=01T05:20</samp>|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
 
 ## Output
@@ -224,18 +224,12 @@ resource (instance, volume, database, or cluster).
 
 * Do not allow a role that can create backups to delete backups.
 
-* Choose from a library of IAM policies:
+* Choose from sample IAM policies:
 
-  |Policy Name|Manage Enabling Tags|Manage One-Time Schedule Tags|Manage Repetitive Schedule Tags|Back Up|Manage Deletion Tag|Delete|
-  |--|--|--|--|--|--|--|
-  |_Scope_&nbsp;&rarr;|_Instances, Volumes_|_Instances, Volumes_|_Instances, Volumes_|_Instances, Volumes_|_Images, Snapshots_|_Images, Snapshots_|
-  |LightsOffTag|Deny|Allow [<sup>i</sup>](#policy-footnote-1)|Deny|No effect|Deny|Deny|
-  |LightsOffNoTag|Deny|Deny|Deny|No effect|Deny|Deny|
-  
-  * Because <code>Deny</code> always takes precendence in IAM, some policy
-  combinations conflict.
-  
-  * Sometimes, you must add, change or delete one tag at a time.
+  * LightsOffTag
+  * LightsOffNoTag
+
+* Sometimes, you must add, change or delete one tag at a time.
 
 * Although the LightsOffTag policy is sufficient for tagging via the AWS API,
   users who are not AWS administrators will need additional privileges to use
