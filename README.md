@@ -46,7 +46,7 @@ over the years, but Lights Out still has advantages:
 2. Go to [EC2 instances](https://console.aws.amazon.com/ec2/v2/home#Instances).
    Add the following tag to a sample instance:
 
-   * `sched-backup`: `d=\_&nbsp;H:M=11:30` , replacing 11:30 with the
+   * `sched-backup`: `d=_&nbsp;H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
      plus 20 minutes
 
@@ -72,7 +72,7 @@ over the years, but Lights Out still has advantages:
    [CloudFormation Console](https://console.aws.amazon.com/cloudformation/home).
    Click Create Stack. Click Choose File, immediately below Upload a template
    to Amazon S3, and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml).
+   [cloudformation/lights_off_aws.yaml](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml) .
    On the next page, set:
 
    * Stack name: `LightsOff`
@@ -83,8 +83,8 @@ over the years, but Lights Out still has advantages:
    [images](https://console.aws.amazon.com/ec2/v2/home#Images:sort=desc:creationDate).
 
 7. Before deregistering (deleting) the sample image that was created, note its
-   ID, so that you delete the associated
-   [EBS snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:sort=desc:startTime).
+   ID, so that you delete the underlying
+   [EBS volume snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:sort=desc:startTime).
    Also remember to remove the `sched-backup` tag from your EC2 instance.
 
 ## Tag Keys (Operations)
@@ -105,8 +105,8 @@ over the years, but Lights Out still has advantages:
 * Clock: always 24-hour
 * Last digit of minute: always 0 (Scheduled operations occur during a
   10-minute cycle.)
-* Hour values, minute values, and numeric day of month values: always
-  2&nbsp;digits. (Use a leading zero if necessary.)
+* 2 digits: always required for hour values, minute values, and numeric day of
+  month values (Use a leading zero if necessary.)
 * Wildcard: single underscore `_` (RDS does not allow asterisks in tags.)
 * Term separator: space (RDS does not allow commas in tags.)
 * Ordered terms: days must be specified before times, and hours before minutes
@@ -126,7 +126,7 @@ over the years, but Lights Out still has advantages:
   |Once a week|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
   |Once a month|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
 
-* Multiple values: repeat the term (For example, `d=01&nbsp;d=15` means _the
+* Multiple values: repeat the term (For example, `d=01 d=15` means _the
   1st and the 15th days of the month_.)
 * Multiple operations on the same resource, at the same time: none will
   happen, and the error will be logged
@@ -134,21 +134,21 @@ over the years, but Lights Out still has advantages:
   `dTH:M=01T00:00`
 * Standards: letters match
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html)
-  and weekday numbers are from
+  and weekday numbers match
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
-  (`cron` uses non-standard weekday numbers.)
+  (`cron` uses different weekday numbers.)
 
 * Examples:
 
   |Schedule Tag Value|Demonstrates|Timing|
   |--|--|--|
-  |d=\_&nbsp;H:M=14:20|Once-a-day event|Between 14:20 and 14:30, every day|
-  |uTH:M=1T14:20|Once-a-week event|Between 14:20 and 14:30, every Monday.|
-  |dTH:M=28T14:20|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
-  |d=1&nbsp;d=8&nbsp;d=15&nbsp;d=22&nbsp;H=03&nbsp;H=19&nbsp;M=00|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
-  |d=\_&nbsp;H=\_&nbsp;M=15&nbsp;M=45&nbsp;H:M=08:50|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
-  |d=\_&nbsp;H=11&nbsp;M=00&nbsp;uTH:M=2T03:30&nbsp;uTH:M=5T07:20|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
-  |u=3&nbsp;H=22&nbsp;M=15&nbsp;dTH:M=00T05:20|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
+  |`d=_ H:M=14:20`|Once-a-day event|Between 14:20 and 14:30, every day|
+  |`uTH:M=1T14:20`|Once-a-week event|Between 14:20 and 14:30, every Monday.|
+  |`dTH:M=28T14:20`|Once-a-month event|Between 14:20 and 14:30 on the 28th day of every month|
+  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron schedule|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
+  |`d=_ H=_ M=15 M=45 H:M=08:50`|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
+  |`d=_ H=11 M=00 uTH:M=2T03:30 uTH:M=5T07:20`|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
+  |`u=3 H=22 M=15 dTH:M=00T05:20`|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
 
 ## Child Resources
 
