@@ -103,7 +103,7 @@ over the years, but Lights Out still has advantages:
 
 * Time zone: always UTC
 * Clock: always 24-hour
-* Last digit of minute: always 0 (Scheduled operations occur during a
+* Last digit of minute: always 0 (Scheduled operations happen during a
   10-minute cycle.)
 * 2 digits: always required for hour, minute, and numeric day of
   month values (Use a leading zero if necessary.)
@@ -140,34 +140,36 @@ over the years, but Lights Out still has advantages:
 
 * Examples:
 
-  |Schedule Tag Value|Demonstrates|Times|
+  |Tag Value|Scenario|Meaning|
   |--|--|--|
-  |`d=_ H:M=14:20`|Once a day|Between 14:20 and 14:30, every day|
-  |`uTH:M=1T14:20`|Once a week|Between 14:20 and 14:30, every Monday|
-  |`dTH:M=28T14:20`|Once a month|Between 14:20 and 14:30 on the 28th day of every month|
-  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron-style|Between 03:00 and 03:10 and again between 19:00 and 19:10, on the 1st, 8th, 15th, and 22nd days of every month|
-  |`d=_ H=_ M=15 M=45 H:M=08:50`|Extra daily event|Between 10 and 20 minutes after the hour and 40 to 50 minutes after the hour, every hour of every day, _and also_ every day between 08:50 and 09:00|
-  |`d=_ H=11 M=00 uTH:M=2T03:30 uTH:M=5T07:20`|Two extra weekly events|Between 11:00 and 11:10 every day, _and also_ every Tuesday between 03:30 and 03:40 and every Friday between 07:20 and 7:30|
-  |`u=3 H=22 M=15 dTH:M=00T05:20`|Extra monthly event|Between 22:10 and 22:20 every Wednesday, _and also_ on the first day of every month between 05:20 and 05:30|
+  |`d=_ H:M=14:20`|Once a day|At 14:20 every day|
+  |`uTH:M=1T14:20`|Once a week|At 14:20 every Monday|
+  |`dTH:M=28T14:20`|Once a month|At 14:20 on the 28th day of every month|
+  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron-style|at 03:00 and 19:00 on the 1st, 8th, 15th, and 22nd days of every month|
+  |`d=_ H=_ M=15 M=45 H:M=08:50`|Extra daily operation|At 10 and 40 minutes after the hour, every hour of every day, _and also_ every day at 08:50|
+  |`d=_ H=11 M=00 uTH:M=2T03:30 uTH:M=5T07:20`|2 extra weekly operation|At 11:00 every day, _and also_ every Tuesday at 03:30 and every Friday at 07:20|
+  |`u=3 H=22 M=15 dTH:M=00T05:20`|Extra monthly operation|At 22:10 every Wednesday, _and also_ at 05:20 on the first day of every month|
+
+  Operations do not happen at exact times. An operation scheduled at 14:20
+  happens sometime after 14:20 but before 14:30, for example.
 
 ## Child Resources
 
-Some operations create a child resource (image or snapshot) from a parent
-resource (instance, volume, database, or cluster).
+Backup operations create a "child" resource (image or snapshot) from a
+"parent" AWS resource (instance, volume, database, or database cluster).
 
 ### Naming
 
-* The name of the child consists of these parts, separated by hyphens (-):
+* The name of the child consists of several parts, separated by hyphens (`-`):
 
   |#|Part|Example|Purpose|
   |--|--|--|--|
-  |1|Prefix|zsched|Identifies and groups resources created by Lights Off. z will sort after most manually-created images and snapshots.|
-  |2|Parent name or identifier|webserver|Conveniently indicates the parent. Derived from the Name tag, the logical name, or the physical identifier. Multiple children of the same parent will sort together, by creation date.|
-  |3|Date/time|20171231T1400Z|Indicates when the child was created. The minute is always a multiple of 10. The time zone is always UTC (Z).|
-  |4|Random string|g3a8a|Guarantees unique names. Five characters are chosen from a small set of unambiguous letters and numbers.|
+  |1|Prefix|`zsched`|Identifies and groups resources created by Lights Off. `z` is intended to sort after most manually-created images and snapshots.|
+  |2|Parent name or identifier|`webserver`|Conveniently identifies the parent. Derived from the `Name` tag, the logical name, or the physical identifier. Multiple children of the same parent will sort together, by creation date and time.|
+  |3|Date and time|`20171231T1400Z`|Groups children created at the same time. The minute is always a multiple of 10. The time zone is always UTC (Z).|
+  |4|Random suffix|`g3a8a`|Guarantees unique names. 5 characters are chosen from a small set of unambiguous letters and numbers.|
 
-* If parsing is ever necessary, keep in mind that the parent name or identifiere
-  may contain additional, internal hyphens.
+* The parent name or identifiere may contain additional, internal hyphens.
 * Characters forbidden by AWS are replaced with X.
 * For some resource types, the description is also set to the name, in case the
   Console shows only one or the other.
@@ -176,22 +178,28 @@ resource (instance, volume, database, or cluster).
 
 * Special tags are added to the child:
 
-  |Tag|Purpose|
+  |Tag|Description|
   |--|--|
-  |Name|Supplements EC2 resource identifier. The tag key is renamed sched-parent-name when the value is passed from parent to child, because the child has a Name tag of its own. In the EC2 Console, the Name column is determined from Name tags.|
-  |sched-parent-name|The Name tag value from the parent. May be blank.|
-  |sched-parent-id|The identifier of the parent instance, volume, database or database cluster.|
-  |sched-op|The operation (for example, sched-backup) that created the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (sched-reboot-backup).|
-  |<a name="tag-sched-date-time">sched-cycle-start</a>|Groups resources created during the same 10-minute cycle. The last digit of the minute is always zero, and the time zone is always UTC (Z.|
+  |`Name`|The friendly name of the child. In the EC2 Console, the `Name` column is determined from `Name` tag values.|
+  |`sched-parent-name`|The `Name` tag value from the parent. May be blank.|
+  |`sched-parent-id`|The identifier of the parent instance, volume, database or database cluster.|
+  |`sched-op`|The operation tag key (for example, `sched-backup`) that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
+  |`sched-cycle-start`|The date and time when the child was created. The minute is always a multiple of 10. The time zone is always UTC (Z).|
 
-* Although AWS stores most of this information as resource properties/metadata, the field names/keys vary from service to service. Searching by tag works in both EC2 and RDS.
+* Although AWS stores most of this information as resource properties/metadata,
+  the field names/keys vary from service to service, as do the search
+  capabilities -- and some values, such as exact creation time, are too precise
+  to allow for grouping. Searching by tag works in both EC2 and RDS.
 
-* User-created tags whose keys don't begin with sched- are copied from parent to child. You can change the CopyTags parameter in CloudFormation if you do not want this behavior.
+* User-created tags whose keys don't begin with `sched-` are copied from parent
+  to child. You can change the CopyTags parameter in CloudFormation to prevent
+  this, for example, if your organization has different tagging rules for EC2
+  instances and images.
 
 ## Output
 
 * After logging in to the [AWS Web Console](https://signin.aws.amazon.com/console),
-* check the
+  check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logs:prefix=/aws/lambda/LightsOff-).
 * Log messages (except for uncaught exceptions) are JSON objects, with a Type
   key to summarize the message and indicate which other keys will be present.
@@ -201,7 +209,7 @@ resource (instance, volume, database, or cluster).
 
 * You can change the Enable parameter in CloudFormation.
 * This switch is per-region and per-AWS-account.
-* While Enable is false, scheduled operations do not occur; they are skipped
+* While Enable is false, scheduled operations do not happen; they are skipped
   permanently.
 
 ## Security Model
@@ -233,7 +241,7 @@ resource (instance, volume, database, or cluster).
   [decode authorization errors](http://docs.aws.amazon.com/cli/latest/reference/sts/decode-authorization-message.html).
   The LightsOffTag sample policy grants the necessary privilege.
 
-* Note these AWS security limitations:
+* Note these AWS security gaps:
 
   * Authority to create an EC2 instance image includes authority to reboot
     (Explicitly denying the reboot privilege does not help.) A harmless
