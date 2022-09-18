@@ -27,7 +27,7 @@ SCHED_REGEXP_STRFTIME_FMT = (
   rf"(^|{SCHED_DELIMS})"
   rf"((dTH:M=%d|uTH:M=%u)T%H:%M"
   rf"|"
-  rf"(d=(_|%d)|u=(_|%u)){SCHED_DELIMS}"
+  rf"(d=(_|%d)|u=%u){SCHED_DELIMS}"
   rf"{SCHED_TERMS}"
   rf"((H:M=%H:%M)|(H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M)))"
   rf"({SCHED_DELIMS}|$)"

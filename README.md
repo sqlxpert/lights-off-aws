@@ -44,7 +44,7 @@ and AWS Systems Manager:
 
   |Key|Value|Note|
   |--|--|--|
-  |<kbd>sched-backup</kbd>|<kbd>u=_&nbsp;H:M=11:30</kbd>|Replace 11:30 with [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) + 20 minutes|
+  |<kbd>sched-backup</kbd>|<kbd>d=_&nbsp;H:M=11:30</kbd>|Replace 11:30 with [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) + 20 minutes|
 
 3. Go to the
    [S3 Console](https://console.aws.amazon.com/s3/home).
@@ -52,7 +52,7 @@ and AWS Systems Manager:
    where you want to install Lights Off and you must put a hyphen and the region
    at the end of the bucket name (for example,
    <kbd>my-bucket-us-east-1</kbd>). Upload
-   [<samp>aws-lambda/lights_off_aws.py.zip</samp>](https://github.com/sqlxpert/lights-off-aws/raw/main/aws-lambda/lights_off_aws.py.zip).
+   [<samp>aws-lambda/lights_off_aws.py.zip</samp>](https://github.com/sqlxpert/lights-off-aws/raw/main/aws-lambda/lights_off_aws.py.zip)
 
   _Security Tip:_ [Block public access](https://docs.aws.amazon.com/AmazonS3/latest/dev/access-control-block-public-access.html#console-block-public-access-options)
   to the bucket, and limit write access
@@ -108,11 +108,11 @@ and AWS Systems Manager:
 
 | |Start|Create Image|Reboot then Create Image|Reboot then Fail Over|Reboot|Create Snapshot|Create Snapshot then Stop|Stop|
 |--|--|--|--|--|--|--|--|--|
-|_Enabling&nbsp;Tag_&nbsp;&rarr;|<kbd>sched-start</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-reboot-backup</kbd>|<kbd>sched-reboot-failover</kbd>|<kbd>sched-reboot</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-backup-stop</kbd>|<kbd>sched-stop</kbd>|
-|[EC2&nbsp;instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||&check;|||&check;|
+|_Enabling&nbsp;Tag_&nbsp;&rarr;|<kbd>sched-start</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-reboot-backup</kbd>|<kbd>sched-reboot-failover</kbd>|<kbd>sched-reboot</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-stop</kbd>|
+|[EC2&nbsp;instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||&check;|&check;|
 |[EBS&nbsp;volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||||||&check;|||
-|[RDS&nbsp;database](https://console.aws.amazon.com/rds/home#dbinstances:)|&check;|||&check;|&check;|&check;|&check;|&check;|
-|[RDS&nbsp;database&nbsp;cluster](https://console.aws.amazon.com/rds/home#dbinstances:)|&check;|||&check;|&check;|&check;|&check;|&check;|
+|[RDS&nbsp;database](https://console.aws.amazon.com/rds/home#dbinstances:)|&check;|||&check;|&check;|&check;|&check;|
+|[RDS&nbsp;database&nbsp;cluster](https://console.aws.amazon.com/rds/home#dbinstances:)|&check;|||&check;|&check;|&check;|&check;|
 
 ## Scheduling
 
@@ -130,19 +130,19 @@ and AWS Systems Manager:
 
 * Values: one or more components:
 
-  |Name|Minimum|Maximum|Wildcard|Combines With|
+  |Name|Minimum|Maximum|Wildcard|
   |--|--|--|--|--|
-  |Day of month|<kbd>d=01</kbd>|<kbd>d=31</kbd>|<kbd>d=\*</kbd>|<kbd>H</kbd> and <kbd>M</kbd>, or <kbd>H:M</kbd>|
-  |Weekday|<kbd>u=1</kbd> (Monday)|<kbd>u=7</kbd> (Sunday)||<kbd>H</kbd> and <kbd>M</kbd>, or <kbd>H:M</kbd>|
-  |Hour|<kbd>H=00</kbd>|<kbd>H=23</kbd>|<kbd>H=\*</kbd>|<kbd>d</kbd> or <kbd>u</kbd>, and <kbd>M</kbd>|
-  |Minute|<kbd>M=00</kbd>|<kbd>M=59</kbd>||<kbd>d</kbd> or <kbd>u</kbd>, and <kbd>H</kbd>|
-  |Hour and minute|<kbd>H:M=00:00</kbd>|<kbd>H:M=23:59</kbd>||<kbd>d</kbd> or <kbd>u</kbd>|
-  |Day of month, hour and minute|<kbd>dTH:M=01T00:00</kbd>|<kbd>dTH:M=31T23:59</kbd>|||
-  |Weekday, hour and minute|<kbd>uTH:M=1T00:00</kbd>|<kbd>uTH:M=7T23:59</kbd>|||
+  |Day of month|<kbd>d=01</kbd>|<kbd>d=31</kbd>|
+  |Weekday|<kbd>u=1</kbd> (Monday)|<kbd>u=7</kbd> (Sunday)||
+  |Hour|<kbd>H=00</kbd>|<kbd>H=23</kbd>|
+  |Minute|<kbd>M=00</kbd>|<kbd>M=59</kbd>||
+  |Hour and minute|<kbd>H:M=00:00</kbd>|<kbd>H:M=23:59</kbd>||
+  |Day of month, hour and minute|<kbd>dTH:M=01T00:00</kbd>|<kbd>dTH:M=31T23:59</kbd>||
+  |Weekday, hour and minute|<kbd>uTH:M=1T00:00</kbd>|<kbd>uTH:M=7T23:59</kbd>||
 
   * Day, hour and minute must _all_ be specified in the tag value.
   * To specify multiple values, repeat a component. For example, <kbd>d=01&nbsp;d=11&nbsp;d=21</kbd> means _the 1st, 11th and 21st days of the month_.
-  * Wildcards: <kbd>d=\*</kbd> means _every day of the month_ and <kbd>h=\*</kbd>, _every hour of the day_.
+  * Wildcards: <kbd>d=_</kbd> means _every day of the month_ and <kbd>h=_</kbd>, _every hour of the day_.
   * For consistent one-day-a-month scheduling, avoid <kbd>d=29</kbd> through <kbd>d=31</kbd>.
   * The letters match [<code>strftime</code>](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html) and the weekday numbers are [ISO 8601-standard](https://en.wikipedia.org/wiki/ISO_8601#Week_dates) (differs from cron).
 
@@ -339,7 +339,7 @@ and drilling down to <samp>Resources</samp>. S3 bucket policy template:
 
 4. In the AWS account with the AWSCloudFormationStackSet*Admin*istrationRole, go to the [StackSets Console](https://console.aws.amazon.com/cloudformation/stacksets/home#/stacksets).
 
-5. Click <samp>Create StackSet</samp>, then select <samp>Upload a template to Amazon S3</samp>, then click <samp>Browse</samp> and select your local copy of [<samp>cloudformation/lights_off_aws.yaml</samp>](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml). On the next page, set:
+5. Click <samp>Create StackSet</samp>, then select <samp>Upload a template to Amazon S3</samp>, then click <samp>Browse</samp> and select your local copy of [<samp>cloudformation/lights_off_aws.yaml</samp>](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml) . On the next page, set:
 
    |Section|Item|Value|
    |--|--|--|
