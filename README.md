@@ -14,7 +14,6 @@ expensive AWS infrastructure when it's not needed!
 
 Jump to:
 [Installation](#quick-start) &bull;
-[Schedule Tags](#scheduling-operations) &bull;
 [Logging](#output) &bull;
 [Security](#security-model) &bull;
 [Multi-region/multi-account](#advanced-installation)
@@ -104,16 +103,16 @@ and AWS Systems Manager:
   [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
   as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
 
-## Enabling Operations
+## Operations
 
 | |Start|Create Image|Reboot then Create Image|Reboot then Fail Over|Reboot|Create Snapshot|Stop|Set Enable parameter to true|Set Enable parameter to false
 |--|--|--|--|--|--|--|--|--|--|
-||<kbd>sched-start</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-reboot-backup</kbd>|<kbd>sched-reboot-failover</kbd>|<kbd>sched-reboot</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-stop</kbd>|--|--|
+||<kbd>sched-start</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-reboot-backup</kbd>|<kbd>sched-reboot-failover</kbd>|<kbd>sched-reboot</kbd>|<kbd>sched-backup</kbd>|<kbd>sched-stop</kbd>|<kbd>sched-Enable-true</kbd>|<kbd>sched-Enable-false</kbd>|
 |[EC2&nbsp;instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;|||&check;|||
 |[EBS&nbsp;volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||||||&check;|||||
 |[RDS&nbsp;database](https://console.aws.amazon.com/rds/home#databases:)|&check;|||&check;|&check;|&check;|&check;|||
 |[RDS&nbsp;database&nbsp;cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|||&check;|&check;|&check;|&check;|||
-|[CloudFormation&nbsp;Stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||||&check;|&check;|
+|[CloudFormation&nbsp;stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||||&check;|&check;|
 
 ## Scheduling
 
