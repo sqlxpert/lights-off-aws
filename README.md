@@ -11,9 +11,10 @@ For AWS users who forget to turn off the lights:
 * You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
   backups.
 
-* Tag your CloudFormation stacks, and Lights Out will automatically delete
-  and recreate the cost-bearing resources on schedule. All you need to do is
-  add a parameter to your template.
+* Tag your custom CloudFormation stacks, and Lights Out can delete and
+  recreate expensive resources on a schedule. It takes only minutes to
+  add the necessary parameter and condition to a CloudFormation template,
+  and mark resource defitions with the condition.
 
 Jump to:
 [Installation](#quick-start) &bull;
@@ -89,15 +90,15 @@ over the years, but Lights Out still has advantages:
 
 ## Tag Keys (Operations)
 
-| |Start or Stop|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Change Stack Parameter|
-|--|--|--|--|--|--|--|
-||`sched-start`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
+| |Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Change Stack Parameter|
+|--|--|--|--|--|--|--|--|
+||`sched-start`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`|||||`sched-set-Enable-false`|
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|image (AMI)|image (AMI)|&check;|||
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||volume snapshot|||||
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|database snapshot||&check;|&check;||
-|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|database cluster snapshot||&check;||
-|[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot|||||
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot||&check;|&check;||
+|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||database cluster snapshot||&check;||
+|[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
 ## Tag Values (Schedules)
 
