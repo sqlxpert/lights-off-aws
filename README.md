@@ -93,10 +93,10 @@ over the years, but Lights Out still has advantages:
 |--|--|--|--|--|--|--|
 ||`sched-start`|`sched-backup`|`sched-reboot`|`sched-reboot-backup`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`|||||`sched-set-Enable-false`|
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check; image (AMI)|&check;||||
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||&check; snapshot|||||
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database snapshot||&check;|||
-|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database cluster snapshot|&check;|||
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|image (AMI)|&check;|&check;|||
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||volume snapshot|||||
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|database snapshot|&check;||&check;||
+|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|database cluster snapshot|&check;|||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
 
 ## Tag Values (Schedules)
