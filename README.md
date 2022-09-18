@@ -199,7 +199,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 To make a custom CloudFormation template compatible with Lights Off,
 
-1. Add the following to the Parameters section:
+1. Add the following to the `Parameters` section:
 
    ```yaml
      Enable:
@@ -214,7 +214,7 @@ To make a custom CloudFormation template compatible with Lights Off,
        Default: "false"  # Start with expensive resources off
    ```
 
-2. Add the following to the Conditions section:
+2. Add the following to the `Conditions` section:
 
    ```yaml
      EnableTrue:
@@ -222,7 +222,7 @@ To make a custom CloudFormation template compatible with Lights Off,
    ```
 
 3. Add the following attribute below, and indented at the same level as, the
-   Type attribute of the resource definition for any expensive resource that
+   `Type` attribute of the resource definition for any expensive resource that
    you would like Lights Off to create and delete on schedule:
 
    ```yaml
@@ -234,8 +234,8 @@ To make a custom CloudFormation template compatible with Lights Off,
    to toggle the creation and deletion of resources that are not formally
    related.
 
-4. If necessary, make references to affect resources conditional, by replacing
-   a property such as `SomeProperty: !Ref MyResourceName` with:
+4. If necessary, make references to affected resources conditional, by
+   replacing a property such as `SomeProperty: !Ref MyResourceName` with:
 
    ```yaml
          SomeProperty:
