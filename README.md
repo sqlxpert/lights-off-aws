@@ -89,55 +89,54 @@ over the years, but Lights Out still has advantages:
 
 ## Tag Keys (Operations)
 
-| |Start or Stop|Back Up|Reboot|Reboot then Create Image|Reboot then Fail Over|Set Enable parameter to true or false|
+| |Start or Stop|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Change Stack Parameter|
 |--|--|--|--|--|--|--|
-||`sched-start`|`sched-backup`|`sched-reboot`|`sched-reboot-backup`|`sched-reboot-failover`|`sched-set-Enable-true`|
+||`sched-start`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`|||||`sched-set-Enable-false`|
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|image (AMI)|&check;|&check;|||
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||volume snapshot|||||
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|database snapshot|&check;||&check;||
-|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|database cluster snapshot|&check;|||
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|database snapshot||&check;|&check;||
+|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|database cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
 
 ## Tag Values (Schedules)
 
-* All times are UTC, on a 24-hour clock.
-* Scheduled operations occur during a 10-minute cycle. The last digit of the
-  minute must always be zero.
-* Hour values, minute values, and numeric day of month values must have two
-  digits. Use a leading zero if necessary.
-* A single underscore `\_` can be used a wildcard for the day of the month and for
-  the hour. This was chosen because RDS does not allow asterisks in tag values.
-* Separate schedule terms with a space. This was chosen because RDS does not
-  allow commas in tag values.
-* Order matters: days must be specified before times. If hours and minutes are
-  specified separately, hours must be specified before minutes. You can insert
-  as many "once a month" and "once a week" terms as you like. They can go
-  anywhere, but it is more efficient to put them at the beginning.
-* Nothing will happen unless a day, an hour and a minute value are all
-  specified in some way.
-* Schedule terms:
+* Time zone: always UTC
+* Clock: always 24-hour
+* Last digit of minute: always 0 (Scheduled operations occur during a
+  10-minute cycle.)
+* Hour values, minute values, and numeric day of month values: always
+  2&nbsp;digits. (Use a leading zero if necessary.)
+* Wildcard: single underscore `_` (RDS does not allow asterisks in tags.)
+* Term separator: space (RDS does not allow commas in tags.)
+* Ordered terms: days must be specified before times, and hours before minutes
+  (For fast matching, any "once a month" and "once a week" terms should go at
+  the beginning.)
+* Completeness: a day, an hour and a minute must all be specified, or nothing
+  will happen
+* Terms:
 
   |Name|Minimum|Maximum|Wildcard|
   |--|--|--|--|
-  |Day of month|`d=01`|`d=31`|`d=\_`|
+  |Day of month|`d=01`|`d=31`|`d=_`|
   |Weekday|`u=1` (Monday)|`u=7` (Sunday)||
-  |Hour|`H=00`|`H=23`|`H=\_`|
+  |Hour|`H=00`|`H=23`|`H=_`|
   |Minute (multiples of 10 only)|`M=00`|`M=50`||
   |Once a day|`H:M=00:00`|`H:M=23:50`||
   |Once a week|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
-  |Once a month|`dTH:M=00T00:00`|`dTH:M=31T23:50`||
+  |Once a month|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
 
-* To specify multiple values, repeat a term. For example, `d=01&nbsp;d=15`
-  means _the 1st and the 15th days of the month_.
-* For consistent monthly scheduling, avoid `d=29` through `d=31`.
-* If two or more operations on the same resource are scheduled for the same
-  10-minute cycle, none of operations is performed. An error is logged.
-* The letters match
+* Multiple values: repeat the term (For example, `d=01&nbsp;d=15` means _the
+  1st and the 15th days of the month_.)
+* Multiple operations on the same resource, at the same time: none will
+  happen, and the error will be logged
+* End-of-month: some months lack `d=29` through `d=31` ; consider
+  `dTH:M=01T00:00`
+* Standards: letters match
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html)
-  and the weekday numbers are
-  [ISO 8601-standard](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
-  (`cron` uses non-standard weekday numbers).
+  and weekday numbers are from
+  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
+  (`cron` uses non-standard weekday numbers.)
 
 * Examples:
 
