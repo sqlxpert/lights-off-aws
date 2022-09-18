@@ -149,9 +149,9 @@ over the years, but Lights Out still has advantages:
   |`uTH:M=1T14:20`|Once a week|At 14:20 every Monday|
   |`dTH:M=28T14:20`|Once a month|At 14:20 on the 28th day of every month|
   |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron-style|at 03:00 and 19:00 on the 1st, 8th, 15th, and 22nd days of every month|
-  |`d=_ H=_ M=15 M=45 H:M=08:50`|Extra daily operation|At 10 and 40 minutes after the hour, every hour of every day, _and also_ every day at 08:50|
-  |`d=_ H=11 M=00 uTH:M=2T03:30 uTH:M=5T07:20`|2 extra weekly operations|At 11:00 every day, _and also_ every Tuesday at 03:30 and every Friday at 07:20|
-  |`u=3 H=22 M=15 dTH:M=00T05:20`|Extra monthly operation|At 22:10 every Wednesday, _and also_ at 05:20 on the first day of every month|
+  |`d=_ H:M=08:50 H=_ M=15 M=45`|Extra daily operation|At 10 and 40 minutes after the hour, every hour of every day, _and also_ every day at 08:50|
+  |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|At 11:00 every day, _and also_ every Tuesday at 03:30 and every Friday at 07:20|
+  |`dTH:M=00T05:20 u=3 H=22 M=15`|Extra monthly operation|At 22:10 every Wednesday, _and also_ at 05:20 on the first day of every month|
 
   Operations do not happen at exact times. An operation scheduled at 14:20
   happens sometime after 14:20 but before 14:30, for example.
