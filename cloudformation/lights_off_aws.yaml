@@ -77,13 +77,15 @@ Parameters:
     Type: Number
     Description: >-
       How many megabytes of memory to allocate to the "Find" AWS Lambda
-      function. Increase only in case of out-of-memory errors.
+      function. Increase only in case of out-of-memory errors. See
+      https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html
     Default: 128
   FindLambdaFnTimeoutSecs:
     Type: Number
     Description: >-
       How many seconds before execution of the "Find" AWS Lambda function
-      is canceled. Increase only in case of time-out errors.
+      is canceled. Increase only in case of time-out errors. See
+      https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
   DoLambdaFnMemoryMB:
     Type: Number
@@ -111,7 +113,8 @@ Metadata:
           - LambaFnTriggersEnabled
           - SqsKmsKey
       - Label:
-          default: AWS Lambda function to find resources with scheduled operations
+          default: >-
+            AWS Lambda function to find resources with scheduled operations
         Parameters:
           - FindLambdaFnMemoryMB
           - FindLambdaFnTimeoutSecs
@@ -129,7 +132,8 @@ Metadata:
           - LambdaFnFileName
     ParameterLabels:
       LambdaSourceS3BucketNamePrefix:
-        default: AWS Lambda source code S3 bucket name prefix (before -<region>)
+        default: >-
+          AWS Lambda source code S3 bucket name prefix (before -<region>)
       LambaFnTriggersEnabled:
         default: Enabled?
       SqsKmsKey:
@@ -660,7 +664,6 @@ Resources:
 
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain  # Might want to review after function is deleted
     Properties:
       # Lambda names the log group after the function, so a CloudWatch-assigned
       # name won't work. A custom name will, however, interfere with changes.

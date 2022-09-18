@@ -2,6 +2,8 @@
 """Start, reboot, stop and back up AWS resources using schedules in tags
 
 github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
+
+Package for AWS Lambda: zip -9 lights_off_aws.py.zip lights_off_aws.py
 """
 
 import os
