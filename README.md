@@ -3,7 +3,7 @@
 For AWS users who forget to turn off the lights:
 
 * **Cut AWS costs up to ⅔ in your sleep**, by tagging your EC2 instances and
-  RDS databases with `cron`-style schedules. Lights Off stops or hibernates
+  RDS databases with cron-style schedules. Lights Off stops or hibernates
   the instances, and stops the databases, while you are not using them, then
   starts them up before you need them again. It's perfect for development
   and test systems, which are idle at night and on weekends.
@@ -17,8 +17,8 @@ For AWS users who forget to turn off the lights:
 
 Jump to:
 [Installation](#quick-start) &bull;
-[Operation Tags](#operation-tags) &bull;
-[Schedule Values](#schedule-values) &bull;
+[Operations(#tag-keys-(operations)) &bull;
+[Schedules](#tag-values-(schedules)) &bull;
 [Security](#security-model) &bull;
 [Multi-region/multi-account](#advanced-installation)
 
@@ -87,19 +87,19 @@ over the years, but Lights Out still has advantages:
    [EBS snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:sort=desc:startTime).
    Also remember to remove the `sched-backup` tag from your EC2 instance.
 
-## Operation Tags
+## Tag Keys (Operations)
 
 | |Start or Stop|Back Up|Reboot|Reboot then Create Image|Reboot then Fail Over|Set Enable parameter to true or false|
 |--|--|--|--|--|--|--|
 ||`sched-start`|`sched-backup`|`sched-reboot`|`sched-reboot-backup`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`|||||`sched-set-Enable-false`|
-|[EC2&nbsp;instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check; image (AMI)|&check;||||
-|[EBS&nbsp;volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||&check; snapshot|||||
-|[RDS&nbsp;database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database snapshot||&check;|||
-|[RDS&nbsp;database&nbsp;cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database cluster snapshot|&check;|||
-|[CloudFormation&nbsp;stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check; image (AMI)|&check;||||
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||&check; snapshot|||||
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database snapshot||&check;|||
+|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;|&check; database cluster snapshot|&check;|||
+|[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
 
-## Schedule Values
+## Tag Values (Schedules)
 
 * All times are UTC, on a 24-hour clock.
 * Scheduled operations occur during a 10-minute cycle. The last digit of the
