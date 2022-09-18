@@ -10,6 +10,7 @@ import datetime
 import re
 import json
 import random
+import collections
 import botocore
 import boto3
 
@@ -36,9 +37,10 @@ QUEUE_MSG_FMT_VERSION = "01"
 
 TAG_KEY_PREFIX = "sched"
 TAG_KEY_DELIM = "-"
-TAG_KEYS_NO_INHERIT_REGEXP = (
+TAG_KEYS_NO_COPY_REGEXP = (
   rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
+COPY_TAGS = (os.environ.get("COPY_TAGS", "").lower() == "true")
 
 
 # 1. Custom Exceptions #######################################################
@@ -48,39 +50,144 @@ class SQSMessageTooLong(ValueError):
   """
 
 
-# 2. Specification Helpers ###################################################
+# 2. Custom Classes ##########################################################
+
+# See rsrc_types_init() for usage examples
+
+# pylint: disable=too-few-public-methods
+
+class AWSRsrcType():
+  """AWS resource type, with essential properties
+  """
+
+  def __init__(self, svc, rsrc_type_words, rsrc_id_key_suffix):
+    self.svc = svc
+    self.rsrc_type_in_methods = "_".join(rsrc_type_words).lower()
+    self.rsrc_type_in_keys = "".join(rsrc_type_words)
+    self.rsrc_key = self.rsrc_type_in_keys  # Friendlier, general-use synonym
+    self.rsrcs_key = f"{self.rsrc_type_in_keys}s"
+    self.rsrc_id_key = f"{self.rsrc_type_in_keys}{rsrc_id_key_suffix}"
+    self.rsrc_ids_key = f"{self.rsrc_id_key}s"
+
+  def __str__(self):
+    return f"AWSRsrcType {self.svc} {self.rsrc_key}"
 
 
-def tag_key_join(*args):
+class AWSChildRsrcType(AWSRsrcType):
+  """AWS child resource type, with properties for resource creation
+  """
+  members = collections.defaultdict(dict)
+
+  def __init__(self, svc, rsrc_type_words, rsrc_id_key_suffix, **kwargs):
+    super().__init__(svc, rsrc_type_words, rsrc_id_key_suffix)
+    self.name_chars_max = kwargs["name_chars_max"]
+    self.name_chars_unsafe_regexp = kwargs.get("name_chars_unsafe_regexp", "")
+    self.op_kwargs_update_child_fn = kwargs["op_kwargs_update_child_fn"]
+    self.__class__.members[svc][self.rsrc_key] = self
+
+
+class AWSParentRsrcType(AWSRsrcType):
+  """AWS resource type, with functions to synthesize method names and keys
+  """
+  members = collections.defaultdict(dict)
+
+  def __init__(self, svc, rsrc_type_words, rsrc_id_key_suffix, **kwargs):
+    super().__init__(svc, rsrc_type_words, rsrc_id_key_suffix)
+    self.status_filter_pair = kwargs.get("status_filter_pair", ())
+    self.flatten_fn = kwargs.get("flatten_fn", None)
+    self.ops = {}
+    for (op_tag_key_words, op_properties) in kwargs["ops"].items():
+      op_tag_key = tag_key_join(op_tag_key_words)
+      op_properties_add = {"op_tag_key": op_tag_key}
+      # Default verbs (specification shorthand):
+      if "verb" not in op_properties:
+        op_properties_add["verb"] = (
+          "create"
+          if "child_rsrc_type" in op_properties else
+          op_tag_key_words[0]  # Same as (first) tag key word
+        )
+      self.ops[op_tag_key] = AWSOp(self, **(op_properties | op_properties_add))
+    self.__class__.members[svc][self.rsrc_key] = self
+
+  # pylint: disable=missing-function-docstring
+
+  @property
+  def describe_method_name(self):
+    return f"describe_{self.rsrc_type_in_methods}s"
+
+  @property
+  def ops_tag_keys(self):
+    return self.ops.keys()
+
+  @property
+  def describe_filters(self):
+    describe_filters_out = []
+    if self.status_filter_pair:
+      describe_filters_out.append(self.status_filter_pair)
+      if self.ops:
+        describe_filters_out.append(("tag-key", self.ops_tag_keys))
+    return describe_filters_out
+
+  @property
+  def describe_kwargs(self):
+    describe_kwargs_out = {}
+    if self.describe_filters:
+      describe_kwargs_out["Filters"] = [
+        {"Name": filter_name, "Values": list(filter_values)}
+        for (filter_name, filter_values) in self.describe_filters
+      ]
+    return describe_kwargs_out
+
+
+class AWSOp():
+  """
+  Operation on an AWS resource type, possibly creating a child resource
+  """
+  def __init__(self, rsrc_type, verb, multiple_rsrcs=False, **kwargs):
+    self.rsrc_type = rsrc_type
+    if "child_rsrc_type" in kwargs:
+      self.child_rsrc_type = kwargs["child_rsrc_type"]
+      noun_source = self.child_rsrc_type
+    else:
+      self.child_rsrc_type = None
+      noun_source = self.rsrc_type
+    self.multiple_rsrcs = multiple_rsrcs
+    noun_suffix_plural = "s" if self.multiple_rsrcs else ""
+    self.op_method_name = (
+      f"{verb}_{noun_source.rsrc_type_in_methods}{noun_suffix_plural}"
+    )
+    self.op_tag_key = kwargs["op_tag_key"]
+    self.op_kwargs_static = kwargs.get("op_kwargs_static", {})
+    self.op_kwargs_update_fn = kwargs.get("op_kwargs_update_fn", None)
+
+  def __str__(self):
+    return (
+      f"AWSOp {self.op_tag_key} {self.rsrc_type.svc}.{self.op_method_name}"
+    )
+
+# 3. Specification Helpers ###################################################
+
+
+def tag_key_join(tag_key_words):
   """Take any number of strings, add a prefix, join, and return a tag key
   """
-  return TAG_KEY_DELIM.join([TAG_KEY_PREFIX] + list(args))
+  return TAG_KEY_DELIM.join([TAG_KEY_PREFIX] + list(tag_key_words))
 
 
-def describe_kwargs_make(status_filter_pairs):
-  """Take (filter, values) pairs, return boto3 _describe method kwargs
-  """
-  return {
-    "Filters": [
-      {"Name": filter_name, "Values": list(filter_values)}
-      for (filter_name, filter_values) in status_filter_pairs
-    ]
-  }
-
-
-def stack_update_kwargs_make(stack_rsrc, update_stack_op):
+def stack_update_kwargs(stack_rsrc, update_stack_op):
   """Take a describe_stack item and an operation, return update_stack kwargs
 
-  Preserves previous parameter values except for Enabled, whose value is set
+  Preserves previous parameter values except for Enable, whose value is set
   to "true" or "false" (strings, because CloudFormation does lacks a Boolean
   parameter type) depending on the operation.
   """
+  toggle_parameter_key = update_stack_op.split(TAG_KEY_DELIM)[-2]
   stack_params_out = [{
-    "ParameterKey": "Enabled",
+    "ParameterKey": toggle_parameter_key,
     "ParameterValue": update_stack_op.split(TAG_KEY_DELIM)[-1],  # -true/false
   }]
   for stack_param_in in stack_rsrc.get("Parameters", []):
-    if stack_param_in["ParameterKey"] != "Enabled":
+    if stack_param_in["ParameterKey"] != toggle_parameter_key:
       stack_params_out.append({
         "ParameterKey": stack_param_in["ParameterKey"],
         "UsePreviousValue": True,
@@ -90,24 +197,20 @@ def stack_update_kwargs_make(stack_rsrc, update_stack_op):
     "Parameters": stack_params_out,
   }
 
-# 3. Data-Driven Specifications ##############################################
-
-# Hierarchical dicts specify:
-#  - search conditions for AWS resources (instances, volumes, stacks)
-#  - operations supported
-#  - rules for naming and tagging child resources (images, snapshots)
-# SPECS_CHILD / SPECS structure:
-#   AWS service - string (svc):
-#     AWS resource type - tuple of strings (rsrc_type_words):
-#       specification key - string:
-#         specification value - type varies
+# 4. Data-Driven Specifications ##############################################
 
 
-SPECS_CHILD = {
-  "ec2": {
-
-    ("Image", ): {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
+def rsrc_types_init():
+  """Create AWS resource type objects when needed, if not already done
+  """
+  if not AWSChildRsrcType.members:
+    AWSChildRsrcType(
+      "ec2",
+      ("Image", ),
+      "Id",
+      name_chars_max=128,
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9()[\] ./'@_-]",
+      op_kwargs_update_child_fn=lambda child_name, child_tags_list: {
         "Name": child_name,
         "Description": child_name,
         # Set Name and Description, because some Console pages show only one!
@@ -116,145 +219,142 @@ SPECS_CHILD = {
           {"Tags": child_tags_list, "ResourceType": "snapshot", },
         ],
       },
-      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9()[\] ./'@_-]",
-      "name_chars_max": 128,
-    },
+    )
 
-    ("Snapshot", ): {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
+    AWSChildRsrcType(
+      "ec2",
+      ("Snapshot", ),
+      "Id",
+      name_chars_max=255,
+      # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.create_snapshot
+      # No unsafe characters documented for snapshot description
+      op_kwargs_update_child_fn=lambda child_name, child_tags_list: {
         "Description": child_name,
         "TagSpecifications": [
           {"Tags": child_tags_list, "ResourceType": "snapshot"},
         ],
       },
-      # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.create_snapshot
-      # No unsafe characters documented for snapshot description
-      "name_chars_max": 255,
-    },
+    )
 
-  },
-  "rds": {
-
-    ("DB", "Snapshot"): {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
+    AWSChildRsrcType(
+      "rds",
+      ("DB", "Snapshot"),
+      "Identifier",
+      name_chars_max=255,
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      op_kwargs_update_child_fn=lambda child_name, child_tags_list: {
         "DBSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9-]|--",
-      "name_chars_max": 255,
-    },
+    )
 
-    ("DB", "Cluster", "Snapshot"): {
-      "op_kwargs_update_child_fn": lambda child_name, child_tags_list: {
+    AWSChildRsrcType(
+      "rds",
+      ("DB", "Cluster", "Snapshot"),
+      "Identifier",
+      name_chars_max=63,
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      op_kwargs_update_child_fn=lambda child_name, child_tags_list: {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
       },
-      "name_chars_unsafe_regexp": r"[^a-zA-Z0-9-]|--",
-      "name_chars_max": 63,
-    },
-  },
+    )
 
-}
-SPECS = {
-  "ec2": {
-
-    ("Instance", ): {
-      "status_filter_pair": (
+  if not AWSParentRsrcType.members:
+    AWSParentRsrcType(
+      "ec2",
+      ("Instance", ),
+      "Id",
+      status_filter_pair=(
         "instance-state-name", ("running", "stopping", "stopped")
       ),
-      "flatten_fn": lambda resp: (
+      flatten_fn=lambda resp: (
         instance
         for reservation in resp["Reservations"]
         for instance in reservation["Instances"]
       ),
-      "rsrc_id_key_suffix": "Id",
-      "ops": {
-        tag_key_join("start"): {"op_method_name": "start_instances"},
-        tag_key_join("reboot"): {"op_method_name": "reboot_instances"},
-        tag_key_join("stop"): {"op_method_name": "stop_instances"},
-        tag_key_join("hibernate"): {
-          "op_method_name": "stop_instances",
+      ops={
+        ("start", ): {"multiple_rsrcs": True},
+        ("reboot", ): {"multiple_rsrcs": True},
+        ("stop", ): {"multiple_rsrcs": True},
+        ("hibernate", ): {
+          "verb": "stop",
+          "multiple_rsrcs": True,
           "op_kwargs_static": {"Hibernate": True},
         },
-        tag_key_join("backup"): {
-          "op_method_name": "create_image",
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Image", )],
+        ("backup", ): {
+          "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Image"],
         },
-        tag_key_join("reboot", "backup"): {
-          "op_method_name": "create_image",
+        ("reboot", "backup"): {
           "op_kwargs_static": {"NoReboot": False},
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Image", )],
+          "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Image"],
         },
       },
-    },
+    )
 
-    ("Volume", ): {
-      "status_filter_pair": ("status", ("available", "in-use")),
-      "rsrc_id_key_suffix": "Id",
-      "ops": {
-        tag_key_join("backup"): {
+    AWSParentRsrcType(
+      "ec2",
+      ("Volume", ),
+      "Id",
+      status_filter_pair=("status", ("available", "in-use")),
+      ops={
+        ("backup", ): {
           "op_method_name": "create_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["ec2"][("Snapshot", )],
+          "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Snapshot"],
         },
       },
-    },
+    )
 
-  },
-  "rds": {
-
-    ("DB", "Instance"): {
-      "rsrc_id_key_suffix": "Identifier",
-      "ops": {
-        tag_key_join("start"): {"op_method_name": "start_db_instance"},
-        tag_key_join("stop"): {"op_method_name": "stop_db_instance"},
-        tag_key_join("reboot"): {"op_method_name": "reboot_db_instance"},
-        tag_key_join("reboot", "failover"): {
-          "op_method_name": "reboot_db_instance",
-          "op_kwargs_static": {"ForceFailover": True},
-        },
-        tag_key_join("backup"): {
-          "op_method_name": "create_db_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["rds"][("DB", "Snapshot")],
+    AWSParentRsrcType(
+      "rds",
+      ("DB", "Instance"),
+      "Identifier",
+      ops={
+        ("start", ): {},
+        ("stop", ): {},
+        ("reboot", ): {},
+        ("reboot", "failover"): {"op_kwargs_static": {"ForceFailover": True}},
+        ("backup", ): {
+          "child_rsrc_type": AWSChildRsrcType.members["rds"]["DBSnapshot"],
         },
       },
-    },
+    )
 
-    ("DB", "Cluster"): {
-      "rsrc_id_key_suffix": "Identifier",
-      "ops": {
-        tag_key_join("start"): {"op_method_name": "start_db_cluster"},
-        tag_key_join("stop"): {"op_method_name": "stop_db_cluster"},
-        tag_key_join("reboot"): {"op_method_name": "reboot_db_cluster"},
-        tag_key_join("backup"): {
-          "op_method_name": "create_db_cluster_snapshot",
-          "specs_child_rsrc_type": SPECS_CHILD["rds"][
-            ("DB", "Cluster", "Snapshot")
+    AWSParentRsrcType(
+      "rds",
+      ("DB", "Cluster"),
+      "Identifier",
+      ops={
+        ("start", ): {},
+        ("stop", ): {},
+        ("reboot", ): {},
+        ("backup", ): {
+          "verb": "create",
+          "child_rsrc_type": AWSChildRsrcType.members["rds"][
+            "DBClusterSnapshot"
           ],
         },
       },
-    },
+    )
 
-  },
-  "cloudformation": {
-
-    ("Stack", ): {
-      "rsrc_id_key_suffix": "Name",
-      "ops": {
-        tag_key_join("enabled", "true"): {
-          "op_method_name": "update_stack",
-          "op_kwargs_update_fn": stack_update_kwargs_make,
+    AWSParentRsrcType(
+      "cloudformation",
+      ("Stack", ),
+      "Name",
+      ops={
+        ("set", "Enable", "true"): {
+          "verb": "update",
+          "op_kwargs_update_fn": stack_update_kwargs,
         },
-        tag_key_join("enabled", "false"): {
-          "op_method_name": "update_stack",
-          "op_kwargs_update_fn": stack_update_kwargs_make,
+        ("set", "Enable", "false"): {
+          "verb": "update",
+          "op_kwargs_update_fn": stack_update_kwargs,
         },
       },
-    },
+    )
 
-  },
-}
 
-# 4. Shared Lambda Function Handler Code #####################################
+# 5. Shared Lambda Function Handler Code #####################################
 
 svc_clients = {}
 
@@ -283,7 +383,7 @@ def boto3_success(resp):
     resp.get("ResponseMetadata", {}).get("HTTPStatusCode", 0) == 200
   ])
 
-# 5. Find Resources Lambda Function Handler Code #############################
+# 6. Find Resources Lambda Function Handler Code #############################
 
 
 def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
@@ -328,8 +428,8 @@ def msg_body_encode(msg_in):
   msg_out_len = len(bytes(msg_out, "utf-8"))
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
     raise SQSMessageTooLong(
-      f"JSON string too long: {msg_out_len} exceeds {QUEUE_MSG_BYTES_MAX}; "
-      f"increase QUEUE_MSG_BYTES_MAX\n"
+      f"JSON string too long: {msg_out_len} bytes exceeds "
+      f"{QUEUE_MSG_BYTES_MAX} bytes; increase QUEUE_MSG_BYTES_MAX"
     )
   return msg_out
 
@@ -403,12 +503,11 @@ def op_kwargs_child(
   parent_id,
   parent_tags_list,
   op,
-  specs_child_rsrc_type,
   cycle_start_str,
   child_name_prefix=f"z{TAG_KEY_PREFIX}",
   name_delim=TAG_KEY_DELIM,
   base_name_chars=23,
-  unsafe_char_fill="X"
+  fill_char="X"
 ):  # pylint: disable=too-many-arguments
   """Return boto3 _create method kwargs (name, tags) for an image or snapshot
 
@@ -425,12 +524,14 @@ def op_kwargs_child(
     parent_tag_key = parent_tag_dict["Key"]
     if parent_tag_key == "Name":
       parent_name_from_tag = parent_tag_dict["Value"]
-    elif not re.match(TAG_KEYS_NO_INHERIT_REGEXP, parent_tag_key):
+      if not COPY_TAGS:
+        break  # Stop as soon as Name tag has been found
+    elif not re.match(TAG_KEYS_NO_COPY_REGEXP, parent_tag_key):
       child_tags_list.append(parent_tag_dict)
 
   parent_name = parent_name_from_tag if parent_name_from_tag else parent_id
   parent_name = parent_name[
-    :specs_child_rsrc_type["name_chars_max"] - base_name_chars
+    :op.child_rsrc_type.name_chars_max - base_name_chars
   ]
 
   # base_name_chars should be the length of this string join, but with "" for
@@ -438,97 +539,72 @@ def op_kwargs_child(
   child_name = name_delim.join([
     child_name_prefix, parent_name, cycle_start_str, unique_suffix()
   ])
-  if "name_chars_unsafe_regexp" in specs_child_rsrc_type:
+  if op.child_rsrc_type.name_chars_unsafe_regexp:
     child_name = re.sub(
-      specs_child_rsrc_type["name_chars_unsafe_regexp"],
-      unsafe_char_fill,
-      child_name
+      op.child_rsrc_type.name_chars_unsafe_regexp, fill_char, child_name
     )
 
   for (child_tag_key, child_tag_value) in (
     ("Name", child_name),  # Shown in EC2 Console / searchable in any service
-    (tag_key_join("cycle", "start"), cycle_start_str),
-    (tag_key_join("parent", "id"), parent_id),
-    (tag_key_join("parent", "name"), parent_name_from_tag),
-    (tag_key_join("op"), op),
+    (tag_key_join(("cycle", "start")), cycle_start_str),
+    (tag_key_join(("parent", "id")), parent_id),
+    (tag_key_join(("parent", "name")), parent_name_from_tag),
+    (tag_key_join(("op", )), op.op_tag_key),
   ):
     child_tags_list.append({"Key": child_tag_key, "Value": child_tag_value})
 
-  return specs_child_rsrc_type["op_kwargs_update_child_fn"](
+  return op.child_rsrc_type.op_kwargs_update_child_fn(
     child_name, child_tags_list
   )
 
 
 def rsrcs_find(
-  svc,
-  rsrc_type_words,
-  specs_rsrc_type,
-  sched_regexp,
-  cycle_start_str,
-  cycle_cutoff_epoch_str
-):  # pylint: disable=too-many-arguments,too-many-locals
+  rsrc_type, sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
+):  # pylint: disable=too-many-arguments
   """Find parent resources to operate on, and send details to queue.
   """
-  rsrc_type_in_method_name = "_".join(rsrc_type_words).lower()
-  describe_method_name = f"describe_{rsrc_type_in_method_name}s"
 
-  rsrc_type_in_keys = "".join(rsrc_type_words)
-  rsrcs_key = f"{rsrc_type_in_keys}s"
-  rsrc_id_key = rsrc_type_in_keys + specs_rsrc_type["rsrc_id_key_suffix"]
-  rsrc_ids_key = f"{rsrc_id_key}s"
-
-  ops_tag_keys = specs_rsrc_type["ops"].keys()
-
-  if "status_filter_pair" in specs_rsrc_type:
-    describe_kwargs = describe_kwargs_make((
-      specs_rsrc_type["status_filter_pair"], ("tag-key", ops_tag_keys)
-    ))
-  else:
-    describe_kwargs = {}
-
-  paginator = svc_client_get(svc).get_paginator(describe_method_name)
-  for resp in paginator.paginate(**describe_kwargs):
-    if "flatten_fn" in specs_rsrc_type:
-      rsrcs = specs_rsrc_type["flatten_fn"](resp)
+  paginator = svc_client_get(rsrc_type.svc).get_paginator(
+    rsrc_type.describe_method_name
+  )
+  for resp in paginator.paginate(**rsrc_type.describe_kwargs):
+    if rsrc_type.flatten_fn:
+      rsrcs = rsrc_type.flatten_fn(resp)
     else:
-      rsrcs = resp[rsrcs_key]
+      rsrcs = resp[rsrc_type.rsrcs_key]
     for rsrc in rsrcs:
 
-      rsrc_id = rsrc[rsrc_id_key]
+      rsrc_id = rsrc[rsrc_type.rsrc_id_key]
       tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
-      op_tags_matched = op_tags_match(ops_tag_keys, sched_regexp, tags_list)
+      op_tags_matched = op_tags_match(
+        rsrc_type.ops_tag_keys, sched_regexp, tags_list
+      )
       op_tags_matched_count = len(op_tags_matched)
 
       if op_tags_matched_count == 1:
-        op = op_tags_matched[0]
-        specs_op = specs_rsrc_type["ops"][op]
-        op_method_name = specs_op["op_method_name"]
-        if op_method_name[-1] == "s":
+        op = rsrc_type.ops[op_tags_matched[0]]
+        if op.multiple_rsrcs:
           # One resource at a time, to avoid partial completion risk
-          op_kwargs = {rsrc_ids_key: [rsrc_id]}
+          op_kwargs = {rsrc_type.rsrc_ids_key: [rsrc_id]}
         else:
-          op_kwargs = {rsrc_id_key: rsrc_id}
-        op_kwargs.update(specs_op.get("op_kwargs_static", {}))
-        if "op_kwargs_update_fn" in specs_op:
-          op_kwargs.update(specs_op["op_kwargs_update_fn"](rsrc, op))
-        if "specs_child_rsrc_type" in specs_op:
+          op_kwargs = {rsrc_type.rsrc_id_key: rsrc_id}
+        op_kwargs.update(op.op_kwargs_static)
+        if op.op_kwargs_update_fn:
+          op_kwargs.update(op.op_kwargs_update_fn(rsrc, op))
+        if op.child_rsrc_type:
           op_kwargs.update(op_kwargs_child(
-            rsrc_id,
-            tags_list,
-            op,
-            specs_op["specs_child_rsrc_type"],
-            cycle_start_str
+            rsrc_id, tags_list, op, cycle_start_str
           ))
         op_queue(
-          svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str
+          rsrc_type.svc, op.op_method_name, op_kwargs, cycle_cutoff_epoch_str
         )
 
       elif op_tags_matched_count > 1:
         logging.error(json.dumps({
           "type": "MULTIPLE_OPS",
-          "svc": svc,
-          "rsrc_type": rsrc_type_in_keys,
+          "svc": rsrc_type.svc,
+          "rsrc_type": rsrc_type.rsrc_key,
           "rsrc_id": rsrc_id,
           "op_tags_matched": op_tags_matched,
           "cycle_start_str": cycle_start_str,
@@ -551,19 +627,14 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   logging.info(json.dumps(
     {"type": "SCHED_REGEXP", "sched_regexp": sched_regexp}, default=str
   ))
-
-  for (svc, specs_svc) in SPECS.items():
-    for (rsrc_type_words, specs_rsrc_type) in specs_svc.items():
+  rsrc_types_init()
+  for rsrc_types in AWSParentRsrcType.members.values():
+    for rsrc_type in rsrc_types.values():
       rsrcs_find(
-        svc,
-        rsrc_type_words,
-        specs_rsrc_type,
-        sched_regexp,
-        cycle_start_str,
-        cycle_cutoff_epoch_str
+        rsrc_type, sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
       )
 
-# 6. "Do" Operations Lambda Function Handler Code ############################
+# 7. "Do" Operations Lambda Function Handler Code ############################
 
 
 def msg_attr_str_decode(msg, attr_name):
@@ -590,7 +661,6 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
   for msg in event.get("Records", []):  # 0 or 1 messages expected
-
     if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
       op_log(event)
       raise RuntimeError("Unrecognized queue message format")
@@ -615,8 +685,3 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       else:
         op_log(event, resp=resp)
         raise RuntimeError("Miscellaneous AWS erorr")
-
-
-# TODO: Remove (testing only)
-if __name__ == "__main__":
-  lambda_handler_find(None, None)

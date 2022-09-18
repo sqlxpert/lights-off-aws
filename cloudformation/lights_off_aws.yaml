@@ -45,7 +45,7 @@ Parameters:
     Type: Number
     Description: Operations queue message size limit (bytes)
     MinValue: 1024
-    Default: 16384
+    Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
   LambaFnTriggersEnabled:
     Type: String
@@ -53,6 +53,14 @@ Parameters:
       Whether the "Find" AWS Lambda function will run automatically, checking
       every 10 minutes for AWS resources with scheduled operations, and whether
       the "Do" function will run automatically, executing queued operations.
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+  CopyTags:
+    Type: String
+    Description: >-
+      Whether to copy tags to backups
     Default: "true"
     AllowedValues:
       - "false"
@@ -577,6 +585,7 @@ Resources:
           "QUEUE_URL": !Ref OperationQueue
           "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
           "LOG_LEVEL": !Ref LogLevel
+          "COPY_TAGS": !Ref CopyTags
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
       ReservedConcurrentExecutions: 1  # Only one run at a time!
       Timeout: !Ref FindLambdaFnTimeoutSecs
