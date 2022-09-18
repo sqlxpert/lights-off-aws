@@ -19,7 +19,7 @@ Parameters:
     Type: String
     Description: >-
       AWS Lamba function source code file name (before .py.zip suffixes)
-    Default: "lights_off_aws_find_do"
+    Default: "lights_off_aws"
   LogLevel:
     Type: String
     Description: >-
