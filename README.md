@@ -47,9 +47,9 @@ over the years, but Lights Out still has advantages:
 2. Go to [EC2 instances](https://console.aws.amazon.com/ec2/v2/home#Instances).
    Add the following tag to a sample instance:
 
-   * `sched-backup` : `d=_&nbsp;H:M=11:30` , replacing 11:30 with the
+   * `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
-     plus 20 minutes
+     plus 20 minutes. Round the time to the nearest 10 minutes.
 
 3. Go to the
    [S3 Console](https://console.aws.amazon.com/s3/home).
