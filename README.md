@@ -99,7 +99,7 @@ Lights Out still has advantages:
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
 * Not all EC2 instances support hibernation.
-* Not all RDS database clusters support reboot.
+* Not all RDS database clusters support cluster-level reboot.
 
 ## Tag Values (Schedules)
 
@@ -344,10 +344,10 @@ parameter value is an advanced Lights Out feature.
 
 A sample use case is toggling the deletion of an
 `AWS::EC2::ClientVpnTargetNetworkAssociation` at the end of the work day
-while leaving other AWS Client VPN resources intact. At 10¢ per association
-per hour, this can save up to $650 per year. Temporarily restoring VPN access
-during off-hours is as simple as performing a stack update, or adding the
-next multiple of 10 minutes to the `sched-set-Enable-true` tag!
+while leaving other AWS Client VPN resources intact. At 10¢ per hour, this can
+save up to $650 per year. Temporarily restoring VPN access during off-hours is
+as simple as performing a manual stack update, or temporarily adding the next
+multiple of 10 minutes to the `sched-set-Enable-true` tag!
 
 To make your custom CloudFormation template compatible with Lights Off,
 
@@ -434,7 +434,9 @@ To make your custom CloudFormation template compatible with Lights Off,
 ## Future Work
 
 * Automated testing
-* Makefile
+* Makefile for AWS Lambda .zip bundle
+* Set arbitrary CloudFormation stack parameters to arbitrary values
+  (variable sched-set-_Parameter_-_value_ tag key)
 
 ## Dedication
 
