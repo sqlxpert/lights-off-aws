@@ -26,17 +26,18 @@ Jump to:
 ## Comparison with AWS Services
 
 AWS introduced AWS Backup, Data Lifecycle Manager, and Systems Manager after
-mid-2017, when I started this project (originally called TagSchedOps). The
-three AWS services have become more capable over the years, but Lights Out
-still has advantages:
+mid-2017, when I started this project, originally called TagSchedOps. The
+three relevant AWS services have become more capable over the years, but
+Lights Out still has advantages:
 
 * Schedules and operations are immediately visible, in tags on the EC2 instance,
   EBS volume, RDS datase, or CloudFormation stack. You don't need to look up
   schedules and rules in other AWS services.
 
-* Schedules and operations are easy to update. Just edit a resource's tags!
+* Schedules and operations are easy to update. Just edit an AWS resource's
+  tags!
 
-* One tool can handle a wide variety of scheduled operations in EC2, RDS, and
+* One tool handles a variety of scheduled operations in EC2, RDS, and
   CloudFormation. Why should you have to use one service to schedule a backup,
   and a different service to schedule a reboot?
 
@@ -63,7 +64,7 @@ still has advantages:
 
 4. Upload
    [lights_off_aws.py.zip](https://github.com/sqlxpert/lights-off-aws/raw/main/lights_off_aws.py.zip)
-   to the S3 bucket
+   to the S3 bucket.
 
    _Security Tip:_ Compare the Etag reported by S3 with the file's checksum in
    [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt)
@@ -85,11 +86,11 @@ still has advantages:
 7. Before deregistering (deleting) the sample image that was created, note its
    ID, so that you delete the underlying
    [EBS volume snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:sort=desc:startTime).
-   Also remember to remove the `sched-backup` tag from your EC2 instance.
+   Also remember to delete the `sched-backup` tag from your EC2 instance.
 
 ## Tag Keys (Operations)
 
-| |Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Update Stack Parameter|
+||Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Update Stack Parameter|
 |--|--|--|--|--|--|--|--|
 ||`sched-start`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`||||||`sched-set-Enable-false`|
@@ -185,26 +186,30 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary by AWS service, as do the search capabilities --
-  and some values, such as exact creation time, are too precise to allow for
-  grouping. Searching by tag, on the other hand, works in both EC2 and RDS.
+  and some stored values, such as exact creation time, are too precise to
+  allow for grouping. Searching tags, on the other hand, works in both EC2 and
+  RDS.
 
 * User-created tags whose keys don't begin with `sched-` are copied from parent
-  to child. You can change the CopyTags parameter in CloudFormation to prevent
-  this, for example, if your organization has different tagging rules for EC2
-  instances and images.
+  to child. You can change the `CopyTags` parameter of your LightsOut
+  CloudFormation stack to prevent this, for example, if your organization has
+  different tagging rules for EC2 instances and images.
 
 ## Logging
 
 * After logging in to the [AWS Web Console](https://signin.aws.amazon.com/console),
   check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logs:prefix=/aws/lambda/LightsOff-).
-* Log messages (except for uncaught exceptions) are JSON objects, with a Type
-  key to summarize the message and indicate which other keys will be present.
-* You can change the LogLevel parameter in CloudFormation.
+* Log messages (except for uncaught exceptions) are JSON objects, with a
+  `Type` key to classify the message and indicate which other keys will be
+  present.
+* You can change the `LogLevel` parameter of your LightsOut CloudFormation
+  stack to see more messages.
 
 ## On/Off Switch
 
-* You can change the Enable parameter of your LightsOut CloudFormation stack.
+* You can change the `Enable` parameter of your LightsOut CloudFormation
+  stack.
 * This applies per-region and per-AWS-account.
 * While Enable is `false`, scheduled operations do not happen; they are
   skipped permanently and cannot be reprised.
@@ -220,7 +225,7 @@ Backup operations create a "child" resource (image or snapshot) from a
   change or delete only one tag at a time.
 
 * Do not allow a role that can create backups (or, in this case, set tags to
-  prompt backups) to delete backups.
+  prompt backup creation) to delete backups.
 
 * Note these AWS security gaps:
 
