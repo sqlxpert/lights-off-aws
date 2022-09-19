@@ -56,7 +56,13 @@ class SQSMessageTooLong(ValueError):
 
 # 2. Custom Classes ##########################################################
 
-# See rsrc_types_init() for usage examples
+# See rsrc_types_init() for usage examples.
+
+# For least-privilege permissions and low overhead (in potentially large AWS
+# accounts with hundreds or thousands of resources to scan), custom classes
+# were defined, to support use of low-level boto3 "clients". Whether boto3's
+# own high-level classes, "resources", involve only essential AWS API calls
+# and are economical at scale is not known.
 
 # pylint: disable=too-few-public-methods
 

@@ -111,7 +111,6 @@ Metadata:
       - Label:
           default: Essentials
         Parameters:
-          # - MainRegion
           - LambdaSourceS3BucketNamePrefix
           - Enable
       - Label:
@@ -578,6 +577,20 @@ Resources:
             Resource: !GetAtt OperationQueue.Arn
             Condition:
               ArnEquals: { aws:SourceArn: !GetAtt OperationFailedQueue.Arn }
+          - Sid: ExclusiveTargets
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+            Resource: !GetAtt OperationQueue.Arn
+            Condition:
+              ArnNotEquals:
+                aws:PrincipalArn:
+                  - !GetAtt DoLambdaFnRole.Arn
+                aws:SourceArn:
+                  - !GetAtt OperationFailedQueue.Arn
 
   FindLambdaFn:
     Type: AWS::Lambda::Function

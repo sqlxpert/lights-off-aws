@@ -22,11 +22,11 @@ Parameters:
   StackNameBase:
     Type: String
     Description: >-
-      Name of the Lights Out CloudFormation stack or StackSet that you will
+      Name of the Lights Off CloudFormation stack or StackSet that you will
       create using the DeploymentRole provided by this prerequisite stack. The
       name of your future CloudFormation stack or StackSet must then include
       this string, and for security, no other stack or StackSet's name should
-      include it. When you create your Lights Out stack or StackSet, you may
+      include it. When you create your Lights Off stack or StackSet, you may
       add prefixes and suffixes. For example, if you set this to "LightsOff",
       you can alternate between a "LightsOffA" stack and a "LightsOffB" stack
       to handle updates, or create a "TestLightsOff" stack marked for testing.
@@ -56,7 +56,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Description: >-
-        Resources in Lights Out CloudFormation stack: create, update, delete
+        Resources in Lights Off CloudFormation stack: create, update, delete
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -67,7 +67,7 @@ Resources:
       # assumed by CloudWatch. Separate, "managed" policies could be attached
       # to other roles or users, allowing permission escalation.
       Policies:
-        - PolicyName: LightsOutCloudFormationStackDeploy
+        - PolicyName: LightsOffCloudFormationStackDeploy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -156,14 +156,6 @@ Resources:
                   - sqs:TagQueue
                   - sqs:UntagQueue
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
-              - Sid: RequiredToCreateLambdaEventSourceMapping
-                Effect: Allow
-                Action:
-                  - sqs:ReceiveMessage
-                Resource:
-                  # - "*"
                   - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
                   - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
               - Effect: Allow
