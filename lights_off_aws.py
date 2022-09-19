@@ -176,28 +176,34 @@ def tag_key_join(tag_key_words):
   return TAG_KEY_DELIM.join([TAG_KEY_PREFIX] + list(tag_key_words))
 
 
-def stack_update_kwargs(stack_rsrc, update_stack_op):
+def update_stack_kwargs(stack_rsrc, update_stack_op):
   """Take a describe_stack item and an operation, return update_stack kwargs
 
-  Preserves previous parameter values except for Enable, whose value is set
-  to "true" or "false" (strings, because CloudFormation does lacks a Boolean
-  parameter type) depending on the operation.
+  Preserves previous parameter values except for designated parameter(s):
+            Param  value
+  .split()  [-2]   [-1]
+  sched-set-Enable-true
+  sched-set-Enable-false
   """
-  toggle_parameter_key = update_stack_op.split(TAG_KEY_DELIM)[-2]
+  change_parameter_key = update_stack_op.op_tag_key.split(TAG_KEY_DELIM)[-2]
   stack_params_out = [{
-    "ParameterKey": toggle_parameter_key,
-    "ParameterValue": update_stack_op.split(TAG_KEY_DELIM)[-1],  # -true/false
+    "ParameterKey": change_parameter_key,
+    "ParameterValue": update_stack_op.op_tag_key.split(TAG_KEY_DELIM)[-1],
   }]
   for stack_param_in in stack_rsrc.get("Parameters", []):
-    if stack_param_in["ParameterKey"] != toggle_parameter_key:
+    if stack_param_in["ParameterKey"] != change_parameter_key:
       stack_params_out.append({
         "ParameterKey": stack_param_in["ParameterKey"],
         "UsePreviousValue": True,
       })
-  return {
+  kwargs_out = {
     "UsePreviousTemplate": True,
     "Parameters": stack_params_out,
   }
+  stack_capabilities_in = stack_rsrc.get("Capabilities")
+  if stack_capabilities_in:
+    kwargs_out["Capabilities"] = stack_capabilities_in
+  return kwargs_out
 
 # 4. Data-Driven Specifications ##############################################
 
@@ -346,11 +352,11 @@ def rsrc_types_init():
       ops={
         ("set", "Enable", "true"): {
           "verb": "update",
-          "op_kwargs_update_fn": stack_update_kwargs,
+          "op_kwargs_update_fn": update_stack_kwargs,
         },
         ("set", "Enable", "false"): {
           "verb": "update",
-          "op_kwargs_update_fn": stack_update_kwargs,
+          "op_kwargs_update_fn": update_stack_kwargs,
         },
       },
     )

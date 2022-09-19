@@ -468,12 +468,12 @@ Resources:
             Action: cloudformation:UpdateStack
             Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
             Condition:
-              StringLike: { "aws:ResourceTag/sched-toggle-param-false": "*" }
+              StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
           - Effect: Allow
             Action: cloudformation:UpdateStack
             Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
             Condition:
-              StringLike: { "aws:ResourceTag/sched-toggle-param-true": "*" }
+              StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
 
   DoLambdaFnRole:
     Type: AWS::IAM::Role

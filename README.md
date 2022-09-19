@@ -11,9 +11,8 @@ For AWS users who forget to turn off the lights:
 * You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
   backups.
 
-* Tag your custom CloudFormation stacks, and Lights Out can delete and
-  recreate expensive resources on a schedule. It takes only a few minutes to
-  make your custom template compatible.
+* If you tag your own custom CloudFormation stacks, Lights Out will even
+  delete and recreate expensive resources on schedule!
 
 Jump to:
 [Installation](#quick-start) &bull;
@@ -339,8 +338,8 @@ and drilling down to Resources. S3 bucket policy template:
 
 ## LightsOut CloudFormation Operations
 
-Using tags on custom CloudFormation stacks to schedule changes to a stack
-parameter value is an advanced Lights Out feature.
+Using tags on your own custom CloudFormation stack to change a stack
+parameter on schedule is an advanced Lights Out feature.
 
 A sample use case is toggling the deletion of an
 `AWS::EC2::ClientVpnTargetNetworkAssociation` at the end of the work day
@@ -357,7 +356,8 @@ Once all resource definitions and permissions are correct, Lights Out will
 update your stack according to the schedules in your stack's
 `sched-set-Enable-true` and `sched-set-Enable-false` tags, preserving the
 previous template and the previous parameter values but setting the value of
-the `Enable` parameter to `true` or `false` each time.
+the `Enable` parameter to `true` or `false` each time. Note the capitalization
+of the parameter name in the tag key.
 
 ## Parting Advice
 
