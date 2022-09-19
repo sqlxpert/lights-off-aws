@@ -90,7 +90,6 @@ Lights Out still has advantages:
 
 ## Tag Keys (Operations)
 
-||Start or Stop|Hibernate|Back Up|Reboot then Back Up|Reboot|Reboot then Fail Over|Update Stack Parameter|
 |--|--|--|--|--|--|--|--|
 ||`sched-start`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true`|
 ||`sched-stop`||||||`sched-set-Enable-false`|
@@ -132,7 +131,7 @@ Lights Out still has advantages:
 * Time zone: always UTC
 * Clock: 24-hour
 * Last digit of minute: always 0
-* Approximate time: 10-minute cycle. (14:20 means _after 14:20 but before
+* Approximate time: 10-minute cycle (14:20 means _after 14:20 but before
   14:30_, for example.)
 * 2 digits: required for hour, minute, and numeric day of month values (Use a
   leading zero if necessary.)
