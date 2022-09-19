@@ -344,70 +344,20 @@ parameter value is an advanced Lights Out feature.
 
 A sample use case is toggling the deletion of an
 `AWS::EC2::ClientVpnTargetNetworkAssociation` at the end of the work day
-while leaving other AWS Client VPN resources intact. At 10¢ per hour, this can
-save up to $650 per year. Temporarily restoring VPN access during off-hours is
-as simple as performing a manual stack update, or temporarily adding the next
-multiple of 10 minutes to the `sched-set-Enable-true` tag!
+(while leaving other AWS Client VPN resources intact). At 10¢ per hour, this
+can save up to $650 per year. Temporarily restoring VPN access during
+off-hours is as simple as performing a manual stack update, or temporarily
+adding the next multiple of 10 minutes to the `sched-set-Enable-true` tag!
 
-To make your custom CloudFormation template compatible with Lights Off,
+To make your custom CloudFormation template compatible with Lights Off, follow
+the instructions in the sample template,
+[lights_off_aws_cloudformation_ops_example.yaml](cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
 
-1. Add the following to the `Parameters` section:
-
-   ```yaml
-     Enable:
-       Type: String
-       Description: >-
-         Lights Off will automatically update this paramater to true or false on
-         schedules in tags on this CloudFormation stack. See
-         https://github.com/sqlxpert/lights-off-aws
-       AllowedValues:
-         - "false"
-         - "true"
-       Default: "false"  # Start with expensive resources off
-   ```
-
-2. Add the following to the `Conditions` section:
-
-   ```yaml
-     EnableTrue:
-       !Equals [!Ref Enable, "true"]
-   ```
-
-3. Add the following under the `Type` attribute of the resource definition for
-   any expensive resource that you would like Lights Off to create and delete
-   on schedule:
-
-   ```yaml
-       Condition: EnableTrue
-   ```
-
-   You can also use the
-   [`DependsOn` attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html)
-   to toggle the creation and deletion of resources that are not formally
-   related.
-
-4. If necessary, make references to affected resources conditional, by
-   replacing a property such as `SomeProperty: !Ref MyResourceName` with:
-
-   ```yaml
-         SomeProperty:
-           Fn::If:
-             - EnableTrue
-             - !Ref MyResourceName
-             - !Ref AWS::NoValue
-   ```
-
-5. Define a CloudFormation execution role that covers creating, updating and
-   deleting all of the resources in your CloudFormation template. Specify the
-   role when creating a stack from your template. (_Test_ the role by updating
-   the stack manually.) Lights Out operates on a least-privilege principle and
-   will otherwise not be able to update your CloudFormation stack.
-
-6. Once all resource definitions and permissions are correct, Lights Out will
-   update your stack according to schedules in the stack's
-   `sched-set-Enable-true` and `sched-set-Enable-false` tags, preserving the
-   previous template and the previous parameter values but setting the value of
-   the `Enable` parameter to `true` or `false` each time.
+Once all resource definitions and permissions are correct, Lights Out will
+update your stack according to the schedules in your stack's
+`sched-set-Enable-true` and `sched-set-Enable-false` tags, preserving the
+previous template and the previous parameter values but setting the value of
+the `Enable` parameter to `true` or `false` each time.
 
 ## Parting Advice
 
