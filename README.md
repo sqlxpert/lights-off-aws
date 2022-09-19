@@ -90,7 +90,7 @@ Lights Out still has advantages:
 
 ## Tag Keys (Operations)
 
-||`sched-start` or `sched-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true` or `sched-set-Enable-false`|
+||`sched-start` or `-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-true` or `-false`|
 |--|--|--|--|--|--|--|--|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot|||||
