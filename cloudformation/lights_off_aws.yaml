@@ -11,14 +11,17 @@ Parameters:
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket where AWS Lambda function source code is stored. A bucket with
-      this name PLUS a region suffix, e.g., my-bucket-us-east-1, must exist in
-      EACH target region, and must contain the SAME objects, readable by EVERY
-      target AWS account.
+      S3 bucket where AWS Lambda function source code is stored. For example,
+      if you set this parameter to "my-bucket" and are creating a stack in the
+      us-east-1 region, then "my-bucket-us-east-1" must exist and must contain
+      lights_off_aws.py.zip . Advanced: if you are creating a StackSet, then
+      "my-bucket-<region>" must exist in each target region and must contain
+      the same file, which must be readable by every target AWS account
+      (generally requires that each bucket have a bucket policy).
   LambdaFnFileName:
     Type: String
     Description: >-
-      AWS Lamba function source code file name (before .py.zip suffixes)
+      AWS Lambda function source code file name (before .py.zip suffixes)
     Default: "lights_off_aws"
   LogLevel:
     Type: String
@@ -43,7 +46,7 @@ Parameters:
     Default: ""
   QueueMessageBytesMax:
     Type: Number
-    Description: Operations queue message size limit (bytes)
+    Description: Operation queue message size limit (bytes)
     MinValue: 1024
     Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
@@ -98,7 +101,7 @@ Parameters:
     Description: >-
       How many seconds before execution of the "Do" AWS Lambda function is
       canceled. Increase only in case of time-out errors. Also determines
-      visibility timeout for operations queue messages.
+      visibility timeout for operation queue messages.
     Default: 60
 
 Metadata:
@@ -111,7 +114,6 @@ Metadata:
           # - MainRegion
           - LambdaSourceS3BucketNamePrefix
           - Enable
-          - SqsKmsKey
       - Label:
           default: >-
             AWS Lambda function to find resources with scheduled operations
@@ -126,16 +128,20 @@ Metadata:
       - Label:
           default: Miscellaneous
         Parameters:
-          - LogsRetainDays
+          - CopyTags
           - LogLevel
+          - LogsRetainDays
+          - SqsKmsKey
           - QueueMessageBytesMax
           - LambdaFnFileName
     ParameterLabels:
       LambdaSourceS3BucketNamePrefix:
         default: >-
-          AWS Lambda source code S3 bucket name prefix (before -<region>)
+          AWS Lambda source code S3 bucket name
       Enable:
         default: Enabled?
+      CopyTags:
+        default: Copy tags to backups?
       SqsKmsKey:
         default: Queue encryption key
       FindLambdaFnMemoryMB:
@@ -147,17 +153,17 @@ Metadata:
       DoLambdaFnTimeoutSecs:
         default: Timeout (seconds)
       LogsRetainDays:
-        default: Log retention period (days)
+        default: Log retention period
       LogLevel:
         default: Log level
       QueueMessageBytesMax:
-        default: Operation queue message size limit (bytes)
+        default: Operation queue message size limit
       LambdaFnFileName:
-        default: AWS Lambda function source file name (before .py.zip)
+        default: AWS Lambda function source file name
 
 Conditions:
 
-  EnableCond: !Equals [ !Ref Enable, "true" ]
+  EnableTrue: !Equals [ !Ref Enable, "true" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
@@ -323,7 +329,7 @@ Resources:
             Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-stop": "*" }
-          - Sid: "DangerCanForceReboot"
+          - Sid: DangerCanForceReboot
             Effect: Allow
             Action: ec2:CreateImage
             Resource:
@@ -358,11 +364,10 @@ Resources:
               - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
             Condition:
               StringEquals:
-                # https://aws.amazon.com/blogs/compute/tag-amazon-ebs-snapshots-on-creation-and-implement-stronger-security-policies/
                 ec2:CreateAction:
                   - CreateImage
                   - CreateSnapshot
-          - Sid: "BackupCreatorCannotTagBackupForDeletion"
+          - Sid: BackupCreatorCannotTagBackupForDeletion
             Effect: Deny
             Action: ec2:CreateTags
             Resource:
@@ -370,7 +375,7 @@ Resources:
               - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
             Condition:
               ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
-          - Sid: "BackupCreatorCannotDeleteImageOrSnapshot"
+          - Sid: BackupCreatorCannotDeleteImageOrSnapshot
             Effect: Deny
             Action:
               - ec2:DeregisterImage
@@ -433,7 +438,7 @@ Resources:
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-          - Sid: "BackupCreatorCannotTagBackupForDeletion"
+          - Sid: BackupCreatorCannotTagBackupForDeletion
             Effect: Deny
             Action: rds:AddTagsToResource
             Resource:
@@ -441,12 +446,12 @@ Resources:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
             Condition:
               ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
-          - Sid: "BackupCreatorCannotDeleteDBSnapshot"
+          - Sid: BackupCreatorCannotDeleteDBSnapshot
             Effect: Deny
             Action: rds:DeleteDBSnapshot
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-          - Sid: "BackupCreatorCannotDeleteDBClusterSnapshotBackup"
+          - Sid: BackupCreatorCannotDeleteDBClusterSnapshotBackup
             Effect: Deny
             Action: rds:DeleteDBClusterSnapshot
             Resource:
@@ -629,7 +634,7 @@ Resources:
       ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
       State:
         Fn::If:
-          - EnableCond
+          - EnableTrue
           - ENABLED
           - DISABLED
       Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
@@ -688,14 +693,6 @@ Resources:
             # !GetAtt LogGroup.Arn ends with :* ,
             # complicating conversion to log stream ARN
 
-  DoLambdaFnSqsMapping:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      BatchSize: 1
-      Enabled: !Ref Enable
-      EventSourceArn: !GetAtt OperationQueue.Arn
-      FunctionName: !GetAtt DoLambdaFn.Arn
-
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
     Properties:
@@ -703,3 +700,12 @@ Resources:
       FunctionName: !Ref DoLambdaFn
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
+
+  DoLambdaFnSqsMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn: DoLambdaFnInvokeLambdaPerm
+    Properties:
+      BatchSize: 1
+      Enabled: !Ref Enable
+      EventSourceArn: !GetAtt OperationQueue.Arn
+      FunctionName: !GetAtt DoLambdaFn.Arn

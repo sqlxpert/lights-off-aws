@@ -8,192 +8,219 @@ Description: |-
 
 Parameters:
 
-  StackNameBase:
-    Type: String
-    Description: >-
-      Base name of the Lights Out CloudFormation stack, or of the StackSets
-      stack instances, that you intend to deploy. The name of the
-      CloudFormation stack or StackSet must include this string. For security,
-      no other stack or StackSet's name should include this string.
-    Default: "LightsOff"
-
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket where AWS Lambda function source code is stored. A bucket with
-      this name PLUS a region suffix, e.g., my-bucket-us-east-1, must exist in
-      EACH target region, and must contain the SAME objects, readable by EVERY
-      target AWS account.
+      S3 bucket where AWS Lambda function source code is stored. For example,
+      if you set this parameter to "my-bucket" and are creating a stack in the
+      us-east-1 region, then "my-bucket-us-east-1" must exist and must contain
+      lights_off_aws.py.zip . Advanced: if you are creating a StackSet, then
+      "my-bucket-<region>" must exist in each target region and must contain
+      the same file, which must be readable by every target AWS account
+      (generally requires that each bucket have a bucket policy).
+
+  StackNameBase:
+    Type: String
+    Description: >-
+      Name of the Lights Out CloudFormation stack or StackSet that you will
+      create using the DeploymentRole provided by this prerequisite stack. The
+      name of your future CloudFormation stack or StackSet must then include
+      this string, and for security, no other stack or StackSet's name should
+      include it. When you create your Lights Out stack or StackSet, you may
+      add prefixes and suffixes. For example, if you set this to "LightsOff",
+      you can alternate between a "LightsOffA" stack and a "LightsOffB" stack
+      to handle updates, or create a "TestLightsOff" stack marked for testing.
+    Default: "LightsOff"
+
+Metadata:
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Essentials
+        Parameters:
+          - LambdaSourceS3BucketNamePrefix
+          - StackNameBase
+
+    ParameterLabels:
+      LambdaSourceS3BucketNamePrefix:
+        default: >-
+          AWS Lambda source code S3 bucket name
+      StackNameBase:
+        default: >-
+          Name of future stack or StackSet
 
 Resources:
-
-  DeploymentPol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Resources in Lights Out CloudFormation stack: create, update, delete
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-
-          # Sufficient only for the current AWS account. For a multi-account
-          # deployment, also allow access from all StackSets target accounts,
-          # in each S3 bucket's bucket policy.
-          - Effect: Allow
-            Action:
-              - s3:GetObject*
-            Resource:
-              - !Sub "arn:${AWS::Partition}:s3:::${LambdaSourceS3BucketNamePrefix}-*/*"
-
-          - Effect: Allow
-            Action:
-              - lambda:CreateFunction
-              - lambda:GetFunction
-              - lambda:DeleteFunction
-              - lambda:UpdateFunctionCode
-              - lambda:GetFunctionConfiguration
-              - lambda:UpdateFunctionConfiguration
-              - lambda:AddPermission
-              - lambda:RemovePermission
-              - lambda:PutFunctionConcurrency
-              - lambda:DeleteFunctionConcurrency
-              - lambda:TagResource
-              - lambda:UntagResource
-            Resource:
-              - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - lambda:CreateEventSourceMapping
-              - lambda:GetEventSourceMapping
-              - lambda:UpdateEventSourceMapping
-              - lambda:DeleteEventSourceMapping
-            Resource: "*"
-            Condition:
-              ArnLikeIfExists:
-                "lambda:FunctionArn":
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
-
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:DeleteLogGroup
-              - logs:PutRetentionPolicy
-              - logs:DeleteRetentionPolicy
-              - logs:TagLogGroup
-              - logs:UntagLogGroup
-            Resource:
-              - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - logs:DescribeLogGroups
-            Resource: "*"
-
-          - Effect: Allow
-            Action:
-              - events:PutRule
-              - events:DescribeRule
-              - events:EnableRule
-              - events:DisableRule
-              - events:DeleteRule
-              - events:PutTargets
-              - events:ListTargetsByRule
-              - events:RemoveTargets
-              - events:TagResource
-              - events:UntagResource
-            Resource:
-              - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/*${StackNameBase}*"
-
-          - Effect: Allow
-            Action:
-              - sqs:CreateQueue
-              - sqs:SetQueueAttributes
-              - sqs:GetQueueAttributes
-              - sqs:GetQueueUrl
-              - sqs:ListDeadLetterSourceQueues
-              - sqs:DeleteQueue
-              - sqs:AddPermission
-              - sqs:RemovePermission
-              - sqs:TagQueue
-              - sqs:UntagQueue
-            Resource:
-              - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
-          - Sid: ResourceAllPreventsErrorDuringLambdaCreateEventSourceMapping
-            Effect: Allow
-            Action:
-              - sqs:ReceiveMessage
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - sqs:ListQueues
-            Resource: "*"
-
-          - Effect: Allow
-            Action: iam:PassRole
-            Resource:
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - iam:CreatePolicy
-              - iam:GetPolicy
-              - iam:DeletePolicy
-              - iam:CreatePolicyVersion
-              - iam:ListPolicyVersions
-              - iam:GetPolicyVersion
-              - iam:DeletePolicyVersion
-              - iam:TagPolicy
-              - iam:UntagPolicy
-            Resource:
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - iam:CreateRole
-              - iam:GetRole
-              - iam:DeleteRole
-              - iam:UpdateAssumeRolePolicy
-              - iam:ListRolePolicies
-              - iam:GetRolePolicy
-              - iam:AttachRolePolicy
-              - iam:DetachRolePolicy
-              - iam:ListEntitiesForPolicy
-            Resource:
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - iam:TagRole
-              - iam:UntagRole
-            Resource:
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-          - Effect: Allow
-            Action:
-              - iam:ListAttachedRolePolicies
-            Resource: "*"
-
-          - Effect: Allow
-            Action:
-              - kms:ListKeys
-              - kms:ListAliases
-              - kms:DescribeKey
-            Resource: "*"
 
   DeploymentRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: >-
+        Resources in Lights Out CloudFormation stack: create, update, delete
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
           - Effect: Allow
             Principal: { Service: cloudformation.amazonaws.com }
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !Ref DeploymentPol
+      # In-line policies apply only to this role, which, in turn, can only be
+      # assumed by CloudWatch. Separate, "managed" policies could be attached
+      # to other roles or users, allowing permission escalation.
+      Policies:
+        - PolicyName: LightsOutCloudFormationStackDeploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+
+              # Sufficient only for the current AWS account. For a multi-account
+              # deployment, also allow access from all StackSets target accounts,
+              # in each S3 bucket's bucket policy.
+              - Effect: Allow
+                Action:
+                  - s3:GetObject*
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${LambdaSourceS3BucketNamePrefix}-*/*"
+
+              - Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:GetFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:PutFunctionConcurrency
+                  - lambda:DeleteFunctionConcurrency
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - lambda:CreateEventSourceMapping
+                  - lambda:GetEventSourceMapping
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:DeleteEventSourceMapping
+                Resource: "*"
+                Condition:
+                  ArnLikeIfExists:
+                    "lambda:FunctionArn":
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagLogGroup
+                  - logs:UntagLogGroup
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DescribeRule
+                  - events:EnableRule
+                  - events:DisableRule
+                  - events:DeleteRule
+                  - events:PutTargets
+                  - events:ListTargetsByRule
+                  - events:RemoveTargets
+                  - events:TagResource
+                  - events:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/*${StackNameBase}*"
+
+              - Effect: Allow
+                Action:
+                  - sqs:CreateQueue
+                  - sqs:SetQueueAttributes
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ListDeadLetterSourceQueues
+                  - sqs:DeleteQueue
+                  - sqs:AddPermission
+                  - sqs:RemovePermission
+                  - sqs:TagQueue
+                  - sqs:UntagQueue
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
+              - Sid: RequiredToCreateLambdaEventSourceMapping
+                Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                Resource:
+                  # - "*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - sqs:ListQueues
+                Resource: "*"
+
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - iam:CreatePolicy
+                  - iam:GetPolicy
+                  - iam:DeletePolicy
+                  - iam:CreatePolicyVersion
+                  - iam:ListPolicyVersions
+                  - iam:GetPolicyVersion
+                  - iam:DeletePolicyVersion
+                  - iam:TagPolicy
+                  - iam:UntagPolicy
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:GetRole
+                  - iam:DeleteRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListEntitiesForPolicy
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+              - Effect: Allow
+                Action:
+                  - iam:ListAttachedRolePolicies
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - kms:ListKeys
+                  - kms:ListAliases
+                  - kms:DescribeKey
+                Resource: "*"
