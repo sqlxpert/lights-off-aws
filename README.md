@@ -3,7 +3,7 @@
 For AWS users who forget to turn off the lights:
 
 * **Cut AWS costs up to ⅔ in your sleep**, by tagging your EC2 instances and
-  RDS databases with cron-style schedules. Lights Off stops or hibernates
+  RDS databases with `cron`-style schedules. Lights Off stops or hibernates
   the instances, and stops the databases, while you are not using them, then
   restarts them before you need them again. It's perfect for development and
   test systems, which are idle at night and on weekends.
@@ -121,10 +121,10 @@ Lights Out still has advantages:
 
   |Tag Value|Scenario|Meaning|
   |--|--|--|
+  |`d=01 d=15 H=03 H=19 M=00`|`cron`-style|03:00 and 19:00 the 1st and 15th days of every month|
   |`d=_ H:M=14:20`|Once a day|14:20 every day|
   |`uTH:M=1T14:20`|Once a week|14:20 every Monday|
   |`dTH:M=28T14:20`|Once a month|14:20 the 28th day of every month|
-  |`d=01 d=15 H=03 H=19 M=00`|cron-style|03:00 and 19:00 the 1st and 15th days of every month|
   |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour of every day, _plus_ 08:50 every day|
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
   |`dTH:M=00T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of every month|
