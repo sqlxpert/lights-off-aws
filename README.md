@@ -5,8 +5,8 @@ For AWS users who forget to turn off the lights:
 * **Cut AWS costs up to ⅔ in your sleep**, by tagging your EC2 instances and
   RDS databases with cron-style schedules. Lights Off stops or hibernates
   the instances, and stops the databases, while you are not using them, then
-  starts them up before you need them again. It's perfect for development
-  and test systems, which are idle at night and on weekends.
+  restarts them before you need them again. It's perfect for development and
+  test systems, which are idle at night and on weekends.
 
 * You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
   backups.
@@ -25,16 +25,16 @@ Jump to:
 
 ## Comparison with AWS Services
 
-AWS introduced AWS Backup, Data Lifecycle Manager, and Systems Manager after I
-started this project in mid-2017. The three services have become more capable
-over the years, but Lights Out still has advantages:
+AWS introduced AWS Backup, Data Lifecycle Manager, and Systems Manager after
+mid-2017, when I started this project (originally called TagSchedOps). The
+three AWS services have become more capable over the years, but Lights Out
+still has advantages:
 
 * Schedules and operations are immediately visible, in tags on the EC2 instance,
   EBS volume, RDS datase, or CloudFormation stack. You don't need to look up
   schedules and rules in other AWS services.
 
-* Similarly, schedules and operations are easy to update. Just change a
-  resource's tags!
+* Schedules and operations are easy to update. Just edit a resource's tags!
 
 * One tool can handle a wide variety of scheduled operations in EC2, RDS, and
   CloudFormation. Why should you have to use one service to schedule a backup,
@@ -72,8 +72,8 @@ over the years, but Lights Out still has advantages:
    [CloudFormation Console](https://console.aws.amazon.com/cloudformation/home).
    Click Create Stack. Click Choose File, immediately below Upload a template
    to Amazon S3, and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml) .
-   On the next page, set:
+   [cloudformation/lights_off_aws.yaml](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml)
+   . On the next page, set:
 
    * Stack name: `LightsOff`
    * Lambda code S3 bucket: Name of your bucket, not including the region. For
@@ -99,24 +99,11 @@ over the years, but Lights Out still has advantages:
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||database cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
-* Not all EC2 instance types and operating systems support hibernation.
-* Not all RDS database cluster engines support reboot.
+* Not all EC2 instances support hibernation.
+* Not all RDS database clusters support reboot.
 
 ## Tag Values (Schedules)
 
-* Time zone: always UTC
-* Clock: always 24-hour
-* Last digit of minute: always 0 (Scheduled operations happen during a
-  10-minute cycle.)
-* 2 digits: always required for hour, minute, and numeric day of
-  month values (Use a leading zero if necessary.)
-* Wildcard: single underscore `_` (RDS does not allow asterisks in tags.)
-* Term separator: space (RDS does not allow commas in tags.)
-* Ordered terms: days must be specified before times, and hours before minutes
-  (For fast matching, any "once a month" and "once a week" terms should go at
-  the beginning.)
-* Completeness: a day, an hour and a minute must all be specified, or nothing
-  will happen
 * Terms:
 
   |Name|Minimum|Maximum|Wildcard|
@@ -129,61 +116,72 @@ over the years, but Lights Out still has advantages:
   |Once a week|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
   |Once a month|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
 
-* Multiple values: repeat the term (For example, `d=01 d=15` means _the
-  1st and the 15th days of the month_.)
+* Examples:
+
+  |Tag Value|Scenario|Meaning|
+  |--|--|--|
+  |`d=_ H:M=14:20`|Once a day|14:20 every day|
+  |`uTH:M=1T14:20`|Once a week|14:20 every Monday|
+  |`dTH:M=28T14:20`|Once a month|14:20 the 28th day of every month|
+  |`d=01 d=15 H=03 H=19 M=00`|cron-style|03:00 and 19:00 the 1st and 15th days of every month|
+  |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour of every day, _plus_ 08:50 every day|
+  |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
+  |`dTH:M=00T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of every month|
+
+* Time zone: always UTC
+* Clock: 24-hour
+* Last digit of minute: always 0
+* Approximate time: Operations happen during a 10-minute cycle. 14:20 means
+  _after 14:20 but before 14:30_, for example.)
+* 2 digits: required for hour, minute, and numeric day of month values (Use a
+  leading zero if necessary.)
+* Wildcard: 1 underscore `_` (RDS does not allow asterisks in tags.)
+* Term separator: space (RDS does not allow commas in tags.)
+* Order: days before times, and hours before minutes (For fast
+  matching, any "once a month" and "once a week" terms should go first.)
+* Completeness: the day, the hour and the minute must all be specified in some
+  way, or no operation will happen
+* Multiple values: use multiple terms of the same type (For example,
+  `d=01 d=15` means _the 1st and 15th days of the month_.)
+* End-of-month: consider `dTH:M=01T00:00` because some months lack `d=29`
+  through `d=31`
 * Multiple operations on the same resource, at the same time: none will
   happen, and an error will be logged
-* End-of-month: some months lack `d=29` through `d=31` ; consider
-  `dTH:M=01T00:00`
 * Standards: letters match
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html)
   and weekday numbers match
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
   (`cron` uses different weekday numbers.)
 
-* Examples:
-
-  |Tag Value|Scenario|Meaning|
-  |--|--|--|
-  |`d=_ H:M=14:20`|Once a day|At 14:20 every day|
-  |`uTH:M=1T14:20`|Once a week|At 14:20 every Monday|
-  |`dTH:M=28T14:20`|Once a month|At 14:20 on the 28th day of every month|
-  |`d=1 d=8 d=15 d=22 H=03 H=19 M=00`|cron-style|at 03:00 and 19:00 on the 1st, 8th, 15th, and 22nd days of every month|
-  |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|At 10 and 40 minutes after the hour, every hour of every day, _and also_ every day at 08:50|
-  |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|At 11:00 every day, _and also_ every Tuesday at 03:30 and every Friday at 07:20|
-  |`dTH:M=00T05:20 u=3 H=22 M=10`|Extra monthly operation|At 22:10 every Wednesday, _and also_ at 05:20 on the first day of every month|
-
-  Operations do not happen at exact times. An operation scheduled at 14:20
-  happens sometime after 14:20 but before 14:30, for example.
-
 ## Child Resources
 
 Backup operations create a "child" resource (image or snapshot) from a
-"parent" AWS resource (instance, volume, database, or database cluster).
+"parent" AWS resource (instance, volume or database).
 
-### Naming
+### Name
 
 |#|Part|Example|Purpose|
 |--|--|--|--|
-|1|Prefix|`zsched`|Identifies and groups resources created by Lights Off. `z` is intended to sort after most manually-created images and snapshots.|
-|2|Parent name or identifier|`webserver`|Conveniently identifies the parent. Derived from the `Name` tag, the logical name, or the physical identifier. Multiple children of the same parent will sort together, by creation date and time.|
-|3|Date and time|`20171231T1400Z`|Groups children created at the same time. The minute is always a multiple of 10. The time zone is always UTC (Z).|
-|4|Random suffix|`g3a8a`|Guarantees unique names. 5 characters are chosen from a small set of unambiguous letters and numbers.|
+|1|Prefix|`zsched`|Identify and group resources created by Lights Off. `z` sorts after most manually-created images and snapshots.|
+|2|Parent name or identifier|`webserver`|Conveniently identify the parent by `Name` tag value or physical identifier. Multiple children of the same parent sort together, by creation date and time.|
+|3|Date and time|`20171231T1400Z`|Group children created at the same time. Minute is always a multiple of 10. Time zone is always UTC (Z).|
+|4|Random suffix|`g3a8a`|Guarantee a unique name. 5 characters are chosen from a small set of unambiguous letters and numbers.|
 
-* The parent name or identifier may contain additional, internal hyphens.
-* Characters forbidden by AWS are replaced with X.
+* Parts are separated with hyphens (`-`).
+* Parent name or identifier may contain additional, internal hyphens.
+* Characters forbidden by AWS are replaced with `X` .
 * For some resource types, the description is also set to the name, in case the
   Console shows only one or the other.
 
-### Special Tags
+### Tags
 
 |Tag|Description|
 |--|--|
-|`Name`|The friendly name of the child. In the EC2 Console, the `Name` column is determined from `Name` tag values.|
-|`sched-parent-name`|The `Name` tag value from the parent. May be blank.|
-|`sched-parent-id`|The identifier of the parent.|
-|`sched-op`|The operation tag key (for example, `sched-backup`) that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
-|`sched-cycle-start`|The date and time when the child was created. The minute is always a multiple of 10. The time zone is always UTC (Z).|
+|`Name`|Friendly name of the child. The EC2 Console derives the Name column from `Name` tag values.|
+|`sched-parent-name`|`Name` tag value from the parent. May be blank.|
+|`sched-parent-id`|Physical identifier of the parent.|
+|`sched-op`|Operation tag key that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
+|`sched-cycle-start`|Date and time when the child was created. Minute is always a multiple of 10. Time zone is always UTC (Z).|
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary by AWS service, as do the search capabilities --
@@ -195,79 +193,7 @@ Backup operations create a "child" resource (image or snapshot) from a
   this, for example, if your organization has different tagging rules for EC2
   instances and images.
 
-## CloudFormation Operations Background
-
-To make a custom CloudFormation template compatible with Lights Off,
-
-1. Add the following to the `Parameters` section:
-
-   ```yaml
-     Enable:
-       Type: String
-       Description: >-
-         Lights Off will automatically update this paramater to true or false on
-         schedules in tags on this CloudFormation stack. See
-         https://github.com/sqlxpert/lights-off-aws
-       AllowedValues:
-         - "false"
-         - "true"
-       Default: "false"  # Start with expensive resources off
-   ```
-
-2. Add the following to the `Conditions` section:
-
-   ```yaml
-     EnableTrue:
-       !Equals [!Ref Enable, "true"]
-   ```
-
-3. Add the following attribute below, and indented at the same level as, the
-   `Type` attribute of the resource definition for any expensive resource that
-   you would like Lights Off to create and delete on schedule:
-
-   ```yaml
-       Condition: EnableTrue
-   ```
-
-   You may also want to take advantage of the
-   [`DependsOn` attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html)
-   to toggle the creation and deletion of resources that are not formally
-   related.
-
-4. If necessary, make references to affected resources conditional, by
-   replacing a property such as `SomeProperty: !Ref MyResourceName` with:
-
-   ```yaml
-         SomeProperty:
-           Fn::If:
-             - EnableTrue
-             - !Ref MyResourceName
-             - !Ref AWS::NoValue
-   ```
-
-5. Be sure to define a CloudFormation execution role that covers creating,
-   updating and deleting all of the resources in your CloudFormation template.
-   Specify the role when creating a stack from your template. (_Test_ the role
-   by using it to update the stack.) Lights Out operates on a least-privilege
-   principle. Unless CloudFormation can assume an execution role, and unless
-   the execution role covers all of the AWS API actions needed to update the
-   stack, Lights Out will not be able to perform stack updates.
-
-6. When definitions and permissions are correct, Lights Out will update the
-   stack according to schedules in the stack's `sched-set-Enable-true` and
-   `sched-set-Enable-false` tags, preserving the previous template and the
-   previous parameter values but setting the value of the Enable parameter to
-   `true` or `false` each time.
-
-A sample use case is toggling the deletion of an
-`AWS::EC2::ClientVpnTargetNetworkAssociation` at the end of the work day
-while leaving other AWS Client VPN resources intact. At 10¢ per association
-per hour, this can save up to $650 per year. Temporarily restoring VPN access
-during off-hours is as simple as performing a stack update (or adding the
-current time to the `sched-set-Enable-true` tag!) and then waiting another
-10 minutes for AWS to initialize the VPN association.
-
-## Output
+## Logging
 
 * After logging in to the [AWS Web Console](https://signin.aws.amazon.com/console),
   check the
@@ -278,14 +204,14 @@ current time to the `sched-set-Enable-true` tag!) and then waiting another
 
 ## On/Off Switch
 
-* You can change the Enable parameter in CloudFormation.
-* This switch is per-region and per-AWS-account.
-* While Enable is false, scheduled operations do not happen; they are skipped
-  permanently.
+* You can change the Enable parameter of your LightsOut CloudFormation stack.
+* This applies per-region and per-AWS-account.
+* While Enable is `false`, scheduled operations do not happen; they are
+  skipped permanently and cannot be reprised.
 
 ## Security Model
 
-* Allow only a few trusted users to tag AWS resources. You can restrict the
+* Allow only a few trusted people to tag AWS resources. You can restrict the
   right to add, change and delete `sched-` tags by including the
   [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
   in IAM policies, permission boundaries, and service control policies.
@@ -293,28 +219,12 @@ current time to the `sched-set-Enable-true` tag!) and then waiting another
 * Sometimes, such restrictive policies have the effect of requiring users to
   change or delete only one tag at a time.
 
-* Do not allow a role that can create backups to delete backups.
-
-* Choose from these sample IAM policies:
-
-  * LightsOffTag
-  * LightsOffNoTag
-
-* Although the LightsOffTag policy is sufficient for tagging via the AWS API,
-  users who are not AWS administrators will need additional privileges to use
-  the Console. Examples:
-
-  * [AmazonEC2ReadOnlyAccess](https://console.aws.amazon.com/iam/home#policies/arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess)
-  * [AmazonRDSReadOnlyAccess](https://console.aws.amazon.com/iam/home#policies/arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess)
-  * [AWSCloudFormationReadOnlyAccess](https://us-east-1.console.aws.amazon.com/iam/home#/policies/arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess)
-
-* You may have to
-  [decode authorization errors](http://docs.aws.amazon.com/cli/latest/reference/sts/decode-authorization-message.html).
-  The LightsOffTag sample policy grants the necessary privilege.
+* Do not allow a role that can create backups (or, in this case, set tags to
+  prompt backups) to delete backups.
 
 * Note these AWS security gaps:
 
-  * Authority to create an EC2 instance image includes authority to reboot
+  * Authority to create an EC2 instance image includes authority to reboot.
     (Explicitly denying the reboot privilege does not help.) A harmless
     privilege, taking a backup, is married with a risky one, rebooting.
 
@@ -345,6 +255,7 @@ If you intend to install LightsOff in multiple regions,
 ### Multi-Account Configuration
 
 (Under review)
+
 If you intend to install LightsOff in multiple AWS accounts,
 
 1. In every target AWS account, create the [pre-requisite stack](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws-prereq.yaml). Set:
@@ -414,20 +325,96 @@ and drilling down to Resources. S3 bucket policy template:
 
 ## Software Updates
 
-New versions of AWS Lambda function source code and CloudFormation templates
-will be released from time to time. Because CloudFormation does not detect
-changes in AWS Lambda function source code stored in S3, the easiset way to
-update the AWS Lambda functions is to create a new stack such as
-`LightsOff02`, set the Enable parameter to `false` initially, delete the old
-stack, and then enable the new one.
+* When CloudFormation template changes are published, LightsOut-related stacks
+  and stack sets can be updated in-place.
 
-## Advice
+* When AWS Lambda function source code changes are published, it is easier to
+  create a new stack such as `LightsOff02`, set the Enable parameter to
+  `false` initially, delete the old stack, and then enable the new one.
+  (CloudFormation otherwise has to be coaxed to recognize that the source
+  source code, which is stored in S3, had changed.)
+
+## CloudFormation Operations Background
+
+Using tags on custom CloudFormation stacks to schedule changes to a stack
+parameter value is an advanced Lights Out feature.
+
+A sample use case is toggling the deletion of an
+`AWS::EC2::ClientVpnTargetNetworkAssociation` at the end of the work day
+while leaving other AWS Client VPN resources intact. At 10¢ per association
+per hour, this can save up to $650 per year. Temporarily restoring VPN access
+during off-hours is as simple as performing a stack update, or adding the
+next multiple of 10 minutes to the `sched-set-Enable-true` tag!
+
+To make your custom CloudFormation template compatible with Lights Off,
+
+1. Add the following to the `Parameters` section:
+
+   ```yaml
+     Enable:
+       Type: String
+       Description: >-
+         Lights Off will automatically update this paramater to true or false on
+         schedules in tags on this CloudFormation stack. See
+         https://github.com/sqlxpert/lights-off-aws
+       AllowedValues:
+         - "false"
+         - "true"
+       Default: "false"  # Start with expensive resources off
+   ```
+
+2. Add the following to the `Conditions` section:
+
+   ```yaml
+     EnableTrue:
+       !Equals [!Ref Enable, "true"]
+   ```
+
+3. Add the following below, and indented at the same level as, the `Type`
+   attribute of the resource definition for any expensive resource that you
+   would like Lights Off to create and delete on schedule:
+
+   ```yaml
+       Condition: EnableTrue
+   ```
+
+   You can also use the
+   [`DependsOn` attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html)
+   to toggle the creation and deletion of resources that are not formally
+   related.
+
+4. If necessary, make references to affected resources conditional, by
+   replacing a property such as `SomeProperty: !Ref MyResourceName` with:
+
+   ```yaml
+         SomeProperty:
+           Fn::If:
+             - EnableTrue
+             - !Ref MyResourceName
+             - !Ref AWS::NoValue
+   ```
+
+5. Define a CloudFormation execution role that covers creating, updating and
+   deleting all of the resources in your CloudFormation template. Specify the
+   role when creating a stack from your template. (_Test_ the role by using it
+   to update the stack manually.) Lights Out operates on a least-privilege
+   principle. Unless CloudFormation can assume an execution role, and unless
+   the role covers all of the AWS API actions needed to update the stack,
+   Lights Out will not be able to update the stack.
+
+6. Once all resource definitions and permissions are correct, Lights Out will
+   update the stack according to schedules in the stack's
+   `sched-set-Enable-true` and `sched-set-Enable-false` tags, preserving the
+   previous template and the previous parameter values but setting the value of
+   the `Enable` parameter to `true` or `false` each time.
+
+## Parting Advice
 
 * Test your backups! Can they be restored successfully?
 
 * Rebooting EC2 instances is necessary for coherent file system backups, but
-  rebooting takes time and carries risks. Make some backups
-  `sched-reboot-backup` but make most of them `sched-backup` (no reboot).
+  it takes time and carries risks. Use `sched-reboot-backup` less frequently
+  than `sched-backup` (no reboot).
 
 * Be aware: of charges for running the AWS Lambda functions, queueing
   scheduled operations in SQS, logging to CloudWatch Logs, and storing images
@@ -435,11 +422,11 @@ stack, and then enable the new one.
   EC2 Windows or commercial Linux instance (but [other EC2 instances have a
   1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/));
   of ongoing storage charges for stopped EC2 instances and RDS databases; and
-  of costs that resume when AWS automatically starts an RDS database that has
-  been stopped for 7 days. There might be other AWS costs as well!
+  of charges that resume when AWS automatically starts an RDS database that
+  has been stopped for 7 days. Other AWS charges may apply!
 
-* Test the AWS Lambda functions and IAM policies in your own AWS environment.
-  To help improve Lights Off, please submit
+* Test the AWS Lambda functions, SQS queue and IAM policies in your own AWS
+  environment. To help improve Lights Off, please submit
   [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
   as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
 
@@ -455,10 +442,9 @@ and also to the wonderful colleagues I've worked with over the years.
 
 ## Licensing
 
-|Scope|License|Copy Included|
+|Scope|Link|Included Copy|
 |--|--|--|
-|Source code files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-CODE.md)|
-|Source code within documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-CODE.md)|
+|Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-CODE.md)|
 |Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-DOC.md)|
 
 Copyright Paul Marcelin
