@@ -12,16 +12,16 @@ For AWS users who forget to turn off the lights:
   backups.
 
 * Tag your custom CloudFormation stacks, and Lights Out can delete and
-  recreate expensive resources on a schedule. It takes only minutes to
-  add the necessary parameter and condition to a CloudFormation template,
-  and mark resource defitions with the condition.
+  recreate expensive resources on a schedule. It takes only a few minutes to
+  make your custom template compatible.
 
 Jump to:
 [Installation](#quick-start) &bull;
 [Operations](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security-model) &bull;
-[Multi-region/multi-account](#advanced-installation)
+[Multi-region/multi-account](#advanced-installation) &bull;
+[CloudFormation Operations](#lightsout-cloudformation-operations)
 
 ## Comparison with AWS Services
 
@@ -339,7 +339,7 @@ and drilling down to Resources. S3 bucket policy template:
   (CloudFormation otherwise has to be coaxed to recognize that the source
   source code, which is stored in S3, had changed.)
 
-## CloudFormation Operations Background
+## LightsOut CloudFormation Operations
 
 Using tags on custom CloudFormation stacks to schedule changes to a stack
 parameter value is an advanced Lights Out feature.
