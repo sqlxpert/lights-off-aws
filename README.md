@@ -132,8 +132,8 @@ Lights Out still has advantages:
 * Time zone: always UTC
 * Clock: 24-hour
 * Last digit of minute: always 0
-* Approximate time: Operations happen during a 10-minute cycle. 14:20 means
-  _after 14:20 but before 14:30_, for example.)
+* Approximate time: 10-minute cycle. (14:20 means _after 14:20 but before
+  14:30_, for example.)
 * 2 digits: required for hour, minute, and numeric day of month values (Use a
   leading zero if necessary.)
 * Wildcard: 1 underscore `_` (RDS does not allow asterisks in tags.)
@@ -375,9 +375,9 @@ To make your custom CloudFormation template compatible with Lights Off,
        !Equals [!Ref Enable, "true"]
    ```
 
-3. Add the following below, and indented at the same level as, the `Type`
-   attribute of the resource definition for any expensive resource that you
-   would like Lights Off to create and delete on schedule:
+3. Add the following under the `Type` attribute of the resource definition for
+   any expensive resource that you would like Lights Off to create and delete
+   on schedule:
 
    ```yaml
        Condition: EnableTrue
@@ -401,14 +401,12 @@ To make your custom CloudFormation template compatible with Lights Off,
 
 5. Define a CloudFormation execution role that covers creating, updating and
    deleting all of the resources in your CloudFormation template. Specify the
-   role when creating a stack from your template. (_Test_ the role by using it
-   to update the stack manually.) Lights Out operates on a least-privilege
-   principle. Unless CloudFormation can assume an execution role, and unless
-   the role covers all of the AWS API actions needed to update the stack,
-   Lights Out will not be able to update the stack.
+   role when creating a stack from your template. (_Test_ the role by updating
+   the stack manually.) Lights Out operates on a least-privilege principle and
+   will otherwise not be able to update your CloudFormation stack.
 
 6. Once all resource definitions and permissions are correct, Lights Out will
-   update the stack according to schedules in the stack's
+   update your stack according to schedules in the stack's
    `sched-set-Enable-true` and `sched-set-Enable-false` tags, preserving the
    previous template and the previous parameter values but setting the value of
    the `Enable` parameter to `true` or `false` each time.
@@ -427,8 +425,8 @@ To make your custom CloudFormation template compatible with Lights Off,
   EC2 Windows or commercial Linux instance (but [other EC2 instances have a
   1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/));
   of ongoing storage charges for stopped EC2 instances and RDS databases; and
-  of charges that resume when AWS automatically starts an RDS database that
-  has been stopped for 7 days. Other AWS charges may apply!
+  of charges that resume when RDS automatically restarts a database that has
+  been stopped for 7 days. Other AWS charges may apply!
 
 * Test the AWS Lambda functions, SQS queue and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
@@ -445,7 +443,7 @@ To make your custom CloudFormation template compatible with Lights Off,
 This work is dedicated to ej Salazar, Marianne and R&eacute;gis Marcelin,
 and also to the wonderful colleagues I've worked with over the years.
 
-## Licensing
+## Licenses
 
 |Scope|Link|Included Copy|
 |--|--|--|
