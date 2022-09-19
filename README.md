@@ -65,7 +65,8 @@ Lights Out still has advantages:
    [lights_off_aws.py.zip](https://github.com/sqlxpert/lights-off-aws/raw/main/lights_off_aws.py.zip)
    to the S3 bucket.
 
-   _Security Tip:_ Compare the Etag reported by S3 with the file's checksum in
+   _Security Tip:_ Compare the Entity tag (Etag) reported by S3 with the
+   file's checksum in
    [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt)
 
 5. Go to the

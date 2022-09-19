@@ -3,7 +3,9 @@
 
 github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
 
-Package for AWS Lambda: zip -9 lights_off_aws.py.zip lights_off_aws.py
+Bundle for AWS Lambda:
+  zip -9 lights_off_aws.py.zip lights_off_aws.py
+  md5sum lights_off_aws.py.zip > lights_off_aws.py.zip.md5.txt
 """
 
 import os
@@ -200,7 +202,7 @@ def update_stack_kwargs(stack_rsrc, update_stack_op):
     "UsePreviousTemplate": True,
     "Parameters": stack_params_out,
   }
-  stack_capabilities_in = stack_rsrc.get("Capabilities")
+  stack_capabilities_in = stack_rsrc.get("Capabilities", "")
   if stack_capabilities_in:
     kwargs_out["Capabilities"] = stack_capabilities_in
   return kwargs_out
