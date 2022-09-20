@@ -445,7 +445,8 @@ def msg_body_encode(msg_in):
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
     raise SQSMessageTooLong(
       f"JSON string too long: {msg_out_len} bytes exceeds "
-      f"{QUEUE_MSG_BYTES_MAX} bytes; increase QUEUE_MSG_BYTES_MAX"
+      f"{QUEUE_MSG_BYTES_MAX} bytes; increase QueueMessageBytesMax "
+      "CloudFormation parameter"
     )
   return msg_out
 
@@ -685,7 +686,10 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       > int(msg_attr_str_decode(msg, "expires"))
     ):
       op_log(event)
-      raise RuntimeError("Late; schedule fewer operations per 10-min cycle")
+      raise RuntimeError(
+        "Late; schedule fewer operations per 10-minute cycle, or increase "
+        "DoLambdaFnReservedConcurrentExecutions CloudFormation parameter"
+      )
 
     svc_client = svc_client_get(msg_attr_str_decode(msg, "svc"))
     op_method = getattr(svc_client, msg_attr_str_decode(msg, "op_method_name"))
