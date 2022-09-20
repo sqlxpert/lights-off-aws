@@ -99,7 +99,7 @@ Resources:
         # Use Fn::If to conditionally add a resource property, list item, etc.
         - Fn::If:
             - EnableTrue
-            - Description: Permanent rule
+            - Description: Conditional rule
               IpProtocol: tcp
               FromPort: 53
               ToPort: 53
