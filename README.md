@@ -121,7 +121,7 @@ still has advantages:
   |`dTH:M=28T14:20`|Once a month|14:20 the 28th day of every month|
   |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour of every day, _plus_ 08:50 every day|
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
-  |`dTH:M=00T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of every month|
+  |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of every month|
 
 * Time zone: always UTC
 * Clock: 24-hour
