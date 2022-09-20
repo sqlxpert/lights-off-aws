@@ -2,15 +2,15 @@
 
 For AWS users who forget to turn off the lights:
 
-* **Cut AWS costs up to ⅔ in your sleep**, by tagging your EC2 instances and
-  RDS databases with `cron`-style stop/start schedules. Lights Out is ideal
-  for development and test systems, which are idle at night and on weekends.
+* **Cut AWS costs up to ⅔ in your sleep**, by tagging EC2 instances and RDS
+  databases with `cron`-style stop/start schedules! Lights Out is ideal for
+  development and test systems, which are idle at night and on weekends.
 
 * You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
   backups.
 
 * If you tag your own custom CloudFormation stacks, Lights Off can even
-  delete/recreate expensive resources on schedule!
+  delete/recreate their expensive resources on schedule!
 
 Jump to:
 [Installation](#quick-start) &bull;
