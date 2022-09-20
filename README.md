@@ -9,7 +9,7 @@ For AWS users who forget to turn off the lights:
 * Tag EC2 instances, EBS volumes, and RDS databases to schedule backups.
 
 * Tag your own custom CloudFormation stacks, and Lights Off can even
-  delete/recreate the expensive parts of it on schedule!
+  delete/recreate the expensive parts on schedule!
 
 Jump to:
 [Installation](#quick-start) &bull;
