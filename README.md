@@ -28,7 +28,7 @@ relevant AWS services have become more capable over the years, but Lights Off
 still has advantages:
 
 * Schedules and operations are immediately visible, in tags on the EC2 instance,
-  EBS volume, RDS datase, or CloudFormation stack. You don't need to look up
+  EBS volume, RDS database, or CloudFormation stack. You don't need to look up
   schedules and rules in other AWS services.
 
 * Schedules and operations are easy to update. Just edit an AWS resource's
