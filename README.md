@@ -62,18 +62,18 @@ Lights Off still has advantages:
    _Security Tip:_ Block public access to the bucket, and limit write access
 
 4. Upload
-   [lights_off_aws.py.zip](https://github.com/sqlxpert/lights-off-aws/raw/main/lights_off_aws.py.zip)
+   [lights_off_aws.py.zip](blob/main/lights_off_aws.py.zip)
    to the S3 bucket.
 
    _Security Tip:_ Compare the Entity tag (Etag) reported by S3 with the
    file's checksum in
-   [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt)
+   [lights_off_aws.py.zip.md5.txt](blob/main/lights_off_aws.py.zip.md5.txt)
 
 5. Go to the
    [CloudFormation Console](https://console.aws.amazon.com/cloudformation/home).
    Click Create Stack. Click Choose File, immediately below Upload a template
    to Amazon S3, and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](https://github.com/sqlxpert/lights-off-aws/raw/main/cloudformation/lights_off_aws.yaml)
+   [cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * Stack name: `LightsOff`
@@ -85,7 +85,7 @@ Lights Off still has advantages:
 
 7. Before deregistering (deleting) the sample image that was created, note its
    ID, so that you delete the underlying
-   [EBS volume snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:sort=desc:startTime).
+   [EBS volume snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:visibility=owned-by-me;v=3;tag:Name=:zsched-;sort=desc:startTime).
    Also remember to delete the `sched-backup` tag from your EC2 instance.
 
 ## Tag Keys (Operations)
@@ -147,7 +147,7 @@ Lights Off still has advantages:
 * Multiple operations on the same resource, at the same time: none will
   happen, and an error will be logged
 * Standards: letters match
-  [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html)
+  [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
   and weekday numbers match
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
   (`cron` uses different weekday numbers.)
@@ -197,7 +197,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 * After logging in to the [AWS Web Console](https://signin.aws.amazon.com/console),
   check the
-  [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logs:prefix=/aws/lambda/LightsOff-).
+  [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252FLightsOff-).
 * Log messages (except for uncaught exceptions) are JSON objects, with a
   `Type` key to classify the message and indicate which other keys will be
   present.
@@ -245,12 +245,12 @@ covering multiple regions (and possibly multiple AWS accounts),
 1. Create S3 buckets for AWS Lambda function source code in all
    [regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
    of interest. Use the same bucket name prefix and append the region code for
-   the region in which you are creating the bucket. For example, you might
-   create `my-bucket-us-east-1` in us-east-1 and `my-bucket-us-west-2` in
-   us-west-2.
+   the region in which you are creating the bucket. For example, create
+   `my-bucket-us-east-1` in US East (N. Virginia) and `my-bucket-us-west-2` in
+   US West (Oregon).
 
 2. Upload
-   [lights_off_aws_perform.py.zip](lights_off_aws_perform.py.zip)
+   [lights_off_aws_perform.py.zip](blob/main/lights_off_aws_perform.py.zip)
    to each bucket. AWS Lambda requires a copy in every region.
 
 ### Multi-Account (CloudFormation StackSets)
@@ -293,14 +293,15 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
    ```
 
 4. Complete the prerequisites for creating a StackSet with
-   [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
+   [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html)
+   (_not_ self-managed permissions).
 
 5. In the management AWS account (or a delegated administrator account), go to
-   [CloudFormation StackSets](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacksets).
+   [CloudFormation StackSets](https://console.aws.amazon.com/cloudformation/home#/stacksets).
 
 6. Click Create StackSet, then select Upload a template file, then click
    Choose file and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](cloudformation/lights_off_aws.yaml)
+   [cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * StackSet name: `LightsOff`
@@ -321,9 +322,9 @@ principles, you can use a
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
 `LightsOffPrereqs` , from
-[cloudformation/lights_off_aws_prereqs.yaml](cloudformation/lights_off_aws_prereqs.yaml)
+[cloudformation/lights_off_aws_prereqs.yaml](blob/main/cloudformation/lights_off_aws_prereqs.yaml)
 Later, when you create a stack named `LightsOff` from
-[cloudformation/lights_off_aws.yaml](cloudformation/lights_off_aws.yaml),
+[cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml),
 scroll up to the Permissions section and set IAM role -
 optional to `LightsOffPrereqs-DeploymentRole` .
 
@@ -357,7 +358,7 @@ adding the next multiple of 10 minutes to the `sched-set-Enable-true` tag!
 
 To make your custom CloudFormation template compatible with Lights Off, follow
 the instructions in the sample template,
-[lights_off_aws_cloudformation_ops_example.yaml](cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
+[cloudformation/lights_off_aws_cloudformation_ops_example.yaml](blob/main/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
 
 Once all resource definitions and permissions are correct, Lights Off will
 update your stack according to the schedules in your stack's
@@ -378,7 +379,7 @@ of the parameter name in the tag key.
   scheduled operations in SQS, logging to CloudWatch Logs, and storing images
   and snapshots; of the whole-hour cost when you stop an RDS database or an
   EC2 Windows or commercial Linux instance (but [other EC2 instances have a
-  1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/));
+  1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/);
   of ongoing storage charges for stopped EC2 instances and RDS databases; and
   of charges that resume when RDS automatically restarts a database that has
   been stopped for 7 days. Other AWS charges may apply!
@@ -404,8 +405,8 @@ and also to the wonderful colleagues I've worked with over the years.
 
 |Scope|Link|Included Copy|
 |--|--|--|
-|Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-CODE.md)|
-|Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](https://github.com/sqlxpert/lights-off-aws/raw/main/LICENSE-DOC.md)|
+|Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](blob/main/LICENSE-CODE.md)|
+|Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](blob/main/LICENSE-DOC.md)|
 
 Copyright Paul Marcelin
 
