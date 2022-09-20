@@ -189,8 +189,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 * User-created tags whose keys do not begin with `sched-` are copied from
   parent to child. You can change the `CopyTags` parameter of your Lights Off
-  CloudFormation stack to prevent this, if your organization has different
-  rules for tagging EC2 instances and images, for example.
+  CloudFormation stack to prevent this.
 
 ## Logging
 
@@ -221,14 +220,14 @@ Backup operations create a "child" resource (image or snapshot) from a
 * Do not allow a role that can create backups (or, in this case, set tags to
   prompt backup creation) to delete backups as well.
 
-* Note these limitations of AWS:
+* Note these AWS limitations:
 
-  * Authority to create an image includes authority to reboot an EC2 instance.
-    (Explicitly denying the reboot privilege does not help.) A harmless
-    privilege is married with a potentially disruptive one.
+  * Permission to create an image includes permission to reboot an EC2
+    instance. (Explicitly denying the reboot privilege does not help.) A
+    harmless privilege is married with a potentially disruptive one.
 
-  * In RDS, permission to add a specific tag also includes permission to add
-    _any other_ tags in the same API call.
+  * Permission to add a specific RDS tag includes permission to add _any other_
+    tags at the same time.
 
 ## Advanced Installation
 
@@ -314,7 +313,7 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
 
 ### Least-Privilege
 
-If your organization follows least-privilege principles, you can use a
+You can specify a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
