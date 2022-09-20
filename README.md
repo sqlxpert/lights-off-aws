@@ -59,8 +59,8 @@ advantages:
    * `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
      and us-east-1 with the code for the
      [region](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
-     in which your EC2 instance is
-     located. Be sure to create the S3 bucket in that same region.
+     of your EC2 instance. Check, near the top right of the EC2 Console and
+     the S3 Console, that the region is the same.
 
    _Security Tip:_ Block public access to the bucket, and limit write access.
 
@@ -74,8 +74,8 @@ advantages:
 
 6. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Click Choose File, immediately below Upload a template
-   to Amazon S3, and navigate to your local copy of
+   Click Choose File, immediately below Upload a template to Amazon S3, and
+   navigate to your local copy of
    [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
@@ -86,14 +86,14 @@ advantages:
 7. After about 20 minutes, check
    [images (AMIs)](https://console.aws.amazon.com/ec2/v2/home#Images:sort=desc:creationDate).
 
-8. Before deregistering (deleting) the image that was created, note its ID so
-   that you delete the underlying
-   [EBS volume snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:visibility=owned-by-me;v=3;tag:Name=:zsched-;sort=desc:startTime).
+8. Before deregistering (deleting) the image that was created, note its ID
+   (`ami-`) so that you delete the underlying
+   [EBS snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:visibility=owned-by-me;v=3;tag:Name=:zsched-;sort=desc:startTime).
    Remember to delete the `sched-backup` tag from your EC2 instance.
 
 ## Tag Keys (Operations)
 
-||`sched‑start` `sched‑stop`|`sched‑hibernate`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑true` or `sched‑set‑Enable‑false`|
+||`sched‑start` `sched‑stop`|`sched‑hibernate`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑true` `sched‑set‑Enable‑false`|
 |--|--|--|--|--|--|--|--|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||snapshot|||||
@@ -234,16 +234,14 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 ### Multi-Region
 
-If you plan to deploy Lights Off to multiple regions, whether by creating a
-CloudFormation stack in each region or a central CloudFormation StackSet
-covering multiple regions (and possibly multiple AWS accounts),
+If you plan to deploy Lights Off to multiple regions, regardless of the
+deployment method,
 
-1. Create S3 buckets for AWS Lambda function source code in all
+1. Create S3 buckets with the same name prefix but different region codes in
+   in all
    [regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
-   of interest. Use the same bucket name prefix and append the region code for
-   the region in which you are creating the bucket. For example, create
-   `my-bucket-us-east-1` in US East (N. Virginia) and `my-bucket-us-west-2` in
-   US West (Oregon).
+   of interest. For example, create `my-bucket-us-east-1` in US East (North
+   Virginia) and `my-bucket-us-west-2` in US West (Oregon).
 
 2. Upload
    [lights_off_aws_perform.py.zip](/lights_off_aws_perform.py.zip)
