@@ -80,8 +80,8 @@ advantages:
    . On the next page, set:
 
    * Stack name: `LightsOff`
-   * Lambda code S3 bucket: Name of your bucket, not including region. For
-     example, if your bucket is my-bucket-us-east-1 , enter `my-bucket` .
+   * Lambda code S3 bucket: Exclude the region. For example, if your bucket is
+     my-bucket-us-east-1, enter `my-bucket`.
 
 7. After about 20 minutes, check
    [images (AMIs)](https://console.aws.amazon.com/ec2/v2/home#Images:sort=desc:creationDate).
@@ -304,9 +304,8 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
    . On the next page, set:
 
    * StackSet name: `LightsOff`
-   * Lambda code S3 bucket: Name of your buckets, not including regions.
-     For example, if one of your buckets is my-bucket-us-east-1 , set this to
-     `my-bucket` .
+   * Lambda code S3 bucket: Exclude regions. For example, if your buckets are
+     my-bucket-us-east-1 and my-bucket-us-west-2, enter `my-bucket` .
 
 6. Two pages later, under Deployment targets, select Deploy to Organizational
    Units (OUs). Enter the AWS OU ID of the parent Organizational Unit. Lights
