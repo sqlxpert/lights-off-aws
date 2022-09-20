@@ -6,11 +6,10 @@ For AWS users who forget to turn off the lights:
   databases with `cron`-style stop/start schedules! Lights Out is ideal for
   development and test systems, which are idle at night and on weekends.
 
-* You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
-  backups.
+* Tag EC2 instances, EBS volumes, and RDS databases to schedule backups.
 
-* If you tag your own custom CloudFormation stacks, Lights Off can even
-  delete/recreate their expensive resources on schedule!
+* Tag your own custom CloudFormation stacks, and Lights Off can even
+  delete/recreate the expensive parts of it on schedule!
 
 Jump to:
 [Installation](#quick-start) &bull;
@@ -31,12 +30,11 @@ still has advantages:
   EBS volume, RDS database, or CloudFormation stack. You don't need to look up
   schedules and rules in other AWS services.
 
-* Schedules and operations are easy to update. Just edit an AWS resource's
-  tags!
+* Schedules and operations are easy to update: just edit a tag!
 
 * One tool handles a variety of operations in EC2, RDS, and CloudFormation.
-  Why should you have to use one service to schedule a backup, and a different
-  service to schedule a reboot?
+  Why should you have to use one service to schedule a backup, and another
+  to schedule a reboot?
 
 ## Quick Start
 
