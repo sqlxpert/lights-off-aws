@@ -335,8 +335,8 @@ target accounts, if you want to deploy a CloudFormation StackSet with
 
 ## Software Updates
 
-* When CloudFormation template changes are published, Lights Off-related
-  stacks and StackSets can be updated in-place.
+* When CloudFormation template changes are published, Lights Off stacks and
+  StackSets can be updated in-place.
 
 * When AWS Lambda function source code changes are published, it is easier to
   create a new stack or StackSet such as `LightsOff02`, set its Enable
@@ -379,7 +379,7 @@ of the parameter name in the tag key.
   scheduled operations in SQS, logging to CloudWatch Logs, and storing images
   and snapshots; of the whole-hour cost when you stop an RDS database or an
   EC2 Windows or commercial Linux instance (but [other EC2 instances have a
-  1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/);
+  1-minute minimum](https://aws.amazon.com/blogs/aws/new-per-second-billing-for-ec2-instances-and-ebs-volumes/));
   of ongoing storage charges for stopped EC2 instances and RDS databases; and
   of charges that resume when RDS automatically restarts a database that has
   been stopped for 7 days. Other AWS charges may apply!
