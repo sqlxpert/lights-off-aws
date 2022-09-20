@@ -62,18 +62,18 @@ Lights Off still has advantages:
    _Security Tip:_ Block public access to the bucket, and limit write access
 
 4. Upload
-   [lights_off_aws.py.zip](blob/main/lights_off_aws.py.zip)
+   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
    to the S3 bucket.
 
    _Security Tip:_ Compare the Entity tag (Etag) reported by S3 with the
    file's checksum in
-   [lights_off_aws.py.zip.md5.txt](blob/main/lights_off_aws.py.zip.md5.txt)
+   [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt)
 
 5. Go to the
    [CloudFormation Console](https://console.aws.amazon.com/cloudformation/home).
    Click Create Stack. Click Choose File, immediately below Upload a template
    to Amazon S3, and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml)
+   [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * Stack name: `LightsOff`
@@ -250,7 +250,7 @@ covering multiple regions (and possibly multiple AWS accounts),
    US West (Oregon).
 
 2. Upload
-   [lights_off_aws_perform.py.zip](blob/main/lights_off_aws_perform.py.zip)
+   [lights_off_aws_perform.py.zip](/lights_off_aws_perform.py.zip)
    to each bucket. AWS Lambda requires a copy in every region.
 
 ### Multi-Account (CloudFormation StackSets)
@@ -301,7 +301,7 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
 
 6. Click Create StackSet, then select Upload a template file, then click
    Choose file and navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml)
+   [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * StackSet name: `LightsOff`
@@ -322,9 +322,9 @@ principles, you can use a
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
 `LightsOffPrereqs` , from
-[cloudformation/lights_off_aws_prereqs.yaml](blob/main/cloudformation/lights_off_aws_prereqs.yaml)
+[cloudformation/lights_off_aws_prereqs.yaml](/cloudformation/lights_off_aws_prereqs.yaml)
 Later, when you create a stack named `LightsOff` from
-[cloudformation/lights_off_aws.yaml](blob/main/cloudformation/lights_off_aws.yaml),
+[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml),
 scroll up to the Permissions section and set IAM role -
 optional to `LightsOffPrereqs-DeploymentRole` .
 
@@ -358,7 +358,7 @@ adding the next multiple of 10 minutes to the `sched-set-Enable-true` tag!
 
 To make your custom CloudFormation template compatible with Lights Off, follow
 the instructions in the sample template,
-[cloudformation/lights_off_aws_cloudformation_ops_example.yaml](blob/main/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
+[cloudformation/lights_off_aws_cloudformation_ops_example.yaml](/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
 
 Once all resource definitions and permissions are correct, Lights Off will
 update your stack according to the schedules in your stack's
@@ -405,8 +405,8 @@ and also to the wonderful colleagues I've worked with over the years.
 
 |Scope|Link|Included Copy|
 |--|--|--|
-|Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](blob/main/LICENSE-CODE.md)|
-|Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](blob/main/LICENSE-DOC.md)|
+|Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](/LICENSE-CODE.md)|
+|Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
 
 Copyright Paul Marcelin
 
