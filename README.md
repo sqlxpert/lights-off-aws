@@ -51,9 +51,9 @@ still has advantages:
 
 3. Go to the
    [S3 Console](https://console.aws.amazon.com/s3/home).
-   Create a bucket for AWS Lambda function source code.
+   Create a bucket for AWS Lambda function source code:
 
-   * `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
+   * Bucket name: `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
      and us-east-1 with the region in which your EC2 instance is located. Be
      sure to create the bucket in that region.
 
