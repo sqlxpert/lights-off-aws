@@ -336,7 +336,7 @@ target accounts, if you want to deploy a CloudFormation StackSet with
 ## Software Updates
 
 * When CloudFormation template changes are published, Lights Off-related
-  stacks and stack sets can be updated in-place.
+  stacks and StackSets can be updated in-place.
 
 * When AWS Lambda function source code changes are published, it is easier to
   create a new stack or StackSet such as `LightsOff02`, set its Enable
