@@ -237,10 +237,10 @@ If you plan to deploy Lights Off to multiple regions, regardless of the
 deployment method,
 
 1. Create S3 buckets with the same name prefix but different region codes in
-   in all
-   [regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
-   of interest. For example, create `my-bucket-us-east-1` in US East (North
-   Virginia) and `my-bucket-us-west-2` in US West (Oregon).
+   all target
+   [regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints).
+   For example, create `my-bucket-us-east-1` in US East (Northern Virginia)
+   and `my-bucket-us-west-2` in US West (Oregon).
 
 2. Upload
    [lights_off_aws_perform.py.zip](/lights_off_aws_perform.py.zip)
@@ -250,15 +250,15 @@ deployment method,
 
 To centrally deploy Lights Off to multiple accounts (and multiple regions),
 
-1. Delete any standalone Lights Off CloudFormation stacks in the accounts and
-   regions of interest.
+1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
+   accounts and regions.
 
 2. Follow the
    [multi-region instructions](#multi-region),
    above.
 
 3. Edit the bucket policy of each S3 bucket, allowing read access from all AWS
-   accounts under the parent Organizational Unit (OU) of interest. Look up your
+   accounts within the target Organizational Unit (OU). Look up your
    Organization ID (`o-`), Root ID (`r-`), and Organizational Unit IDs (`ou-`)
    in
    [AWS Organizations](https://console.aws.amazon.com/organizations/v2/home/accounts).
@@ -268,7 +268,7 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
      "Version": "2012-10-17",
      "Statement": [
        {
-         "Sid": "FromAllAwsAccountsUnderParentOrganizationalUnit",
+         "Sid": "FromAllAwsAccountsWithinOrganizationalUnit",
          "Effect": "Allow",
          "Principal": {
            "AWS": "*"
@@ -307,9 +307,9 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
      my-bucket-us-east-1 and my-bucket-us-west-2, enter `my-bucket` .
 
 6. Two pages later, under Deployment targets, select Deploy to Organizational
-   Units (OUs). Enter the AWS OU ID of the parent Organizational Unit. Lights
-   Off will be deployed to all AWS accounts under this Organizational Unit.
-   Toward the bottom of the page, specify the regions of interest.
+   Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
+   Off will be deployed to all AWS accounts within this Organizational Unit.
+   Toward the bottom of the page, specify the target regions.
 
 ### Least-Privilege
 
