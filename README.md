@@ -41,7 +41,7 @@ still has advantages:
 1. Log in to the [AWS Web Console](https://signin.aws.amazon.com/console).
 
 2. Go to [EC2 instances](https://console.aws.amazon.com/ec2/v2/home#Instances).
-   Add the following tag to a sample instance:
+   Tag an instance with:
 
    * `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
@@ -49,9 +49,9 @@ still has advantages:
 
 3. Go to the
    [S3 Console](https://console.aws.amazon.com/s3/home).
-   Create a bucket for AWS Lambda function source code:
+   Create a bucket for AWS Lambda function source code. Name it:
 
-   * Bucket name: `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
+   * `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
      and us-east-1 with the region in which your EC2 instance is located. Be
      sure to create the bucket in that region.
 
