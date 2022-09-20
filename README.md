@@ -3,16 +3,14 @@
 For AWS users who forget to turn off the lights:
 
 * **Cut AWS costs up to ⅔ in your sleep**, by tagging your EC2 instances and
-  RDS databases with `cron`-style schedules. Lights Off stops or hibernates
-  the instances, and stops the databases, while you are not using them, then
-  restarts them before you need them again. It's perfect for development and
-  test systems, which are idle at night and on weekends.
+  RDS databases with `cron`-style stop/start schedules. Lights Out is ideal
+  for development and test systems, which are idle at night and on weekends.
 
 * You can also tag EC2 instances, EBS volumes, and RDS databases to schedule
   backups.
 
-* If you tag your own custom CloudFormation stacks, Lights Off will even
-  delete and recreate expensive resources on schedule!
+* If you tag your own custom CloudFormation stacks, Lights Off can even
+  delete/recreate expensive resources on schedule!
 
 Jump to:
 [Installation](#quick-start) &bull;
@@ -25,9 +23,9 @@ Jump to:
 ## Comparison with AWS Services
 
 AWS introduced AWS Backup, Data Lifecycle Manager, and Systems Manager after
-mid-2017, when I started this project, originally called TagSchedOps. The
-three relevant AWS services have become more capable over the years, but
-Lights Off still has advantages:
+mid-2017, when I started this project, formerly called TagSchedOps. The 3
+relevant AWS services have become more capable over the years, but Lights Off
+still has advantages:
 
 * Schedules and operations are immediately visible, in tags on the EC2 instance,
   EBS volume, RDS datase, or CloudFormation stack. You don't need to look up
