@@ -32,9 +32,9 @@ still has advantages:
 
 * Schedules and operations are easy to update: just edit a tag!
 
-* One tool handles a variety of operations in EC2, RDS, and CloudFormation.
-  Why should you have to use one service to schedule a backup, and another
-  to schedule a reboot?
+* One tool handles a variety of EC2, RDS, and CloudFormation operations. Why
+  should you have to use one service to schedule a backup, and another to
+  schedule a reboot?
 
 ## Quick Start
 
