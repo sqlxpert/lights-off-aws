@@ -37,8 +37,8 @@ advantages:
 
 ## Quick Start
 
-1. Copy this GitHub repositor to your local computer. (The green Code button
-   at the top right opens a pop-up menu showing several ways to do this.)
+1. Copy this GitHub repository to your local computer. (The green Code button
+   at the top right opens a pop-up menu showing several ways to do it.)
 
 2. Log in to the
    [AWS Web Console](https://signin.aws.amazon.com/console)
@@ -50,7 +50,7 @@ advantages:
 
    * `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
-     \+ 20 minutes. Round up to the next multiple of 10 minutes.
+     \+ 20 minutes. Round up to :00, :10, :20, :30, :40, or :50.
 
 4. Create an
    [S3 bucket](https://console.aws.amazon.com/s3/home)
@@ -68,8 +68,8 @@ advantages:
    [lights_off_aws.py.zip](/lights_off_aws.py.zip)
    to your S3 bucket.
 
-   _Security Tip:_ Compare the Entity tag (Etag) reported by S3 with the
-   file's checksum in
+   _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
+   in
    [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt)
 
 6. Create a
@@ -93,7 +93,7 @@ advantages:
 
 ## Tag Keys (Operations)
 
-||`sched‑start` or `‑stop`|`sched‑hibernate`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑true` or `‑false`|
+||`sched‑start` `sched‑stop`|`sched‑hibernate`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑true` or `sched‑set‑Enable‑false`|
 |--|--|--|--|--|--|--|--|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||snapshot|||||
@@ -133,26 +133,25 @@ advantages:
 * Time zone: always UTC
 * Clock: 24-hour
 * Last digit of minute: always 0
-* Approximate time: 10-minute cycle (14:20 means _between 14:20 and 14:30_, for
-  example.)
+* Approximate timing: 10-minute cycle (14:20 means _between 14:20 and 14:30_,
+  for example.)
 * 2 digits: required for hour, minute, and numeric day of month values (Use a
   leading zero if necessary.)
-* Wildcard: 1 underscore `_` (RDS does not allow asterisks in tags.)
-* Term separator: space (RDS does not allow commas in tags.)
 * Order: days before times, and hours before minutes (For fast matching,
   compound daily or weekly terms should go first.)
 * Completeness: the day, the hour and the minute must all be specified in some
   way, or no operation will happen
-* Multiple values: use multiple terms of the same type (For example,
-  `d=01 d=15` means _the 1st and 15th days of the month_.)
+* Multiple values: use multiple terms of the same type
 * End-of-month: consider `dTH:M=01T00:00` because some months lack `d=29`
   through `d=31`
 * Multiple operations on the same resource, at the same time: none will
   happen, and an error will be logged
-* Standards: letters match
+* Rationale for separator and wildcard: RDS does not allow commas or asterisks
+  in tag values
+* Rationale for letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
-  and weekday numbers match
-  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
+* Rationale for weekday numbers:
+  [ISO 8601 standard](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
   (`cron` uses different weekday numbers.)
 
 ## Child Resources
@@ -190,8 +189,8 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 * User-created tags whose keys do not begin with `sched-` are copied from
   parent to child. You can change the `CopyTags` parameter of your Lights Off
-  CloudFormation stack to prevent this, for example, if your organization has
-  different rules for tagging EC2 instances and images.
+  CloudFormation stack to prevent this, if your organization has different
+  rules for tagging EC2 instances and images, for example.
 
 ## Logging
 
@@ -222,14 +221,14 @@ Backup operations create a "child" resource (image or snapshot) from a
 * Do not allow a role that can create backups (or, in this case, set tags to
   prompt backup creation) to delete backups as well.
 
-* Note these AWS security gaps:
+* Note these limitations of AWS:
 
-  * Authority to create an EC2 instance image includes authority to reboot.
+  * Authority to create an image includes authority to reboot an EC2 instance.
     (Explicitly denying the reboot privilege does not help.) A harmless
-    privilege, taking a backup, is married with a risky one, rebooting.
+    privilege is married with a potentially disruptive one.
 
   * In RDS, permission to add a specific tag also includes permission to add
-    _any other_ tags in the same API call!
+    _any other_ tags in the same API call.
 
 ## Advanced Installation
 
@@ -324,8 +323,8 @@ to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
 `LightsOffPrereqs` , from
 [cloudformation/lights_off_aws_prereqs.yaml](/cloudformation/lights_off_aws_prereqs.yaml)
-Later, when you create a stack named `LightsOff` from
-[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml),
+. Later, when you create a stack named `LightsOff` from
+[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml) ,
 scroll up to the Permissions section and set IAM role -
 optional to `LightsOffPrereqs-DeploymentRole` .
 
@@ -393,7 +392,7 @@ must be capitalized in the tag keys, just as it is in the parameter name.
 
 * Automated testing
 * Makefile for AWS Lambda .zip bundle
-* variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
+* Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
   CloudFormation stack parameter to an arbitrary value
 
 ## Dedication
