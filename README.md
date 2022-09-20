@@ -195,9 +195,8 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 ## Logging
 
-* After logging in to the [AWS Web Console](https://signin.aws.amazon.com/console),
-  check the
-  [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252FLightsOff-).
+* Check the
+  [`LightsOff` CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252FLightsOff-).
 * Log messages (except for uncaught exceptions) are JSON objects, with a
   `Type` key to classify the message and indicate which other keys will be
   present.
@@ -263,7 +262,10 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
 2. Follow the [multi-region instructions](#multi-region), above.
 
 3. Edit the bucket policy of each S3 bucket, allowing access from all AWS
-   accounts under the parent organization unit (OU) of interest.
+   accounts under the parent organization unit (OU) of interest. Look up your
+   Organization ID (`o-`), Root ID (`r-`), and Organization Unit IDs (`ou-`)
+   in
+   [AWS Organizations](https://console.aws.amazon.com/organizations/v2/home/accounts).
 
    ```json
    {
@@ -278,7 +280,7 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
          "Condition": {
            "ForAnyValue:StringLike": {
               "aws:PrincipalOrgPaths": [
-                "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID/*"
+                "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID*"
               ]
            }
          },

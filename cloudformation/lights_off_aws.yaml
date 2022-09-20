@@ -103,6 +103,13 @@ Parameters:
       canceled. Increase only in case of time-out errors. Also determines
       visibility timeout for operation queue messages.
     Default: 60
+  DoLambdaFnReservedConcurrentExecutions:
+    Type: Number
+    Description: >-
+      How many scheduled operations can be done in parallel. See
+      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
+    MinValue: 0
+    Default: 5
 
 Metadata:
 
@@ -124,6 +131,7 @@ Metadata:
         Parameters:
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
+          - DoLambdaFnReservedConcurrentExecutions
       - Label:
           default: Miscellaneous
         Parameters:
@@ -151,6 +159,8 @@ Metadata:
         default: Memory (MB)
       DoLambdaFnTimeoutSecs:
         default: Timeout (seconds)
+      DoLambdaFnReservedConcurrentExecutions:
+        default: Parallel operations
       LogsRetainDays:
         default: Log retention period
       LogLevel:
@@ -609,7 +619,7 @@ Resources:
           "LOG_LEVEL": !Ref LogLevel
           "COPY_TAGS": !Ref CopyTags
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
-      ReservedConcurrentExecutions: 1  # Only one run at a time!
+      ReservedConcurrentExecutions: 1  # Only one Find process at a time!
       Timeout: !Ref FindLambdaFnTimeoutSecs
       MemorySize: !Ref FindLambdaFnMemoryMB
 
@@ -676,7 +686,7 @@ Resources:
         Variables:
           "LOG_LEVEL": !Ref LogLevel
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_do"
-      ReservedConcurrentExecutions: 5
+      ReservedConcurrentExecutions: !Ref DoLambdaFnReservedConcurrentExecutions
       Timeout: !Ref DoLambdaFnTimeoutSecs
       MemorySize: !Ref DoLambdaFnMemoryMB
 
