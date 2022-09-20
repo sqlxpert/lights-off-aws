@@ -34,9 +34,9 @@ still has advantages:
 * Schedules and operations are easy to update. Just edit an AWS resource's
   tags!
 
-* One tool handles a variety of scheduled operations in EC2, RDS, and
-  CloudFormation. Why should you have to use one service to schedule a backup,
-  and a different service to schedule a reboot?
+* One tool handles a variety of operations in EC2, RDS, and CloudFormation.
+  Why should you have to use one service to schedule a backup, and a different
+  service to schedule a reboot?
 
 ## Quick Start
 
