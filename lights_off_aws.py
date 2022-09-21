@@ -647,7 +647,7 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   )
   logging.info(json.dumps({"type": "START", "cycle_start": cycle_start_str}))
   logging.info(json.dumps(
-    {"type": "SCHED_REGEXP", "sched_regexp": sched_regexp}, default=str
+    {"type": "SCHED_REGEXP_VERBOSE", "sched_regexp": sched_regexp.pattern}
   ))
   rsrc_types_init()
   for rsrc_types in AWSParentRsrcType.members.values():
