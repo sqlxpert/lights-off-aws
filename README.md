@@ -72,7 +72,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
    Click Choose File, immediately below Upload a template to Amazon S3, and
    navigate to your local copy of
-   [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * Stack name: `LightsOff`
@@ -356,7 +356,7 @@ To centrally deploy Lights Off to multiple accounts (and multiple regions),
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
    Select Upload a template file, then click Choose file and navigate to your
    local copy of
-   [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
    * StackSet name: `LightsOff`
@@ -375,9 +375,9 @@ You can specify a
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
 `LightsOffPrereqs` , from
-[cloudformation/lights_off_aws_prereqs.yaml](/cloudformation/lights_off_aws_prereqs.yaml)
+[lights_off_aws_prereqs.yaml](/cloudformation/lights_off_aws_prereqs.yaml)
 . Later, when you create a stack named `LightsOff` from
-[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml) ,
+[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml) ,
 scroll up to the Permissions section and set IAM role -
 optional to `LightsOffPrereqs-DeploymentRole` .
 
@@ -412,7 +412,7 @@ stack's `sched-set-Enable-true` tag!)
 
 To make your own CloudFormation template compatible with Lights Off, follow
 the instructions in the sample template,
-[cloudformation/lights_off_aws_cloudformation_ops_example.yaml](/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
+[lights_off_aws_cloudformation_ops_example.yaml](/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
 
 Lights Off will update your own CloudFormation stack according to the schedules
 in your own stack's `sched-set-Enable-true` and `sched-set-Enable-false` tags,
