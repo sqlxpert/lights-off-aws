@@ -20,20 +20,26 @@ import boto3
 
 logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
 
-SCHED_DELIM_CHAR = r" "
-SCHED_DELIMS = rf"{SCHED_DELIM_CHAR}+"
-SCHED_TERMS = (
-  rf"([^{SCHED_DELIM_CHAR}]+=[^{SCHED_DELIM_CHAR}]+{SCHED_DELIMS})*"
-)
-SCHED_REGEXP_STRFTIME_FMT = (
-  rf"(^|{SCHED_DELIMS})("
-  rf"(dTH:M=%d|uTH:M=%u)T%H:%M"
-  rf"|"
-  rf"(d=(_|%d)|u=%u){SCHED_DELIMS}"
-  rf"{SCHED_TERMS}"
-  rf"((H:M=%H:%M)|(H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M))"
-  rf")({SCHED_DELIMS}|$)"
-)
+SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
+SCHED_TERMS = rf"([^ ]+=[^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
+SCHED_REGEXP_STRFTIME_FMT = (rf"""
+  (^|{SCHED_DELIMS})
+  (
+    # Monthly or weekly day and time, or...
+    (dTH:M=%d|uTH:M=%u)T%H:%M
+  |
+    # Day or weekday, possibly other terms, and eventually...
+    (d=(_|%d)|u=%u){SCHED_DELIMS}{SCHED_TERMS}
+    (
+      # Daily time, or...
+      H:M=%H:%M
+    |
+      # Hour, possibly other terms, and eventually, minute.
+      H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M
+    )
+  )
+  ({SCHED_DELIMS}|$)
+""")
 
 QUEUE_URL = os.environ.get("QUEUE_URL", "")
 QUEUE_MSG_BYTES_MAX = int(os.environ.get("QUEUE_MSG_BYTES_MAX", "-1"))
@@ -636,7 +642,9 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   )
   cycle_start_str = cycle_start.strftime("%Y%m%dT%H%MZ")
   cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
-  sched_regexp = re.compile(cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT))
+  sched_regexp = re.compile(
+    cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
+  )
   logging.info(json.dumps({"type": "START", "cycle_start": cycle_start_str}))
   logging.info(json.dumps(
     {"type": "SCHED_REGEXP", "sched_regexp": sched_regexp}, default=str
