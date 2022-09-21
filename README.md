@@ -16,8 +16,7 @@ Jump to:
 [Operations](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security) &bull;
-[Multi-region/multi-account](#advanced-installation) &bull;
-[CloudFormation Operations](#lights-off-cloudformation-operations)
+[Multi-region/multi-account](#advanced-installation)
 
 ## Unique Advantages
 
