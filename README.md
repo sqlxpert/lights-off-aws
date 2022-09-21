@@ -263,8 +263,8 @@ encouraged to read the code yourself and to evaluate its security._
   policies have the effect of requiring users to change or delete only one tag
   at a time.)
 
-* Never allow a role that can create backups (or, in this case, set tags to
-  prompt backup creation) to delete backups as well.
+* Never let a role that can create backups (or, in this case, set tags to
+  prompt backup creation) delete backups as well.
 
 * Prevent ordinary AWS users from modifying components of Lights Off, most of
   which are easily identified by `LightsOff` in ARNs and/or in the automatic
