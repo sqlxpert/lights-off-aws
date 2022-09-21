@@ -21,7 +21,7 @@ import boto3
 logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
 
 SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
-SCHED_TERMS = rf"([^ ]+=[^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
+SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
 SCHED_REGEXP_STRFTIME_FMT = (rf"""
   (^|{SCHED_DELIMS})
   (
