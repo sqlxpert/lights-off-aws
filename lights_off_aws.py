@@ -25,16 +25,16 @@ SCHED_TERMS = rf"([^ ]+=[^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
 SCHED_REGEXP_STRFTIME_FMT = (rf"""
   (^|{SCHED_DELIMS})
   (
-    # Monthly or weekly day and time, or...
+    # Specific monthly or weekly day and time, or...
     (dTH:M=%d|uTH:M=%u)T%H:%M
   |
-    # Day or weekday, possibly other terms, and eventually...
+    # Day wildcard, specific day, or specific weekday, any other terms, and...
     (d=(_|%d)|u=%u){SCHED_DELIMS}{SCHED_TERMS}
     (
-      # Daily time, or...
+      # Specific daily time, or...
       H:M=%H:%M
     |
-      # Hour, possibly other terms, and eventually, minute.
+      # Hour wildcard or specific hour, any other terms, and specific minute.
       H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M
     )
   )
