@@ -128,24 +128,22 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
   |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of the month|
 
-* Time zone: always UTC
-* Clock: 24-hour
-* Last digit of minute: always 0 (14:20 means _between 14:20 and 14:30_, for
+* UTC time zone on a 24-hour clock
+* Last digit of minute must be 0 (14:20 means _between 14:20 and 14:30_, for
   example.)
-* 2 digits: required for hour, minute, and numeric day of month
-* Order: days before times, and hours before minutes (For fast matching,
-  compound daily or weekly terms should go first.)
-* Completeness: the day, the hour and the minute must all be specified in some
-  way, or no operation will happen
-* End-of-month: consider `dTH:M=01T00:00` because some months lack `d=29`
+* 2 digits required for hour, minute, and numeric day of month
+* Days before times, and hours before minutes (For fast matching, compound
+  daily or weekly terms should go first.)
+* The day, the hour and the minute must all be specified in some way
+* Consider `dTH:M=01T00:00` for end-of-month, because some months lack `d=29`
   through `d=31`
-* Rationale for separator and wildcard: RDS does not allow commas or asterisks
-  in tag values
-* Rationale for letters:
+* Rationale for:
+  * Separator and wildcard: [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
+  * Letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
-* Rationale for weekday numbers:
+  * Weekday numbers:
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
-  (`cron` uses different weekday numbers.)
+  (`cron` differs.)
 
 ## Child Resources
 
