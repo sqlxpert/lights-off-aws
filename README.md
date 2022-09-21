@@ -2,9 +2,9 @@
 
 For people who forget to turn the lights off,
 
-* **Cut AWS costs up to ⅔ in your sleep**, by tagging EC2 instances and RDS
-  databases with `cron`-style stop/start schedules &mdash; perfect for
-  development and test systems that sit idle overnight and on weekends.
+* **Cut AWS costs up to ⅔** by tagging EC2 instances and RDS databases with
+  cron-style stop/start schedules &mdash; perfect for development and test
+  systems that sit idle overnight and on weekends.
 
 * Tag EC2 instances, EBS volumes, and RDS databases to schedule backups.
 
