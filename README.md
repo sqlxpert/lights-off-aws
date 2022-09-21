@@ -121,9 +121,6 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   |Tag Value|Scenario|Meaning|
   |--|--|--|
   |`d=01 d=15 H=03 H=19 M=00`|`cron`-style|03:00 and 19:00 the 1st and 15th days of the month|
-  |`d=_ H:M=14:20`|Daily|14:20 every day|
-  |`uTH:M=1T14:20`|Weekly|14:20 every Monday|
-  |`dTH:M=28T14:20`|Monthly|14:20 the 28th day of the month|
   |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour, _plus_ 08:50 every day|
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
   |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of the month|
