@@ -13,7 +13,7 @@ For people who forget to turn the lights off,
 
 Jump to:
 [Installation](#quick-start) &bull;
-[Operations](#tag-keys-operations) &bull;
+[Tags](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security) &bull;
 [Multi-region/multi-account](#advanced-installation)
