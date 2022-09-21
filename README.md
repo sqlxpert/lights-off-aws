@@ -222,11 +222,10 @@ encouraged to read the code yourself and to evaluate its security._
   and then only on a resource with a `sched-` tag key that names the specific
   operation in question.
 
-* A least-privilege queue policy for the SQS queue between the two functions.
-  This scheduled operation queue can only consume messages from the "Find"
-  function and produce messages for the "Do" function (or for a dead-letter
-  queue, in the case of a failed operation). Encryption in transit is
-  required.
+* A least-privilege queue policy for the queue between the two functions. This
+  scheduled operation queue can only consume messages from the "Find" function
+  and produce messages for the "Do" function (or for a dead-letter queue, in
+  the case of failed operations). Encryption in transit is required.
 
 * Readable IAM policies, included in CloudFormation templates, formatted as
   YAML rather than JSON, and broken down into discrete statements by resource,
@@ -253,7 +252,7 @@ encouraged to read the code yourself and to evaluate its security._
 
 * An optional, least-privilege CloudFormation service role for deployment.
 
-### Security Steps That You Can Take
+### Security Steps You Can Take
 
 * Allow only a few trusted people (and carefully-configured automated
   services) to tag AWS resources. You can restrict the right to add, change
@@ -457,7 +456,7 @@ must be capitalized in the tag keys, just as it is in the parameter name.
   of charges that resume when RDS automatically restarts a database that has
   been stopped for 7 days. Other AWS charges may apply!
 
-* Test the AWS Lambda functions, SQS queue and IAM policies in your own AWS
+* Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
   [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
   as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
