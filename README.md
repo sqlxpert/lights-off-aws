@@ -99,6 +99,8 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 * Not all EC2 instances support hibernation.
 * Not all RDS database clusters support cluster-level reboot.
+* If an AWS resource is tagged for multiple operations at the same time, an
+  error will be logged.
 
 ## Tag Values (Schedules)
 
@@ -109,7 +111,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   |Day of month|`d=01`|`d=31`|`d=_`|
   |Day of week|`u=1` (Monday)|`u=7` (Sunday)||
   |Hour|`H=00`|`H=23`|`H=_`|
-  |Minute (multiples of 10)|`M=00`|`M=50`||
+  |Minute (multiple of 10)|`M=00`|`M=50`||
   |Daily|`H:M=00:00`|`H:M=23:50`||
   |Weekly|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
   |Monthly|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
@@ -128,26 +130,21 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 * Time zone: always UTC
 * Clock: 24-hour
-* Last digit of minute: always 0
-* Approximate timing: 10-minute cycle (14:20 means _between 14:20 and 14:30_,
-  for example.)
-* 2 digits: required for hour, minute, and numeric day of month values (Use a
-  leading zero if necessary.)
+* Last digit of minute: always 0 (14:20 means _between 14:20 and 14:30_, for
+  example.)
+* 2 digits: required for hour, minute, and numeric day of month
 * Order: days before times, and hours before minutes (For fast matching,
   compound daily or weekly terms should go first.)
 * Completeness: the day, the hour and the minute must all be specified in some
   way, or no operation will happen
-* Multiple values: use multiple terms of the same type
 * End-of-month: consider `dTH:M=01T00:00` because some months lack `d=29`
   through `d=31`
-* Multiple operations on the same resource, at the same time: none will
-  happen, and an error will be logged
 * Rationale for separator and wildcard: RDS does not allow commas or asterisks
   in tag values
 * Rationale for letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
 * Rationale for weekday numbers:
-  [ISO 8601 standard](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
+  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
   (`cron` uses different weekday numbers.)
 
 ## Child Resources
