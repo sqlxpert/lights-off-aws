@@ -138,7 +138,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 * Consider `dTH:M=01T00:00` for end-of-month, because some months lack `d=29`
   through `d=31`
 * Rationale for:
-  * Separator and wildcard: [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
+  * Separator and wildcard: [RDS does not allow , or \*](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
   * Letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
   * Weekday numbers:
