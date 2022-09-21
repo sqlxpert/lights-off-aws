@@ -15,7 +15,7 @@ Jump to:
 [Installation](#quick-start) &bull;
 [Operations](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
-[Security](#security-model) &bull;
+[Security](#security) &bull;
 [Multi-region/multi-account](#advanced-installation) &bull;
 [CloudFormation Operations](#lights-off-cloudformation-operations)
 
@@ -191,6 +191,13 @@ Backup operations create a "child" resource (image or snapshot) from a
   parent to child. You can change the `CopyTags` parameter of your Lights Off
   CloudFormation stack to prevent this.
 
+## On/Off Switch
+
+* You can change the `Enable` parameter of your Lights Off CloudFormation
+  stack.
+* While Enable is `false`, scheduled operations do not happen; they are
+  skipped permanently and cannot be reprised.
+
 ## Logging
 
 * Check the
@@ -200,25 +207,89 @@ Backup operations create a "child" resource (image or snapshot) from a
 * You can change the `LogLevel` parameter of your Lights Off CloudFormation
   stack to see more messages.
 
-## On/Off Switch
+## Security
 
-* You can change the `Enable` parameter of your Lights Off CloudFormation
-  stack.
-* While Enable is `false`, scheduled operations do not happen; they are
-  skipped permanently and cannot be reprised.
+_In accordance with the software license, nothing in this section creates a
+warranty, an indemnification, an assumption of liability, etc. Use this
+software entirely at your own risk. Lights Off is open-source, so you are
+encouraged to read the code yourself and to evaluate its security._
 
-## Security Model
+### Lights Off Security Goals
 
-* Allow only a few trusted people to tag AWS resources. You can restrict the
-  right to add, change and delete `sched-` tags by including the
+* Distinct, least-privilege roles for the AWS Lambda function that finds
+  matching AWS resources and the function that performs scheduled operations.
+  The "Do" function is only authorized to perform a small set of operations,
+  and then only on a resource with a `sched-` tag key that names the specific
+  operation in question.
+
+* A least-privilege queue policy for the SQS queue between the two functions.
+  This scheduled operation queue can only consume messages from the "Find"
+  function and produce messages for the "Do" function (or for a dead-letter
+  queue, in the case of a failed operation). Encryption in transit is
+  required.
+
+* Readable IAM policies, included in CloudFormation templates, formatted as
+  YAML rather than JSON, and broken down into discrete statements by resource,
+  by service, or by principal.
+
+* Support for encryption at rest with custom AWS Key Management System (KMS)
+  keys, for queue message bodies (which contain the identifiers and tags of
+  AWS resources) and for the entire contents of log messages. (This is
+  optional, and configuring it does require advanced knowledge, especially in
+  multi-region and multi-account deployments.)
+
+* No data storage other than in queues and logs. The retention periods for
+  the failed operation queue and the logs are configurable, and the fixed
+  retention period for the operation queue is short.
+
+* Basic safeguards against clock drift in distributed systems. The "Find"
+  function starts 1 minute into the cycle, and 9 minutes into the 10-minute
+  cycle, the "Do" function treats any further scheduled operation messages as
+  expired.
+
+* A checksum for the AWS Lambda function source code bundle. (The bundle is
+  checked in to this repository only to save people who are new to AWS Lambda
+  from having to generate a bundle themselves.)
+
+* An optional, least-privilege CloudFormation service role for deployment.
+
+### Security Steps That You Can Take
+
+* Allow only a few trusted people (and carefully-configured automated
+  services) to tag AWS resources. You can restrict the right to add, change
+  and delete `sched-` tags by including the
   [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in IAM policies, permission boundaries, and service control policies.
+  in IAM policies and permission boundaries. (Sometimes, restrictive
+  policies have the effect of requiring users to change or delete only one tag
+  at a time.)
 
-* Sometimes, such restrictive policies have the effect of requiring users to
-  change or delete only one tag at a time.
-
-* Do not allow a role that can create backups (or, in this case, set tags to
+* Never allow a role that can create backups (or, in this case, set tags to
   prompt backup creation) to delete backups as well.
+
+* Prevent ordinary AWS users from modifying components of Lights Off, most of
+  which are easily identified by `LightsOff` in ARNs and/or in the automatic
+  `aws:cloudformation:stack-name` tag. Limiting most people's permissions so
+  that the `LightsOffPrereqs-DeploymentRole` (see
+  [Advanced Installation: Least-Privilege](#least-privilege) is _needed_ when modifying
+  Lighs Off is one idea. You could also copy the role's in-line IAM policy,
+  remove statements with `"Resource": "*"`, change the `"Effect"` of the
+  remaining statements to `"Deny"`, and add the new policy to the roles that
+  most people use on a day-to-day basis. (Protecting resources from
+  inadvertent or intentional modification is a concern that applies to _any_
+  application in your AWS environment.)
+
+* Apply a similar `"Deny"` policy to prevent ordinary AWS users from directly
+  invoking the Lights Off AWS Lambda functions.
+
+* Use AWS CloudTrail to log changes to your AWS infrastructure. You could
+  configure your log monitoring system to alert you when components of
+  Lights Off (identified as above) are modified.
+
+* Separate production and non-production AWS workloads. You might choose not
+  to deploy Lights Off in AWS accounts used for production, or you might
+  customize the "Do" function's role in those accounts, so that the function
+  would not be authorized to perform potentially disruptive operations such as
+  stopping or rebooting EC2 instances and RDS databases.
 
 * Note these AWS limitations:
 
@@ -228,6 +299,12 @@ Backup operations create a "child" resource (image or snapshot) from a
 
   * Permission to add a specific RDS tag includes permission to add _any other_
     tags at the same time.
+
+  * It's not possible to edit an AWS Lambda function's resource-based policy
+    directly, and CloudFormation can be used to add permissions to the policy,
+    not to add restrictions. This means, for example, that an AWS user
+    ordinarily authorized to invoke functions could tell the "Do" function to
+    perform an operation on an AWS resource.
 
 ## Advanced Installation
 
@@ -365,7 +442,8 @@ must be capitalized in the tag keys, just as it is in the parameter name.
 
 ## Parting Advice
 
-* Test your backups! Can they be restored successfully?
+* Routinely test your backups! Are backups happening as scheduled? Can you
+  restore your backups successfully?
 
 * Rebooting EC2 instances is necessary for coherent file system backups, but
   it takes time and carries risks. Use `sched-reboot-backup` less frequently
