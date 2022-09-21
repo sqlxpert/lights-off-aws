@@ -243,9 +243,7 @@ encouraged to read the code yourself and to evaluate its security._
   can restrict the right to add, change and delete `sched-` tags by including
   the
   [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in IAM policies and permission boundaries. (Sometimes, restrictive
-  policies have the effect of requiring users to change or delete one tag at a
-  time.)
+  in IAM policies and permission boundaries.
 
 * Never let a role that can create backups (or, in this case, set tags to
   prompt backup creation) delete backups as well.
@@ -253,7 +251,7 @@ encouraged to read the code yourself and to evaluate its security._
 * Prevent ordinary AWS users from modifying components of Lights Off, most of
   which are easily identified by `LightsOff` in ARNs and/or in the automatic
   `aws:cloudformation:stack-name` tag. Limiting most people's permissions so
-  that the deployment role is _necessary_ for modifying Lighs Off is one idea.
+  that the deployment role is _necessary_ for modifying Lighs Off is one way.
   You could also copy the role's in-line IAM policy, delete the statements
   with `"Resource": "*"`, change the `"Effect"` of the remaining,
   resource-specific statements to `"Deny"`, and add the new policy to people's
@@ -264,10 +262,9 @@ encouraged to read the code yourself and to evaluate its security._
 
 * Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
-* Separate production and non-production workloads. You might decide not to
-  deploy Lights Off to AWS accounts used for production, or you might
-  customize the "Do" function's role so that the function would not be
-  authorized to reboot or stop production EC2 instances and RDS databases.
+* Separate production workloads. You might decide not to deploy Lights Off to
+  AWS accounts used for production, or you might customize the "Do" function's
+  role, removing authority to reboot or stop production resources.
 
 * Note these AWS limitations:
 
@@ -278,10 +275,9 @@ encouraged to read the code yourself and to evaluate its security._
   * Permission to add a specific RDS tag includes permission to add _any
     other_ tags at the same time.
 
-  * It's not possible to edit an AWS Lambda function's resource-based policy
+  * It's not possible to set an AWS Lambda function's resource-based policy
     directly, and CloudFormation can be used to add permissions but not to
-    add restrictions. An AWS user authorized to invoke functions could tell
-    the "Do" function to perform an operation on an AWS resource, for example.
+    add restrictions (such as preventing invocation outside Lights Off).
 
 ## Advanced Installation
 
