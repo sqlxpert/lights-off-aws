@@ -270,13 +270,13 @@ encouraged to read the code yourself and to evaluate its security._
   which are easily identified by `LightsOff` in ARNs and/or in the automatic
   `aws:cloudformation:stack-name` tag. Limiting most people's permissions so
   that the `LightsOffPrereqs-DeploymentRole` (see
-  [Advanced Installation: Least-Privilege](#least-privilege) is _needed_ when modifying
-  Lighs Off is one idea. You could also copy the role's in-line IAM policy,
-  remove statements with `"Resource": "*"`, change the `"Effect"` of the
-  remaining statements to `"Deny"`, and add the new policy to the roles that
-  most people use on a day-to-day basis. (Protecting resources from
-  inadvertent or intentional modification is a concern that applies to _any_
-  application in your AWS environment.)
+  [Advanced Installation: Least-Privilege](#least-privilege))
+  is _needed_ when modifying Lighs Off is one idea. You could also copy the
+  role's in-line IAM policy, delete statements with `"Resource": "*"`, change
+  the `"Effect"` of the remaining, resource-specific statements to `"Deny"`,
+  and add the new policy to the roles that most people use on a day-to-day
+  basis. (Protecting resources from inadvertent or intentional modification is
+  a concern that applies to _any_ application in your AWS environment.)
 
 * Apply a similar `"Deny"` policy to prevent ordinary AWS users from directly
   invoking the Lights Off AWS Lambda functions.
