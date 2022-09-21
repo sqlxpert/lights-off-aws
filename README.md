@@ -242,9 +242,9 @@ encouraged to read the code yourself and to evaluate its security._
   retention period for the operation queue is short.
 
 * Basic safeguards against clock drift in distributed systems. The "Find"
-  function starts 1 minute into the cycle, and 9 minutes into the 10-minute
-  cycle, the "Do" function treats any further scheduled operation messages as
-  expired.
+  function starts 1 minute into the cycle and, starting 9 minutes into the
+  10-minute cycle, the "Do" function treats any further scheduled operation
+  messages as expired.
 
 * A checksum for the AWS Lambda function source code bundle. (The bundle is
   checked in to this repository only to save people who are new to AWS Lambda
