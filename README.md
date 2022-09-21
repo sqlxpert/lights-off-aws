@@ -12,17 +12,16 @@ For people who forget to turn the lights off,
   expensive components on schedule.
 
 Jump to:
-[Installation](#quick-start) &bull;
+[Quick Install](#quick-start) &bull;
 [Tags](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security) &bull;
-[Multi-region/multi-account](#advanced-installation)
+[Multi-Region/Multi-Account](#advanced-installation)
 
 ## Unique Advantages
 
-This project, originally "TagSchedOps", started before AWS Backup, Data
-Lifecycle Manager, or Systems Manager existed. Lights Off still has
-advantages:
+This project, originally TagSchedOps, began before AWS Backup, Data
+Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 * Straightforward: Schedules and operations are directly visible in tags on
   the EC2 instance, EBS volume, RDS database, or CloudFormation stack. You
@@ -39,9 +38,7 @@ advantages:
 1. Copy this Git repository to your local computer. (The green Code button at
    the top right opens a pop-up menu that shows several ways.)
 
-2. Log in to the
-   [AWS Console](https://signin.aws.amazon.com/console)
-   as an administrator.
+2. Log in to the AWS Console as an administrator.
 
 3. Tag an
    [EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)
