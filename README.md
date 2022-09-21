@@ -217,27 +217,25 @@ encouraged to read the code yourself and to evaluate its security._
 ### Lights Off Security Goals
 
 * Distinct, least-privilege roles for the AWS Lambda function that finds
-  matching AWS resources and the function that performs scheduled operations.
-  The "Do" function is only authorized to perform a small set of operations,
-  and then only on a resource with a `sched-` tag key that names the specific
-  operation in question.
+  matching AWS resources and the function that performs scheduled operations
+  on them. The "Do" function is only authorized to perform a small set of
+  operations, and at that, only when a resource has a `sched-` tag key that
+  names the specific operation.
 
-* A least-privilege queue policy for the queue between the two functions. This
+* A least-privilege queue policy for the queue linking the two functions. This
   scheduled operation queue can only consume messages from the "Find" function
   and produce messages for the "Do" function (or for a dead-letter queue, in
   the case of failed operations). Encryption in transit is required.
 
-* Readable IAM policies, included in CloudFormation templates, formatted as
-  YAML rather than JSON, and broken down into discrete statements by resource,
-  by service, or by principal.
+* Readable IAM policies, formatted as CloudFormation YAML rather than as JSON,
+  and broken down into discrete statements by resource, by service, or by
+  principal.
 
-* Support for encryption at rest with custom AWS Key Management System (KMS)
+* Optional encryption at rest with custom AWS Key Management System (KMS)
   keys, for queue message bodies (which contain the identifiers and tags of
-  AWS resources) and for the entire contents of log messages. (This is
-  optional, and configuring it does require advanced knowledge, especially in
-  multi-region and multi-account deployments.)
+  AWS resources) and for log entries.
 
-* No data storage other than in queues and logs. The retention periods for
+* No data storage other than in queues and logs. Retention periods for
   the failed operation queue and the logs are configurable, and the fixed
   retention period for the operation queue is short.
 
@@ -247,20 +245,19 @@ encouraged to read the code yourself and to evaluate its security._
   messages as expired.
 
 * A checksum for the AWS Lambda function source code bundle. (The bundle is
-  checked in to this repository only to save people who are new to AWS Lambda
-  from having to generate a bundle themselves.)
+  included for the benefit of new AWS Lambda users.)
 
 * An optional, least-privilege CloudFormation service role for deployment.
 
 ### Security Steps You Can Take
 
-* Allow only a few trusted people (and carefully-configured automated
-  services) to tag AWS resources. You can restrict the right to add, change
-  and delete `sched-` tags by including the
+* Only allow trusted people and trusted services to tag AWS resources. You
+  can restrict the right to add, change and delete `sched-` tags by including
+  the
   [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
   in IAM policies and permission boundaries. (Sometimes, restrictive
-  policies have the effect of requiring users to change or delete only one tag
-  at a time.)
+  policies have the effect of requiring users to change or delete one tag at a
+  time.)
 
 * Never let a role that can create backups (or, in this case, set tags to
   prompt backup creation) delete backups as well.
@@ -268,27 +265,21 @@ encouraged to read the code yourself and to evaluate its security._
 * Prevent ordinary AWS users from modifying components of Lights Off, most of
   which are easily identified by `LightsOff` in ARNs and/or in the automatic
   `aws:cloudformation:stack-name` tag. Limiting most people's permissions so
-  that the `LightsOffPrereqs-DeploymentRole` (see
-  [Advanced Installation: Least-Privilege](#least-privilege))
-  is _needed_ when modifying Lighs Off is one idea. You could also copy the
-  role's in-line IAM policy, delete statements with `"Resource": "*"`, change
-  the `"Effect"` of the remaining, resource-specific statements to `"Deny"`,
-  and add the new policy to the roles that most people use on a day-to-day
-  basis. (Protecting resources from inadvertent or intentional modification is
-  a concern that applies to _any_ application in your AWS environment.)
+  that the deployment role is _necessary_ for modifying Lighs Off is one idea.
+  You could also copy the role's in-line IAM policy, delete the statements
+  with `"Resource": "*"`, change the `"Effect"` of the remaining,
+  resource-specific statements to `"Deny"`, and add the new policy to people's
+  day-to-day roles.
 
-* Apply a similar `"Deny"` policy to prevent ordinary AWS users from directly
-  invoking the Lights Off AWS Lambda functions.
+* Apply a similar `"Deny"` policy to prevent people from directly invoking the
+  Lights Off AWS Lambda functions.
 
-* Use AWS CloudTrail to log changes to your AWS infrastructure. You could
-  configure your log monitoring system to alert you when components of
-  Lights Off (identified as above) are modified.
+* Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
-* Separate production and non-production AWS workloads. You might choose not
-  to deploy Lights Off in AWS accounts used for production, or you might
-  customize the "Do" function's role in those accounts, so that the function
-  would not be authorized to perform potentially disruptive operations such as
-  stopping or rebooting EC2 instances and RDS databases.
+* Separate production and non-production workloads. You might decide not to
+  deploy Lights Off to AWS accounts used for production, or you might
+  customize the "Do" function's role so that the function would not be
+  authorized to reboot or stop production EC2 instances and RDS databases.
 
 * Note these AWS limitations:
 
@@ -296,14 +287,13 @@ encouraged to read the code yourself and to evaluate its security._
     instance. (Explicitly denying the reboot privilege does not help.) A
     harmless privilege is married with a potentially disruptive one.
 
-  * Permission to add a specific RDS tag includes permission to add _any other_
-    tags at the same time.
+  * Permission to add a specific RDS tag includes permission to add _any
+    other_ tags at the same time.
 
   * It's not possible to edit an AWS Lambda function's resource-based policy
-    directly, and CloudFormation can be used to add permissions to the policy,
-    not to add restrictions. This means, for example, that an AWS user
-    ordinarily authorized to invoke functions could tell the "Do" function to
-    perform an operation on an AWS resource.
+    directly, and CloudFormation can be used to add permissions but not to
+    add restrictions. An AWS user authorized to invoke functions could tell
+    the "Do" function to perform an operation on an AWS resource, for example.
 
 ## Advanced Installation
 
