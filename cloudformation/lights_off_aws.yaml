@@ -11,13 +11,13 @@ Parameters:
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket where AWS Lambda function source code is stored. For example,
-      if you set this parameter to "my-bucket" and are creating a stack in the
-      us-east-1 region, then "my-bucket-us-east-1" must exist and must contain
-      lights_off_aws.py.zip . Advanced: if you are creating a StackSet, then
-      "my-bucket-<region>" must exist in each target region and must contain
-      the same file, which must be readable by every target AWS account
-      (generally requires that each bucket have a bucket policy).
+      S3 bucket for AWS Lambda function source code. If you set this parameter
+      to "my-bucket", then a bucket named "my-bucket-us-east-1" must exist and
+      must contain lights_off_aws.py.zip before you create a Lights Off
+      CloudFormation stack in the US East (Northern Virginia) region, and so
+      on for EVERY target region. If you are creating a CloudFormation
+      StackSet, then the file must also be readable by every target AWS
+      account, which generally requires that each bucket have a bucket policy.
   LambdaFnFileName:
     Type: String
     Description: >-
@@ -36,13 +36,23 @@ Parameters:
       - INFO
       - DEBUG
       - NOTSET
+  CloudWatchLogsKmsKey:
+    Type: String
+    Description: >-
+      Encryption key for logs. If blank, logs will receive default non-KMS
+      CloudWatch Logs encryption. To use a KMS key, which must be a custom
+      key, specify an ARN with the key ID, not an alias. You MUST first give
+      CloudWatch Logs access to the key by editing the key's key policy. See
+      https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html#cmk-permissions
+    Default: ""
   SqsKmsKey:
     Type: String
     Description: >-
       Encryption key for queue messages. If blank, queue messages will not be
       encrypted. Specify "alias/aws/sqs" for the AWS-managed SQS service KMS
-      key, which allows for encryption but not for any key access restrictions.
-      To use a custom KMS key, specify an ARN with the key ID, not an alias.
+      key, which allows for encryption but not for any key access restrictions
+      or cross-account access. To use a custom KMS key, specify an ARN with
+      the key ID, not an alias.
     Default: ""
   QueueMessageBytesMax:
     Type: Number
@@ -74,8 +84,18 @@ Parameters:
     Type: Number
     Description: >-
       How many days to keep CloudWatch logs from the AWS Lambda functions. See
+      retentionInDays in
       http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
     Default: 7
+  OperationFailedQueueMessageRetentionPeriodSecs:
+    Type: Number
+    Description: >-
+      How many seconds to keep queue messages for scheduled operations that
+      failed. For consistency with the log retention period, and if CloudWatch
+      Logs and SQS allow, set this to LogsRetainDays * 86400 . See
+      MessageRetentionPeriod in
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
+    Default: 604800
   FindLambdaFnMemoryMB:
     Type: Number
     Description: >-
@@ -90,6 +110,13 @@ Parameters:
       is canceled. Increase only in case of time-out errors. See
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
+  DoLambdaFnReservedConcurrentExecutions:
+    Type: Number
+    Description: >-
+      How many scheduled operations can be done in parallel. See
+      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
+    MinValue: 0
+    Default: 5
   DoLambdaFnMemoryMB:
     Type: Number
     Description: >-
@@ -100,16 +127,16 @@ Parameters:
     Type: Number
     Description: >-
       How many seconds before execution of the "Do" AWS Lambda function is
-      canceled. Increase only in case of time-out errors. Also determines
-      visibility timeout for operation queue messages.
-    Default: 60
-  DoLambdaFnReservedConcurrentExecutions:
+      canceled. Increase only in case of time-out errors.
+    Default: 30
+  OperationQueueVisibilityTimeoutSecs:
     Type: Number
     Description: >-
-      How many scheduled operations can be done in parallel. See
-      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
-    MinValue: 0
-    Default: 5
+      How many seconds SQS waits for the "Do" AWS Lambda function to accept
+      and process a message representing one scheduled operation. Must be at
+      least as large as DoLambdaFnTimeoutSecs . In case of problems, see
+      https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
+    Default: 90
 
 Metadata:
 
@@ -120,6 +147,7 @@ Metadata:
         Parameters:
           - LambdaSourceS3BucketNamePrefix
           - Enable
+          - CopyTags
       - Label:
           default: >-
             AWS Lambda function to find resources with scheduled operations
@@ -129,17 +157,25 @@ Metadata:
       - Label:
           default: AWS Lambda function to do scheduled operations
         Parameters:
+          - DoLambdaFnReservedConcurrentExecutions
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
-          - DoLambdaFnReservedConcurrentExecutions
+      - Label:
+          default: SQS queues for scheduled operations
+        Parameters:
+          - OperationQueueVisibilityTimeoutSecs
+          - SqsKmsKey
+          - QueueMessageBytesMax
+          - OperationFailedQueueMessageRetentionPeriodSecs
+      - Label:
+          default: Logs
+        Parameters:
+          - LogsRetainDays
+          - LogLevel
+          - CloudWatchLogsKmsKey
       - Label:
           default: Miscellaneous
         Parameters:
-          - CopyTags
-          - LogLevel
-          - LogsRetainDays
-          - SqsKmsKey
-          - QueueMessageBytesMax
           - LambdaFnFileName
     ParameterLabels:
       LambdaSourceS3BucketNamePrefix:
@@ -149,22 +185,28 @@ Metadata:
         default: Enabled?
       CopyTags:
         default: Copy tags to backups?
-      SqsKmsKey:
-        default: Queue encryption key
       FindLambdaFnMemoryMB:
-        default: Memory (MB)
+        default: Memory
       FindLambdaFnTimeoutSecs:
-        default: Timeout (seconds)
-      DoLambdaFnMemoryMB:
-        default: Memory (MB)
-      DoLambdaFnTimeoutSecs:
-        default: Timeout (seconds)
+        default: Timeout
       DoLambdaFnReservedConcurrentExecutions:
         default: Parallel operations
+      DoLambdaFnMemoryMB:
+        default: Memory
+      DoLambdaFnTimeoutSecs:
+        default: Timeout
+      OperationQueueVisibilityTimeoutSecs:
+        default: Operation queue message visibility timeout
+      SqsKmsKey:
+        default: Queue encryption key
+      OperationFailedQueueMessageRetentionPeriodSecs:
+        default: Failed operation queue message retention period
       LogsRetainDays:
         default: Log retention period
       LogLevel:
         default: Log level
+      CloudWatchLogsKmsKey:
+        default: Log encryption key
       QueueMessageBytesMax:
         default: Operation queue message size limit
       LambdaFnFileName:
@@ -173,6 +215,8 @@ Metadata:
 Conditions:
 
   EnableTrue: !Equals [ !Ref Enable, "true" ]
+
+  CloudWatchLogsKmsKeyBlank: !Equals [ !Ref CloudWatchLogsKmsKey, "" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
@@ -198,7 +242,7 @@ Resources:
           - !Ref AWS::NoValue
           - 86400  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: 604800  # seconds (7 days)
+      MessageRetentionPeriod: !Ref OperationFailedQueueMessageRetentionPeriodSecs
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: 0  # seconds; dead message retries don't make sense
 
@@ -218,7 +262,7 @@ Resources:
       MaximumMessageSize: !Ref QueueMessageBytesMax
       MessageRetentionPeriod: 1200  # seconds (20 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
-      VisibilityTimeout: !Ref DoLambdaFnTimeoutSecs
+      VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
         maxReceiveCount: 1
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
@@ -523,6 +567,13 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
+          - Sid: RequireSsl
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:*
+            Resource: "*"
+            Condition:
+              Bool: { aws:SecureTransport: "false" }
           - Effect: Allow
             Principal: "*"
             Action: sqs:GetQueueAttributes
@@ -549,6 +600,13 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
+          - Sid: RequireSsl
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:*
+            Resource: "*"
+            Condition:
+              Bool: { aws:SecureTransport: "false" }
           - Effect: Allow
             Principal: "*"
             Action: sqs:GetQueueAttributes
@@ -630,6 +688,11 @@ Resources:
       # name won't work. A custom name will, however, interfere with changes.
       LogGroupName: !Sub "/aws/lambda/${FindLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
+      KmsKeyId:
+        Fn::If:
+          - CloudWatchLogsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Ref CloudWatchLogsKmsKey
 
   FindLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
@@ -697,6 +760,11 @@ Resources:
       # name won't work. A custom name will, however, interfere with changes.
       LogGroupName: !Sub "/aws/lambda/${DoLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
+      KmsKeyId:
+        Fn::If:
+          - CloudWatchLogsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Ref CloudWatchLogsKmsKey
 
   DoLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
