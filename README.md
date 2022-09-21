@@ -203,7 +203,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 * Check the
   [`LightsOff` CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252FLightsOff-).
 * Log messages from Lights Off (except for uncaught exceptions) are JSON
-  objects, with a `Type` key to classify the message.
+  objects, with a `"type"` key to classify the message.
 * You can change the `LogLevel` parameter of your Lights Off CloudFormation
   stack to see more messages.
 

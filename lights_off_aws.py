@@ -26,13 +26,13 @@ SCHED_TERMS = (
   rf"([^{SCHED_DELIM_CHAR}]+=[^{SCHED_DELIM_CHAR}]+{SCHED_DELIMS})*"
 )
 SCHED_REGEXP_STRFTIME_FMT = (
-  rf"(^|{SCHED_DELIMS})"
-  rf"((dTH:M=%d|uTH:M=%u)T%H:%M"
+  rf"(^|{SCHED_DELIMS})("
+  rf"(dTH:M=%d|uTH:M=%u)T%H:%M"
   rf"|"
   rf"(d=(_|%d)|u=%u){SCHED_DELIMS}"
   rf"{SCHED_TERMS}"
-  rf"((H:M=%H:%M)|(H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M)))"
-  rf"({SCHED_DELIMS}|$)"
+  rf"((H:M=%H:%M)|(H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M))"
+  rf")({SCHED_DELIMS}|$)"
 )
 
 QUEUE_URL = os.environ.get("QUEUE_URL", "")
@@ -67,7 +67,7 @@ class SQSMessageTooLong(ValueError):
 # pylint: disable=too-few-public-methods
 
 class AWSRsrcType():
-  """AWS resource type, with essential properties
+  """Basic AWS resource type, with identification properties
   """
 
   def __init__(self, svc, rsrc_type_words, rsrc_id_key_suffix):
@@ -84,7 +84,7 @@ class AWSRsrcType():
 
 
 class AWSChildRsrcType(AWSRsrcType):
-  """AWS child resource type, with properties for resource creation
+  """AWS child resource type, supporting creation operation
   """
   members = collections.defaultdict(dict)
 
@@ -97,7 +97,7 @@ class AWSChildRsrcType(AWSRsrcType):
 
 
 class AWSParentRsrcType(AWSRsrcType):
-  """AWS resource type, with functions to synthesize method names and keys
+  """AWS parent resource type, supporting various operations
   """
   members = collections.defaultdict(dict)
 
@@ -109,7 +109,7 @@ class AWSParentRsrcType(AWSRsrcType):
     for (op_tag_key_words, op_properties) in kwargs["ops"].items():
       op_tag_key = tag_key_join(op_tag_key_words)
       op_properties_add = {"op_tag_key": op_tag_key}
-      # Default verbs (specification shorthand):
+      # Default verbs (specification shorthands):
       if "verb" not in op_properties:
         op_properties_add["verb"] = (
           "create"
@@ -179,9 +179,9 @@ class AWSOp():
 
 
 def tag_key_join(tag_key_words):
-  """Take any number of strings, add a prefix, join, and return a tag key
+  """Take a tuple of strings, add a prefix, join, and return a tag key
   """
-  return TAG_KEY_DELIM.join([TAG_KEY_PREFIX] + list(tag_key_words))
+  return TAG_KEY_DELIM.join((TAG_KEY_PREFIX, ) + tag_key_words)
 
 
 def update_stack_kwargs(stack_rsrc, update_stack_op):
@@ -232,7 +232,7 @@ def rsrc_types_init():
         # Set Name and Description, because some Console pages show only one!
         "TagSpecifications": [
           {"Tags": child_tags_list, "ResourceType": "image"},
-          {"Tags": child_tags_list, "ResourceType": "snapshot", },
+          {"Tags": child_tags_list, "ResourceType": "snapshot"},
         ],
       },
     )
@@ -315,7 +315,6 @@ def rsrc_types_init():
       status_filter_pair=("status", ("available", "in-use")),
       ops={
         ("backup", ): {
-          "op_method_name": "create_snapshot",
           "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Snapshot"],
         },
       },
@@ -345,10 +344,8 @@ def rsrc_types_init():
         ("stop", ): {},
         ("reboot", ): {},
         ("backup", ): {
-          "verb": "create",
-          "child_rsrc_type": AWSChildRsrcType.members["rds"][
-            "DBClusterSnapshot"
-          ],
+          "child_rsrc_type":
+            AWSChildRsrcType.members["rds"]["DBClusterSnapshot"],  # noqa
         },
       },
     )
@@ -395,8 +392,8 @@ def boto3_success(resp):
   """
   return all([
     isinstance(resp, dict),
-    isinstance(resp.get("ResponseMetadata"), dict),
-    resp.get("ResponseMetadata", {}).get("HTTPStatusCode", 0) == 200
+    isinstance(resp.get("ResponseMetadata", None), dict),
+    resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
   ])
 
 # 6. Find Resources Lambda Function Handler Code #############################
@@ -415,11 +412,11 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   return (cycle_start, cycle_cutoff)
 
 
-def op_tags_match(ops_tag_keys, sched_regexp, tags_list):
-  """Scan tags to determine which operations are scheduled for current cycle
+def op_tags_match(ops_tag_keys, sched_regexp, rsrc_tags_list):
+  """Scan a resource's tags to find operations scheduled for current cycle
   """
   op_tags_matched = []
-  for tag_dict in tags_list:
+  for tag_dict in rsrc_tags_list:
     tag_key = tag_dict["Key"]
     if tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
       op_tags_matched.append(tag_key)
@@ -496,7 +493,7 @@ def op_queue(svc, op_method_name, op_kwargs, cycle_cutoff_epoch_str):
     SQSMessageTooLong,
   ) as sqs_exception:
     sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
-    # Recoverable, try to queue next operation
+    # Usually recoverable, try to queue next operation
   except Exception:
     sqs_send_log(op_msg_attrs, op_kwargs)
     raise  # Unrecoverable, stop queueing operations
@@ -592,10 +589,10 @@ def rsrcs_find(
     for rsrc in rsrcs:
 
       rsrc_id = rsrc[rsrc_type.rsrc_id_key]
-      tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
+      rsrc_tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
       op_tags_matched = op_tags_match(
-        rsrc_type.ops_tag_keys, sched_regexp, tags_list
+        rsrc_type.ops_tag_keys, sched_regexp, rsrc_tags_list
       )
       op_tags_matched_count = len(op_tags_matched)
 
@@ -611,7 +608,7 @@ def rsrcs_find(
           op_kwargs.update(op.op_kwargs_update_fn(rsrc, op))
         if op.child_rsrc_type:
           op_kwargs.update(op_kwargs_child(
-            rsrc_id, tags_list, op, cycle_start_str
+            rsrc_id, rsrc_tags_list, op, cycle_start_str
           ))
         op_queue(
           rsrc_type.svc, op.op_method_name, op_kwargs, cycle_cutoff_epoch_str
@@ -682,8 +679,8 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       op_log(event)
       raise RuntimeError("Unrecognized queue message format")
     if (
-      int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-      > int(msg_attr_str_decode(msg, "expires"))
+      int(msg_attr_str_decode(msg, "expires"))
+      < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
     ):
       op_log(event)
       raise RuntimeError(
@@ -691,10 +688,11 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
         "DoLambdaFnReservedConcurrentExecutions CloudFormation parameter"
       )
 
-    svc_client = svc_client_get(msg_attr_str_decode(msg, "svc"))
-    op_method = getattr(svc_client, msg_attr_str_decode(msg, "op_method_name"))
+    svc = msg_attr_str_decode(msg, "svc")
+    op_method_name = msg_attr_str_decode(msg, "op_method_name")
     op_kwargs = json.loads(msg["body"])
     try:
+      op_method = getattr(svc_client_get(svc), op_method_name)
       resp = op_method(**op_kwargs)
     except Exception:
       op_log(event)
