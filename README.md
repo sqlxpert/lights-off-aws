@@ -254,8 +254,8 @@ encouraged to read the code yourself and to evaluate its security._
   that the deployment role is _necessary_ for modifying Lighs Off is one way.
   You could also copy the role's in-line IAM policy, delete the statements
   with `"Resource": "*"`, change the `"Effect"` of the remaining,
-  resource-specific statements to `"Deny"`, and add the new policy to people's
-  day-to-day roles.
+  resource-specific statements to `"Deny"`, and add the new, inverted policy
+  to people's day-to-day roles.
 
 * Apply a similar `"Deny"` policy to prevent people from directly invoking the
   Lights Off AWS Lambda functions.
