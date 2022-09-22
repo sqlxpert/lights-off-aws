@@ -16,7 +16,8 @@ Jump to:
 [Tags](#tag-keys-operations) &bull;
 [Schedules](#tag-values-schedules) &bull;
 [Security](#security) &bull;
-[Multi-Region/Multi-Account](#advanced-installation)
+[Multi-Region/Multi-Account](#advanced-installation) &bull;
+[Advice](#parting-advice)
 
 ## Unique Advantages
 
@@ -298,7 +299,8 @@ deployment method,
 
 ### Multi-Account (CloudFormation StackSets)
 
-To centrally deploy Lights Off to multiple accounts (and multiple regions),
+To centrally deploy Lights Off to multiple AWS accounts (and multiple
+regions),
 
 1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
    accounts and regions.
@@ -396,7 +398,7 @@ accounts if you want to deploy a CloudFormation StackSet with
   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
   AWS Lambda function source code file to S3.
 
-## Lights Off CloudFormation Operations
+## CloudFormation Operations
 
 Using tags on your own CloudFormation stack to change a stack parameter on
 schedule is an advanced Lights Off feature.
@@ -417,6 +419,80 @@ in your own stack's `sched-set-Enable-true` and `sched-set-Enable-false` tags,
 preserving the template and the parameter values but changing the value of
 your own stack's `Enable` parameter to `true` or `false` each time. **E**nable
 must be capitalized in the tag keys, just as it is in the parameter name.
+
+## Extensibility
+
+At its core, Lights Off takes advantage of patterns in boto3, the AWS software
+development kit (SDK) for Python, and in the underlying AWS API. Adding
+support for more AWS services, AWS resource types, and operations is
+remarkably easy. For example, adding support for RDS _database clusters_
+(individual RDS _database instances_ were already supported) required the
+following additions:
+
+```python
+    AWSChildRsrcType(
+      "rds",
+      ("DB", "Cluster", "Snapshot"),
+      "Identifier",
+      name_chars_max=63,
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      create_kwargs=lambda child_name, child_tags_list: {
+        "DBClusterSnapshotIdentifier": child_name,
+        "Tags": child_tags_list,
+      },
+    )
+
+    AWSParentRsrcType(
+      "rds",
+      ("DB", "Cluster"),
+      "Identifier",
+      ops={
+        ("start", ): {},
+        ("stop", ): {},
+        ("reboot", ): {},
+        ("backup", ): {
+          "child_rsrc_type":
+            AWSChildRsrcType.members["rds"]["DBClusterSnapshot"],  # noqa
+        },
+      },
+    )
+```
+
+Most method names can be determined automatically, if you adopt the verb in
+in method name as the verb in the tag key and break the resource type name
+into words. For example, `start_db_instances` as a method name follows from
+`start` as the verb in the tag key (`sched-start`) and `DB` and `Cluster` as
+the words in the resource type name.
+
+When you include a "child" resource type in an operation definition, the verb
+in the method name defaults to `create`, regardless of the verb that you
+choose for the tag key, and the noun in the method name is synthesized from
+the words in the _child_ resource type. For example, a `sched-backup` tag on
+an RDS database cluster yields the method name `create_db_cluster_snapshot` .
+
+A Python dictionary for static parameters, and a Python lambda function (an
+anonymous function in the computer science sense, not to be confused with an
+AWS Lambda function) for dynamic parameters, are optional elements. These were
+not needed in the simple operation definitions shown above.
+
+```yaml
+          - Effect: Allow
+            Action: rds:CreateDBClusterSnapshot
+            Resource:
+              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-backup": "*" }
+```
+
+Adding this statement to the IAM policy for the role used by the "Do" AWS
+Lambda function authorized creation of RDS database cluster snapshots, but
+only from clusters tagged with `sched-backup` . Several other statements, not
+shown, were needed to authorize creation of the individual RDS database
+instance snapshots that comprise the cluster snapshot, and to permit tagging.
+The role for the "Find" function also had to be updated, to authorize that
+function to describe (list) RDS database clusters.
+
+What capabilities would _you_ like to add to Lights Off?
 
 ## Parting Advice
 
