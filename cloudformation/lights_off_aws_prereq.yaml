@@ -11,13 +11,13 @@ Parameters:
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket where AWS Lambda function source code is stored. For example,
-      if you set this parameter to "my-bucket" and are creating a stack in the
-      us-east-1 region, then "my-bucket-us-east-1" must exist and must contain
-      lights_off_aws.py.zip . Advanced: if you are creating a StackSet, then
-      "my-bucket-<region>" must exist in each target region and must contain
-      the same file, which must be readable by every target AWS account
-      (generally requires that each bucket have a bucket policy).
+      S3 bucket for AWS Lambda function source code. If you set this parameter
+      to "my-bucket", then a bucket named "my-bucket-us-east-1" must exist and
+      must contain lights_off_aws.py.zip before you create a Lights Off
+      CloudFormation stack in the US East (Northern Virginia) region, and so
+      on for EVERY target region. If you are creating a CloudFormation
+      StackSet, then the file must also be readable by every target AWS
+      account, which generally requires that each bucket have a bucket policy.
 
   StackNameBase:
     Type: String
@@ -28,7 +28,7 @@ Parameters:
       this string, and for security, no other stack or StackSet's name should
       include it. When you create your Lights Off stack or StackSet, you may
       add prefixes and suffixes. For example, if you set this to "LightsOff",
-      you can alternate between a "LightsOffA" stack and a "LightsOffB" stack
+      you can alternate between a "LightsOff1" stack and a "LightsOff2" stack
       to handle updates, or create a "TestLightsOff" stack marked for testing.
     Default: "LightsOff"
 
@@ -216,3 +216,19 @@ Resources:
                   - kms:ListAliases
                   - kms:DescribeKey
                 Resource: "*"
+
+  SampleDeploymentRolePassRolePol:
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: Delete
+    Properties:
+      Description:
+        Fn::Sub: >-
+          ${DeploymentRole}: pass to CloudFormation. Demonstrates a privilege
+          that non-adminstrators need before they can create a Lights Off
+          CloudFormation stack using the deployment role.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "iam:PassRole"
+            Resource: !GetAtt DeploymentRole.Arn

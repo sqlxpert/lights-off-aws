@@ -70,8 +70,8 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 6. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Click Choose File, immediately below Upload a template to Amazon S3, and
-   navigate to your local copy of
+   Select Upload a template file, then click Choose file and navigate to
+   your local copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
    . On the next page, set:
 
@@ -367,16 +367,19 @@ You can specify a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
-`LightsOffPrereqs` , from
-[lights_off_aws_prereqs.yaml](/cloudformation/lights_off_aws_prereqs.yaml)
+`LightsOffPrereq` , from
+[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml)
 . Later, when you create a stack named `LightsOff` from
 [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml) ,
 scroll up to the Permissions section and set IAM role -
-optional to `LightsOffPrereqs-DeploymentRole` .
+optional to `LightsOffPrereq-DeploymentRole` . If your privileges are
+limited, you might need explicit permission to pass the deployment role to
+CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
+policy for an example of the necessary statement.
 
-This role covers a single AWS account, but you can copy its in-line IAM policy
-to the `AWSCloudFormationStackSetExecutionRole` in multiple target accounts if
-you want to deploy a CloudFormation StackSet with
+The deployment role covers a single AWS account, but you can copy its in-line
+IAM policy to the `AWSCloudFormationStackSetExecutionRole` in multiple target
+accounts if you want to deploy a CloudFormation StackSet with
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html).
 
 ## Software Updates

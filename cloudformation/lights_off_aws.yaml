@@ -786,6 +786,7 @@ Resources:
 
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
+    DependsOn: OperationQueuePol
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref DoLambdaFn
