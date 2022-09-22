@@ -409,6 +409,38 @@ class AWSOp():
 
     return self.child_rsrc_type.create_kwargs(child_name, child_tags_list)
 
+  def update_stack_kwargs(self, stack_rsrc):
+    """Take a describe_stack item and an operation, return update_stack kwargs
+
+    Preserves previous parameter values except for designated parameter(s):
+                           Param  New
+                           Key    Value
+    op_tag_key   sched-set-Enable-true
+    op_tag_key   sched-set-Enable-false
+    .split("-")            [-2]   [-1]
+    """
+    op_tag_key_words = self.op_tag_key.split(TAG_KEY_DELIM)
+    changing_parameter_key = op_tag_key_words[-2]
+    changing_parameter_new_value = op_tag_key_words[-1]
+    stack_parameters_out = [{
+      "ParameterKey": changing_parameter_key,
+      "ParameterValue": changing_parameter_new_value,
+    }]
+    for stack_parameter_in in stack_rsrc.get("Parameters", []):
+      if stack_parameter_in["ParameterKey"] != changing_parameter_key:
+        stack_parameters_out.append({
+          "ParameterKey": stack_parameter_in["ParameterKey"],
+          "UsePreviousValue": True,
+        })
+    update_stack_kwargs_out = {
+      "UsePreviousTemplate": True,
+      "Parameters": stack_parameters_out,
+    }
+    stack_capabilities_in = stack_rsrc.get("Capabilities", [])
+    if stack_capabilities_in:
+      update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
+    return update_stack_kwargs_out
+
   def op_kwargs(self, rsrc, cycle_start_str):
     """Copy a describe_ item's ID, then add static, dynamic, and child kwargs
     """
@@ -457,39 +489,6 @@ class AWSOp():
     return (
       f"AWSOp {self.op_tag_key} {self.rsrc_type.svc}.{self.op_method_name}"
     )
-
-
-def update_stack_kwargs(update_stack_op, stack_rsrc):
-  """Take a describe_stack item and an operation, return update_stack kwargs
-
-  Preserves previous parameter values except for designated parameter(s):
-                         Param  New
-                         Key    Value
-  op_tag_key   sched-set-Enable-true
-  op_tag_key   sched-set-Enable-false
-  .split("-")            [-2]   [-1]
-  """
-  op_tag_key_words = update_stack_op.op_tag_key.split(TAG_KEY_DELIM)
-  changing_parameter_key = op_tag_key_words[-2]
-  changing_parameter_new_value = op_tag_key_words[-1]
-  stack_parameters_out = [{
-    "ParameterKey": changing_parameter_key,
-    "ParameterValue": changing_parameter_new_value,
-  }]
-  for stack_parameter_in in stack_rsrc.get("Parameters", []):
-    if stack_parameter_in["ParameterKey"] != changing_parameter_key:
-      stack_parameters_out.append({
-        "ParameterKey": stack_parameter_in["ParameterKey"],
-        "UsePreviousValue": True,
-      })
-  update_stack_kwargs_out = {
-    "UsePreviousTemplate": True,
-    "Parameters": stack_parameters_out,
-  }
-  stack_capabilities_in = stack_rsrc.get("Capabilities", [])
-  if stack_capabilities_in:
-    update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
-  return update_stack_kwargs_out
 
 
 # 4. Data-Driven Specifications ##############################################
@@ -636,11 +635,11 @@ def rsrc_types_init():
       ops={
         ("set", "Enable", "true"): {
           "verb": "update",
-          "op_kwargs_update": update_stack_kwargs,
+          "op_kwargs_update": AWSOp.update_stack_kwargs,
         },
         ("set", "Enable", "false"): {
           "verb": "update",
-          "op_kwargs_update": update_stack_kwargs,
+          "op_kwargs_update": AWSOp.update_stack_kwargs,
         },
       },
     )
