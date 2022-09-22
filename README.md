@@ -1,8 +1,8 @@
 # Lights Off!
 
-For people who forget to turn the lights off,
+For people who forget to turn the lights off:
 
-* **Cut AWS costs up to ⅔** by tagging EC2 instances and RDS databases with
+* **Cut AWS costs up to 66%** by tagging EC2 instances and RDS databases with
   cron-style stop/start schedules &mdash; perfect for development and test
   systems that sit idle overnight and on weekends.
 

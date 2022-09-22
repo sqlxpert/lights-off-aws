@@ -154,6 +154,11 @@ class AWSParentRsrcType(AWSRsrcType):
       ]
     return describe_kwargs_out
 
+  def rsrc_id(self, rsrc):
+    """Return a resource's ID, using the key for the resource type
+    """
+    return rsrc[self.rsrc_id_key]
+
 
 class AWSOp():
   """
@@ -176,6 +181,21 @@ class AWSOp():
     self.op_kwargs_static = kwargs.get("op_kwargs_static", {})
     self.op_kwargs_update_fn = kwargs.get("op_kwargs_update_fn", None)
 
+  def op_kwargs(self, rsrc):
+    """Copy a describe_ item's ID, then add static and dynamic kwargs
+    """
+    rsrc_id = self.rsrc_type.rsrc_id(rsrc)
+    op_kwargs_out = (
+      # One at a time, for uniformity and to eliminate partial completion risk
+      {self.rsrc_type.rsrc_ids_key: [rsrc_id]}
+      if self.multiple_rsrcs else
+      {self.rsrc_type.rsrc_id_key: rsrc_id}
+    )
+    op_kwargs_out.update(self.op_kwargs_static)
+    if self.op_kwargs_update_fn:
+      op_kwargs_out.update(self.op_kwargs_update_fn(self, rsrc))
+    return op_kwargs_out
+
   def __str__(self):
     return (
       f"AWSOp {self.op_tag_key} {self.rsrc_type.svc}.{self.op_method_name}"
@@ -190,34 +210,37 @@ def tag_key_join(tag_key_words):
   return TAG_KEY_DELIM.join((TAG_KEY_PREFIX, ) + tag_key_words)
 
 
-def update_stack_kwargs(stack_rsrc, update_stack_op):
+def update_stack_kwargs(update_stack_op, stack_rsrc):
   """Take a describe_stack item and an operation, return update_stack kwargs
 
   Preserves previous parameter values except for designated parameter(s):
-            Param  value
-  .split()  [-2]   [-1]
-  sched-set-Enable-true
-  sched-set-Enable-false
+                         Param  New
+                         Key    Value
+  op_tag_key   sched-set-Enable-true
+  op_tag_key   sched-set-Enable-false
+  .split("-")            [-2]   [-1]
   """
-  change_parameter_key = update_stack_op.op_tag_key.split(TAG_KEY_DELIM)[-2]
-  stack_params_out = [{
-    "ParameterKey": change_parameter_key,
-    "ParameterValue": update_stack_op.op_tag_key.split(TAG_KEY_DELIM)[-1],
+  op_tag_key_words = update_stack_op.op_tag_key.split(TAG_KEY_DELIM)
+  changing_parameter_key = op_tag_key_words[-2]
+  changing_parameter_new_value = op_tag_key_words[-1]
+  stack_parameters_out = [{
+    "ParameterKey": changing_parameter_key,
+    "ParameterValue": changing_parameter_new_value,
   }]
-  for stack_param_in in stack_rsrc.get("Parameters", []):
-    if stack_param_in["ParameterKey"] != change_parameter_key:
-      stack_params_out.append({
-        "ParameterKey": stack_param_in["ParameterKey"],
+  for stack_parameter_in in stack_rsrc.get("Parameters", []):
+    if stack_parameter_in["ParameterKey"] != changing_parameter_key:
+      stack_parameters_out.append({
+        "ParameterKey": stack_parameter_in["ParameterKey"],
         "UsePreviousValue": True,
       })
-  kwargs_out = {
+  update_stack_kwargs_out = {
     "UsePreviousTemplate": True,
-    "Parameters": stack_params_out,
+    "Parameters": stack_parameters_out,
   }
-  stack_capabilities_in = stack_rsrc.get("Capabilities", "")
+  stack_capabilities_in = stack_rsrc.get("Capabilities", [])
   if stack_capabilities_in:
-    kwargs_out["Capabilities"] = stack_capabilities_in
-  return kwargs_out
+    update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
+  return update_stack_kwargs_out
 
 # 4. Data-Driven Specifications ##############################################
 
@@ -594,7 +617,7 @@ def rsrcs_find(
       rsrcs = resp[rsrc_type.rsrcs_key]
     for rsrc in rsrcs:
 
-      rsrc_id = rsrc[rsrc_type.rsrc_id_key]
+      rsrc_id = rsrc_type.rsrc_id(rsrc)
       rsrc_tags_list = rsrc.get("Tags", rsrc.get("TagList", []))
       # EC2, CloudFormation: "Tags"; RDS: "TagList"; key omitted if no tags!
       op_tags_matched = op_tags_match(
@@ -604,14 +627,7 @@ def rsrcs_find(
 
       if op_tags_matched_count == 1:
         op = rsrc_type.ops[op_tags_matched[0]]
-        if op.multiple_rsrcs:
-          # One resource at a time, to avoid partial completion risk
-          op_kwargs = {rsrc_type.rsrc_ids_key: [rsrc_id]}
-        else:
-          op_kwargs = {rsrc_type.rsrc_id_key: rsrc_id}
-        op_kwargs.update(op.op_kwargs_static)
-        if op.op_kwargs_update_fn:
-          op_kwargs.update(op.op_kwargs_update_fn(rsrc, op))
+        op_kwargs = op.op_kwargs(rsrc)
         if op.child_rsrc_type:
           op_kwargs.update(op_kwargs_child(
             rsrc_id, rsrc_tags_list, op, cycle_start_str
