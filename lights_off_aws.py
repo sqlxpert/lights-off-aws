@@ -62,6 +62,19 @@ class SQSMessageTooLong(ValueError):
 # 2. Helpers #################################################################
 
 
+def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
+  """Take a datetime, return 10-minute floor and ceiling less 1 minute
+  """
+  cycle_minutes_int = int(cycle_minutes)
+  cycle_start = datetime_in.replace(
+    minute=(datetime_in.minute // cycle_minutes_int) * cycle_minutes_int,
+    second=0,
+    microsecond=0,
+  )
+  cycle_cutoff = cycle_start + datetime.timedelta(minutes=cutoff_minutes)
+  return (cycle_start, cycle_cutoff)
+
+
 def tag_key_join(tag_key_words):
   """Take a tuple of strings, add a prefix, join, and return a tag key
   """
@@ -301,7 +314,6 @@ class AWSParentRsrcType(AWSRsrcType):
   def rsrcs_find(self, sched_regexp, cycle_start_str, cycle_cutoff_epoch_str):
     """Find parent resources to operate on, and send details to queue
     """
-
     paginator = svc_client_get(self.svc).get_paginator(
       self.describe_method_name
     )
@@ -645,20 +657,7 @@ def rsrc_types_init():
     )
 
 
-# 5. Find Resources Lambda Function Handler Code #############################
-
-
-def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
-  """Take a datetime, return 10-minute floor and ceiling less 1 minute
-  """
-  cycle_minutes_int = int(cycle_minutes)
-  cycle_start = datetime_in.replace(
-    minute=(datetime_in.minute // cycle_minutes_int) * cycle_minutes_int,
-    second=0,
-    microsecond=0,
-  )
-  cycle_cutoff = cycle_start + datetime.timedelta(minutes=cutoff_minutes)
-  return (cycle_start, cycle_cutoff)
+# 5. Find Resources Lambda Function Handler ##################################
 
 
 def lambda_handler_find(event, context):  # pylint: disable=unused-argument
@@ -686,7 +685,7 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
         sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
       )
 
-# 6. "Do" Operations Lambda Function Handler Code ############################
+# 6. "Do" Operations Lambda Function Handler #################################
 
 
 def lambda_handler_do(event, context):  # pylint: disable=unused-argument
