@@ -4,7 +4,7 @@ For people who forget to turn the lights off:
 
 * **Cut AWS costs up to 66%** by tagging EC2 instances and RDS databases with
   cron-style stop/start schedules &mdash; perfect for development and test
-  systems that sit idle overnight and on weekends.
+  systems that sit idle overnight.
 
 * Tag EC2 instances, EBS volumes, and RDS databases to schedule backups.
 
@@ -89,7 +89,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 ## Tag Keys (Operations)
 
-||`sched‑start` `sched‑stop`|`sched‑hibernate`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑true` `sched‑set‑Enable‑false`|
+||`sched‑stop` `sched‑start`|`sched‑hibernate` `sched‑start`|`sched‑backup`|`sched‑reboot‑backup`|`sched‑reboot`|`sched‑reboot‑failover`|`sched‑set‑Enable‑false` `sched‑set‑Enable‑true`|
 |--|--|--|--|--|--|--|--|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||snapshot|||||
@@ -293,7 +293,7 @@ deployment method,
    and `my-bucket-us-west-2` in US West (Oregon).
 
 2. Upload
-   [lights_off_aws_perform.py.zip](/lights_off_aws_perform.py.zip)
+   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
    to each bucket. AWS Lambda requires a copy in every region.
 
 ### Multi-Account (CloudFormation StackSets)
@@ -388,11 +388,13 @@ accounts if you want to deploy a CloudFormation StackSet with
   CloudFormation template changes.
 
 * Create a new Lights Off CloudFormation stack or StackSet when the AWS Lambda
-  source code changes. Name it `LightsOff2` (for example), and set its `Enable`
-  parameter to `false` at first. After you've deleted the original `LightsOff`
-  stack or StackSet, update the new one, setting `Enable` to `true`. This
-  approach avoids any problem getting CloudFormation to recognize updated
-  AWS Lambda function source code in S3.
+  function source code changes. Name it `LightsOff2` (for example), and set
+  its `Enable` parameter to `false` at first. After you've deleted the
+  original `LightsOff` stack or StackSet, update the new one, setting `Enable`
+  to `true`. This simple blue/green deployment approach avoids the problem of
+  getting CloudFormation to recognize that you have uploaded a new
+  [lights_off_aws.py.zip](/lights_off_aws.py.zip)
+  AWS Lambda function source code file to S3.
 
 ## Lights Off CloudFormation Operations
 
