@@ -425,7 +425,7 @@ must be capitalized in the tag keys, just as it is in the parameter name.
 At its core, Lights Off takes advantage of patterns in boto3, the AWS software
 development kit (SDK) for Python, and in the underlying AWS API. Adding more
 AWS services, resource types, and operations is remarkably easy. For example,
-adding RDS _database clusters_ (individual RDS _database instances_ were
+supporting RDS _database clusters_ (individual RDS _database instances_ were
 already supported) required the following additions:
 
 ```python
