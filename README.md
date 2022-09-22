@@ -451,7 +451,7 @@ already supported) required the following additions:
         ("reboot", ): {},
         ("backup", ): {
           "child_rsrc_type":
-            AWSChildRsrcType.members["rds"]["DBClusterSnapshot"],  # noqa
+            AWSChildRsrcType.members["rds"]["DBClusterSnapshot"],
         },
       },
     )
