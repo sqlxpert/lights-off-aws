@@ -423,11 +423,10 @@ must be capitalized in the tag keys, just as it is in the parameter name.
 ## Extensibility
 
 At its core, Lights Off takes advantage of patterns in boto3, the AWS software
-development kit (SDK) for Python, and in the underlying AWS API. Adding
-support for more AWS services, AWS resource types, and operations is
-remarkably easy. For example, adding support for RDS _database clusters_
-(individual RDS _database instances_ were already supported) required the
-following additions:
+development kit (SDK) for Python, and in the underlying AWS API. Adding more
+AWS services, resource types, and operations is remarkably easy. For example,
+adding RDS _database clusters_ (individual RDS _database instances_ were
+already supported) required the following additions:
 
 ```python
     AWSChildRsrcType(
@@ -459,21 +458,21 @@ following additions:
 ```
 
 Most method names can be determined automatically, if you adopt the verb in
-in method name as the verb in the tag key and break the resource type name
-into words. For example, `start_db_instances` as a method name follows from
-`start` as the verb in the tag key (`sched-start`) and `DB` and `Cluster` as
-the words in the resource type name.
+the method name as the verb in the tag key and break the resource type name
+into words. For example, `start_db_cluster` as a method name follows from
+`start` as the verb in the `sched-start` tag key and `DB` and `Cluster` as the
+words in the resource type name.
 
 When you include a "child" resource type in an operation definition, the verb
 in the method name defaults to `create`, regardless of the verb that you
 choose for the tag key, and the noun in the method name is synthesized from
-the words in the _child_ resource type. For example, a `sched-backup` tag on
-an RDS database cluster yields the method name `create_db_cluster_snapshot` .
+the _child_ resource type. Accordingly, a `sched-backup` tag on an RDS
+database cluster translates to a `create_db_cluster_snapshot` method call.
 
 A Python dictionary for static parameters, and a Python lambda function (an
 anonymous function in the computer science sense, not to be confused with an
-AWS Lambda function) for dynamic parameters, are optional elements. These were
-not needed in the simple operation definitions shown above.
+AWS Lambda function) for dynamic parameters, are optional. These were not
+needed in the simple operation definitions shown above.
 
 ```yaml
           - Effect: Allow
@@ -485,12 +484,12 @@ not needed in the simple operation definitions shown above.
 ```
 
 Adding this statement to the IAM policy for the role used by the "Do" AWS
-Lambda function authorized creation of RDS database cluster snapshots, but
+Lambda function authorizes creation of RDS database cluster snapshots, but
 only from clusters tagged with `sched-backup` . Several other statements, not
 shown, were needed to authorize creation of the individual RDS database
 instance snapshots that comprise the cluster snapshot, and to permit tagging.
-The role for the "Find" function also had to be updated, to authorize that
-function to describe (list) RDS database clusters.
+The role for the "Find" function also had to be updated, to authorize
+describing (listing) RDS database clusters.
 
 What capabilities would _you_ like to add to Lights Off?
 
