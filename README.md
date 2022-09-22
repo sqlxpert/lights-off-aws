@@ -469,10 +469,9 @@ choose for the tag key, and the noun in the method name is synthesized from
 the _child_ resource type. Accordingly, a `sched-backup` tag on an RDS
 database cluster translates to a `create_db_cluster_snapshot` method call.
 
-A Python dictionary for static parameters, and a Python lambda function (an
-anonymous function in the computer science sense, not to be confused with an
-AWS Lambda function) for dynamic parameters, are optional. These were not
-needed in the simple operation definitions shown above.
+A Python dictionary for static parameters, and a Python function for dynamic
+parameters, are optional. These were not needed in the simple operation
+definitions shown above.
 
 ```yaml
           - Effect: Allow
