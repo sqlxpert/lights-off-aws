@@ -475,10 +475,25 @@ Resources:
             Action: rds:CreateDBSnapshot
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+
+          - Effect: Allow
+            Action: rds:StartDBCluster
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-start": "*" }
+          - Effect: Allow
+            Action: rds:RebootDBCluster
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-reboot": "*" }
+          - Effect: Allow
+            Action: rds:StopDBCluster
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-stop": "*" }
           - Effect: Allow
             Action: rds:CreateDBClusterSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
           - Effect: Allow
@@ -486,11 +501,13 @@ Resources:
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+
           - Effect: Allow
             Action: rds:AddTagsToResource
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+
           - Sid: BackupCreatorCannotTagBackupForDeletion
             Effect: Deny
             Action: rds:AddTagsToResource

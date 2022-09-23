@@ -422,11 +422,11 @@ must be capitalized in the tag keys, just as it is in the parameter name.
 
 ## Extensibility
 
-At its core, Lights Off takes advantage of patterns in boto3, the AWS software
-development kit (SDK) for Python, and in the underlying AWS API. Adding more
-AWS services, resource types, and operations is remarkably easy. For example,
-supporting RDS _database clusters_ (individual RDS _database instances_ were
-already supported) required the following additions:
+Lights Off takes advantage of patterns in boto3, the AWS software development
+kit (SDK) for Python, and in the underlying AWS API. Adding more AWS services,
+resource types, and operations is remarkably easy. For example, supporting RDS
+_database clusters_ (individual RDS _database instances_ were already
+supported) required the following additions:
 
 ```python
     AWSChildRsrcType(
@@ -475,6 +475,12 @@ definitions shown above.
 
 ```yaml
           - Effect: Allow
+            Action: rds:StartDBCluster
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Condition:
+              StringLike: { "aws:ResourceTag/sched-start": "*" }
+          # ...and so on, for other DBCluster actions...
+          - Effect: Allow
             Action: rds:CreateDBClusterSnapshot
             Resource:
               - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
@@ -482,13 +488,14 @@ definitions shown above.
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
 ```
 
-Adding this statement to the IAM policy for the role used by the "Do" AWS
-Lambda function authorizes creation of RDS database cluster snapshots, but
-only from clusters tagged with `sched-backup` . Several other statements, not
-shown, were needed to authorize creation of the individual RDS database
-instance snapshots that comprise the cluster snapshot, and to permit tagging.
-The role for the "Find" function also had to be updated, to authorize
-describing (listing) RDS database clusters.
+Adding statements like these to the IAM policy for the role used by the "Do"
+AWS Lambda function authorizes operations on RDS database clusters, such as
+starting clusters and creating cluster snapshots &mdash; but only when a
+`sched-` tag key names the specific operation. Several other kinds of
+statements, not shown, were needed to authorize creation of the individual RDS
+database instance snapshots that comprise a cluster snapshot, and to permit
+tagging upon creation of snapshots. The role for the "Find" function was also
+updated to authorize describing (listing) RDS database clusters.
 
 What capabilities would _you_ like to add to Lights Off?
 
