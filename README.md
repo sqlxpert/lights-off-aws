@@ -482,8 +482,7 @@ definitions shown above.
           # ...and so on, for other DBCluster actions...
           - Effect: Allow
             Action: rds:CreateDBClusterSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-backup": "*" }
 ```
