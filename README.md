@@ -154,7 +154,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 |--|--|--|
 |Prefix|`zsched`|Distinguishes backups created by Lights Off. `z` sorts after most manually-created images and snapshots.|
 |Parent name or identifier|`webserver`|Meaningfully identifies the parent by `Name` tag value; otherwise, indicates the physical identifier. Groups backups of the same parent.|
-|Date and time|`20171231T1400Z`|Groups backups scheduled for the same time. `Z` stands for the UTC time zone.|
+|Date and time|`20171231T1400Z`|Groups backups scheduled for the same date and time. `Z` stands for the UTC time zone.|
 |Random suffix|`g3a8a`|Guarantees a unique name.|
 
 * Parts are separated by hyphens (`-`).
@@ -165,7 +165,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 |Tag|Description|
 |--|--|
-|`Name`|Friendly name|
+|`Name`|Name (as above)|
 |`sched-parent-name`|Name of the parent (may be blank)|
 |`sched-parent-id`|Physical identifier of the parent|
 |`sched-op`|Operation tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
@@ -300,7 +300,7 @@ deployment method,
 ### Multi-Account (CloudFormation StackSet)
 
 <details>
-  <summary>Open multi-account (CloudFormation StackSet) details</summary>
+  <summary>View multi-account installation steps</summary>
 
 To centrally deploy Lights Off to multiple AWS accounts (and multiple
 regions),
@@ -370,7 +370,7 @@ regions),
 ### Least-Privilege
 
 <details>
-  <summary>Open least-privilege details</summary>
+  <summary>View least-privilege installation steps</summary>
 
 You can specify a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
@@ -406,7 +406,10 @@ accounts if you want to deploy a CloudFormation StackSet with
   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
   AWS Lambda function source code file to S3.
 
-## CloudFormation Operations
+## Changing a CloudFormation Stack Parameter on Schedule
+
+<details>
+  <summary>View CloudFormation stack operation setup details</summary>
 
 Using tags on your own CloudFormation stack to change a stack parameter on
 schedule is an advanced Lights Off feature.
@@ -428,10 +431,12 @@ preserving the template and the parameter values but changing the value of
 your own stack's `Enable` parameter to `true` or `false` each time. **E**nable
 must be capitalized in the tag keys, just as it is in the parameter name.
 
+</details>
+
 ## Extensibility
 
 <details>
-  <summary>Open extensibility details</summary>
+  <summary>View extensibility details</summary>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding more AWS services,
