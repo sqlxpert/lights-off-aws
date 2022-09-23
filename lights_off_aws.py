@@ -343,8 +343,7 @@ class AWSParentRsrcType(AWSRsrcType):
 
 
 class AWSOp():
-  """
-  Operation on an AWS resource type, possibly creating a child resource
+  """Operation on an AWS resource type, possibly creating a child resource
   """
   def __init__(self, rsrc_type, verb, multiple_rsrcs=False, **kwargs):
     self.rsrc_type = rsrc_type
@@ -465,7 +464,7 @@ class AWSOp():
     )
     op_kwargs_out.update(self.op_kwargs_static)
     if self.op_kwargs_update:
-      op_kwargs_out.update(self.op_kwargs_update(self, rsrc))
+      op_kwargs_out.update((self.op_kwargs_update)(self, rsrc))
     if self.child_rsrc_type:
       op_kwargs_out.update(self.create_kwargs(rsrc, cycle_start_str))
     return op_kwargs_out
