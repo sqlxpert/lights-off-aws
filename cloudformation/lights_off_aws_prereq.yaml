@@ -8,28 +8,35 @@ Description: |-
 
 Parameters:
 
+  PlaceholderHelp:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege"
+
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket for AWS Lambda function source code. If you set this parameter
-      to "my-bucket", then a bucket named "my-bucket-us-east-1" must exist and
-      must contain lights_off_aws.py.zip before you create a Lights Off
-      CloudFormation stack in the US East (Northern Virginia) region, and so
-      on for EVERY target region. If you are creating a CloudFormation
-      StackSet, then the file must also be readable by every target AWS
-      account, which generally requires that each bucket have a bucket policy.
+      Exclude the region suffix, even though Lights Off REQUIRES a region
+      suffix in the S3 bucket name. For example, if you are creating this
+      stack in the US East (Northern Virginia) region and you set this to
+      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
+      must have been created in the US East (Northern Virginia) region, and
+      must contain lights_off_aws.py.zip . These requirements apply in EVERY
+      region where you create a Lights Off CloudFormation stack. If you are
+      are creating a CloudFormation StackSet, then the file must also be
+      readable by every target AWS account, which generally requires that each
+      bucket have a bucket policy.
 
   StackNameBase:
     Type: String
     Description: >-
-      Name of the Lights Off CloudFormation stack or StackSet that you will
-      create using the DeploymentRole provided by this prerequisite stack. The
-      name of your future CloudFormation stack or StackSet must then include
-      this string, and for security, no other stack or StackSet's name should
-      include it. When you create your Lights Off stack or StackSet, you may
-      add prefixes and suffixes. For example, if you set this to "LightsOff",
-      you can alternate between a "LightsOff1" stack and a "LightsOff2" stack
-      to handle updates, or create a "TestLightsOff" stack marked for testing.
+      When using the DeploymentRole provided by this stack, you MUST include
+      this string in the name of any Lights Off CloudFormation stack or
+      StackSet that you create. For security, no other stack or StackSet's
+      name should include this string. You may add prefixes and suffixes to
+      your future stack or StackSet's name. For example, if you set this to
+      "LightsOff", you can alternate between a "LightsOff1" stack and a
+      "LightsOff2" stack for blue/green deployment of updates, or you can
+      create a "TestLightsOff" stack marked for testing.
     Default: "LightsOff"
 
 Metadata:
@@ -39,13 +46,14 @@ Metadata:
       - Label:
           default: Essentials
         Parameters:
+          - PlaceholderHelp
           - LambdaSourceS3BucketNamePrefix
           - StackNameBase
-
     ParameterLabels:
+      PlaceholderHelp:
+        default: For help with this stack, see
       LambdaSourceS3BucketNamePrefix:
-        default: >-
-          AWS Lambda source code S3 bucket name
+        default: S3 bucket for AWS Lambda function source code
       StackNameBase:
         default: >-
           Name of future stack or StackSet
@@ -64,8 +72,10 @@ Resources:
             Principal: { Service: cloudformation.amazonaws.com }
             Action: sts:AssumeRole
       # In-line policies apply only to this role, which, in turn, can only be
-      # assumed by CloudWatch. Separate, "managed" policies could be attached
-      # to other roles or users, allowing permission escalation.
+      # assumed by CloudFormation. Separate, "managed" policies could be
+      # attached to other roles or users, allowing permission escalation.
+      # Administrator should restrict iam:PassRole to prevent use of this role
+      # with arbitrary CloudFormation stacks.
       Policies:
         - PolicyName: LightsOffCloudFormationStackDeploy
           PolicyDocument:
@@ -192,6 +202,9 @@ Resources:
                   - iam:GetRolePolicy
                   - iam:AttachRolePolicy
                   - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
                   - iam:ListEntitiesForPolicy
                 Resource:
                   - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
@@ -219,7 +232,6 @@ Resources:
 
   SampleDeploymentRolePassRolePol:
     Type: "AWS::IAM::ManagedPolicy"
-    DeletionPolicy: Delete
     Properties:
       Description:
         Fn::Sub: >-

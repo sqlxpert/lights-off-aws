@@ -8,21 +8,146 @@ Description: |-
 
 Parameters:
 
+  PlaceholderHelp:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws#quick-start"
+
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      S3 bucket for AWS Lambda function source code. If you set this parameter
-      to "my-bucket", then a bucket named "my-bucket-us-east-1" must exist and
-      must contain lights_off_aws.py.zip before you create a Lights Off
-      CloudFormation stack in the US East (Northern Virginia) region, and so
-      on for EVERY target region. If you are creating a CloudFormation
-      StackSet, then the file must also be readable by every target AWS
-      account, which generally requires that each bucket have a bucket policy.
-  LambdaFnFileName:
+      Exclude the region suffix, even though this stack REQUIRES a region
+      suffix in the S3 bucket name. For example, if you are creating this
+      stack in the US East (Northern Virginia) region and you set this to
+      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
+      must have been created in the US East (Northern Virginia) region, and
+      must contain lights_off_aws.py.zip . These requirements apply in EVERY
+      region where you create a Lights Off CloudFormation stack. If you are
+      are creating a CloudFormation StackSet, then the file must also be
+      readable by every target AWS account, which generally requires that each
+      bucket have a bucket policy.
+
+  Enable:
     Type: String
     Description: >-
-      AWS Lambda function source code file name (before .py.zip suffixes)
-    Default: "lights_off_aws"
+      Whether the "Find" AWS Lambda function will run automatically, checking
+      every 10 minutes for AWS resources with scheduled operations, and whether
+      the "Do" function will run automatically, executing queued operations.
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+
+  CopyTags:
+    Type: String
+    Description: >-
+      Whether to copy tags to backups
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+
+  PlaceholderAdvancedParameters:
+    Type: String
+    Default: ""
+    AllowedValues:
+      - ""
+
+  FindLambdaFnMemoryMB:
+    Type: Number
+    Description: >-
+      How many megabytes of memory to allocate to the "Find" AWS Lambda
+      function. Increase only in case of out-of-memory errors. See
+      https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html
+    Default: 128
+
+  FindLambdaFnTimeoutSecs:
+    Type: Number
+    Description: >-
+      How many seconds before execution of the "Find" AWS Lambda function
+      is canceled. Increase only in case of time-out errors. See
+      https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
+    Default: 60
+
+  DoLambdaFnRoleAttachLocalPolicyName:
+    Type: String
+    Description: >-
+      The name of a locally-written "managed" IAM policy to be attached the
+      function's role. By including "Effect": "Deny" statements, you could,
+      for example, prevent the function from rebooting or stopping production
+      resources. Specify only the policy name, not the ARN. If you are
+      creating a CloudFormation StackSet, then the policy MUST (a) exist in,
+      and (b) have exactly the same name in, EVERY target AWS account.
+      Policies are not per-region; there can be only one policy with this
+      name in each account. See
+      https://github.com/sqlxpert/lights-off-aws/blob/main/README.md#security-steps-you-can-take
+    Default: ""
+
+  DoLambdaFnReservedConcurrentExecutions:
+    Type: Number
+    Description: >-
+      How many scheduled operations can be done in parallel. See
+      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
+    MinValue: 0
+    Default: 5
+
+  DoLambdaFnMemoryMB:
+    Type: Number
+    Description: >-
+      How many megabytes of memory to allocate to the "Do" AWS Lambda
+      function. Increase only in case of out-of-memory errors.
+    Default: 128
+
+  DoLambdaFnTimeoutSecs:
+    Type: Number
+    Description: >-
+      How many seconds before execution of the "Do" AWS Lambda function is
+      canceled. Increase only in case of time-out errors.
+    Default: 30
+
+  OperationQueueVisibilityTimeoutSecs:
+    Type: Number
+    Description: >-
+      How many seconds SQS waits for the "Do" AWS Lambda function to accept
+      and process a message representing one scheduled operation. Must be at
+      least as large as DoLambdaFnTimeoutSecs . In case of problems, see
+      https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
+    Default: 90
+
+  SqsKmsKey:
+    Type: String
+    Description: >-
+      If blank, queue messages will not be encrypted. Specify "alias/aws/sqs"
+      for the AWS-managed SQS service KMS key, which allows for encryption but
+      not for any key access restrictions or cross-account access. To use a
+      custom KMS key, specify an ARN with the key ID, not an alias.
+    Default: ""
+
+  QueueMessageBytesMax:
+    Type: Number
+    Description: >-
+      Maximum number of bytes in an operation queue message
+    MinValue: 1024
+    Default: 32768  # 32 KiB (worst case when copying 50 long tags)
+    MaxValue: 262144  # 256 KiB
+
+  OperationFailedQueueMessageRetentionPeriodSecs:
+    Type: Number
+    Description: >-
+      How many seconds to keep queue messages for scheduled operations that
+      failed. For consistency with the log retention period, and if CloudWatch
+      Logs and SQS allow, set this to LogsRetainDays * 86400 . See
+      MessageRetentionPeriod in
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
+    Default: 604800
+
+  LogsRetainDays:
+    Type: Number
+    Description: >-
+      How many days to keep CloudWatch logs from the AWS Lambda functions. See
+      retentionInDays in
+      http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
+    Default: 7
+
   LogLevel:
     Type: String
     Description: >-
@@ -36,107 +161,22 @@ Parameters:
       - INFO
       - DEBUG
       - NOTSET
+
   CloudWatchLogsKmsKey:
     Type: String
     Description: >-
-      Encryption key for logs. If blank, logs will receive default non-KMS
-      CloudWatch Logs encryption. To use a KMS key, which must be a custom
-      key, specify an ARN with the key ID, not an alias. You MUST first give
-      CloudWatch Logs access to the key by editing the key's key policy. See
+      If blank, logs will receive default non-KMS CloudWatch Logs encryption.
+      To use a KMS key, which must be a custom key, specify an ARN with the
+      key ID, not an alias. You MUST first give CloudWatch Logs access to the
+      key by editing the key's key policy. See
       https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html#cmk-permissions
     Default: ""
-  SqsKmsKey:
-    Type: String
-    Description: >-
-      Encryption key for queue messages. If blank, queue messages will not be
-      encrypted. Specify "alias/aws/sqs" for the AWS-managed SQS service KMS
-      key, which allows for encryption but not for any key access restrictions
-      or cross-account access. To use a custom KMS key, specify an ARN with
-      the key ID, not an alias.
-    Default: ""
-  QueueMessageBytesMax:
-    Type: Number
-    Description: Operation queue message size limit (bytes)
-    MinValue: 1024
-    Default: 32768  # 32 KiB (worst case when copying 50 long tags)
-    MaxValue: 262144  # 256 KiB
-  Enable:
-    Type: String
-    Description: >-
-      Whether the "Find" AWS Lambda function will run automatically, checking
-      every 10 minutes for AWS resources with scheduled operations, and whether
-      the "Do" function will run automatically, executing queued operations.
-    Default: "true"
-    AllowedValues:
-      - "false"
-      - "true"
-  CopyTags:
-    Type: String
-    Description: >-
-      Whether to copy tags to backups
-    Default: "true"
-    AllowedValues:
-      - "false"
-      - "true"
 
-  # Do not validate, in case values accepted by underlying APIs change:
-  LogsRetainDays:
-    Type: Number
+  LambdaFnFileName:
+    Type: String
     Description: >-
-      How many days to keep CloudWatch logs from the AWS Lambda functions. See
-      retentionInDays in
-      http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
-    Default: 7
-  OperationFailedQueueMessageRetentionPeriodSecs:
-    Type: Number
-    Description: >-
-      How many seconds to keep queue messages for scheduled operations that
-      failed. For consistency with the log retention period, and if CloudWatch
-      Logs and SQS allow, set this to LogsRetainDays * 86400 . See
-      MessageRetentionPeriod in
-      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
-    Default: 604800
-  FindLambdaFnMemoryMB:
-    Type: Number
-    Description: >-
-      How many megabytes of memory to allocate to the "Find" AWS Lambda
-      function. Increase only in case of out-of-memory errors. See
-      https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html
-    Default: 128
-  FindLambdaFnTimeoutSecs:
-    Type: Number
-    Description: >-
-      How many seconds before execution of the "Find" AWS Lambda function
-      is canceled. Increase only in case of time-out errors. See
-      https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
-    Default: 60
-  DoLambdaFnReservedConcurrentExecutions:
-    Type: Number
-    Description: >-
-      How many scheduled operations can be done in parallel. See
-      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
-    MinValue: 0
-    Default: 5
-  DoLambdaFnMemoryMB:
-    Type: Number
-    Description: >-
-      How many megabytes of memory to allocate to the "Do" AWS Lambda
-      function. Increase only in case of out-of-memory errors.
-    Default: 128
-  DoLambdaFnTimeoutSecs:
-    Type: Number
-    Description: >-
-      How many seconds before execution of the "Do" AWS Lambda function is
-      canceled. Increase only in case of time-out errors.
-    Default: 30
-  OperationQueueVisibilityTimeoutSecs:
-    Type: Number
-    Description: >-
-      How many seconds SQS waits for the "Do" AWS Lambda function to accept
-      and process a message representing one scheduled operation. Must be at
-      least as large as DoLambdaFnTimeoutSecs . In case of problems, see
-      https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
-    Default: 90
+      Exclude the .py.zip suffixes.
+    Default: "lights_off_aws"
 
 Metadata:
 
@@ -145,9 +185,15 @@ Metadata:
       - Label:
           default: Essentials
         Parameters:
+          - PlaceholderHelp
           - LambdaSourceS3BucketNamePrefix
           - Enable
           - CopyTags
+      - Label:
+          default: >-
+            Advanced Parameters...
+        Parameters:
+          - PlaceholderAdvancedParameters
       - Label:
           default: >-
             AWS Lambda function to find resources with scheduled operations
@@ -158,6 +204,7 @@ Metadata:
           default: AWS Lambda function to do scheduled operations
         Parameters:
           - DoLambdaFnReservedConcurrentExecutions
+          - DoLambdaFnRoleAttachLocalPolicyName
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
       - Label:
@@ -178,27 +225,34 @@ Metadata:
         Parameters:
           - LambdaFnFileName
     ParameterLabels:
+      PlaceholderHelp:
+        default: For help with this stack, see
       LambdaSourceS3BucketNamePrefix:
-        default: >-
-          AWS Lambda source code S3 bucket name
+        default: S3 bucket for AWS Lambda function source code
       Enable:
         default: Enabled?
       CopyTags:
         default: Copy tags to backups?
+      PlaceholderAdvancedParameters:
+        default: Do not change parameters below this line unless necessary!
       FindLambdaFnMemoryMB:
         default: Memory
       FindLambdaFnTimeoutSecs:
         default: Timeout
       DoLambdaFnReservedConcurrentExecutions:
         default: Parallel operations
+      DoLambdaFnRoleAttachLocalPolicyName:
+        default: Additional local policy
       DoLambdaFnMemoryMB:
         default: Memory
       DoLambdaFnTimeoutSecs:
         default: Timeout
       OperationQueueVisibilityTimeoutSecs:
         default: Operation queue message visibility timeout
+      QueueMessageBytesMax:
+        default: Operation queue message size limit
       SqsKmsKey:
-        default: Queue encryption key
+        default: KMS encryption key
       OperationFailedQueueMessageRetentionPeriodSecs:
         default: Failed operation queue message retention period
       LogsRetainDays:
@@ -206,17 +260,16 @@ Metadata:
       LogLevel:
         default: Log level
       CloudWatchLogsKmsKey:
-        default: Log encryption key
-      QueueMessageBytesMax:
-        default: Operation queue message size limit
+        default: KMS encryption key
       LambdaFnFileName:
-        default: AWS Lambda function source file name
+        default: AWS Lambda function source code file name
 
 Conditions:
 
   EnableTrue: !Equals [ !Ref Enable, "true" ]
 
-  CloudWatchLogsKmsKeyBlank: !Equals [ !Ref CloudWatchLogsKmsKey, "" ]
+  DoLambdaFnRoleAttachLocalPolicyNameBlank:
+    !Equals [ !Ref DoLambdaFnRoleAttachLocalPolicyName, "" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
@@ -224,6 +277,8 @@ Conditions:
     Fn::And:
       - !Not [ !Equals [ !Ref SqsKmsKey, "" ] ]
       - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
+
+  CloudWatchLogsKmsKeyBlank: !Equals [ !Ref CloudWatchLogsKmsKey, "" ]
 
 Resources:
 
@@ -281,49 +336,11 @@ Resources:
               - logs:CreateLogGroup
             Resource: "*"
 
-  FindLambdaFnEc2ReadPol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: "EC2 instances, tags; EBS volumes: describe"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - ec2:DescribeInstances
-              - ec2:DescribeVolumes
-              - ec2:DescribeTags
-            Resource: "*"
-
-  FindLambdaFnRdsReadPol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: "RDS database instances, clusters: describe, get tags"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: rds:DescribeDBInstances
-            Resource: "*"
-          - Effect: Allow
-            Action: rds:DescribeDBClusters
-            Resource: "*"
-          - Effect: Allow
-            Action: rds:ListTagsForResource
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-
-  FindLambdaFnCloudFormationReadPol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: "CloudFormation stacks: describe"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: cloudformation:DescribeStacks
-            Resource: "*"
+  # In-line policies apply only to their roles, which, in turn, can only be
+  # assumed by AWS Lambda functions. Separate, "managed" policies could be
+  # attached to other roles or users, allowing permission escalation.
+  # Administrator should restrict iam:PassRole to prevent use of these roles
+  # with arbitrary AWS Lambda functions.
 
   FindLambdaFnRole:
     Type: AWS::IAM::Role
@@ -335,215 +352,57 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol
-        - !Ref FindLambdaFnEc2ReadPol
-        - !Ref FindLambdaFnRdsReadPol
-        - !Ref FindLambdaFnCloudFormationReadPol
+        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
+      Policies:
 
-  SqsKmsEncryptPol:
-    Type: AWS::IAM::ManagedPolicy
-    Condition: SqsKmsKeyCustom
-    Properties:
-      Description: "Custom KMS key: encrypt SQS messages"
-      Roles: [ !Ref FindLambdaFnRole ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
-              - kms:GenerateDataKey
-            Resource: !Ref SqsKmsKey
-            Condition:
-              StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+        - PolicyName: Ec2Read
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeTags
+                Resource: "*"
 
-  DoLambdaFnEc2WritePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Tagged EC2 instances: start, reboot, stop, create image (allows
-        reboot!). Tagged EBS volumes: create snapshot. EC2 images and EBS
-        snapshots: tag on creation, but can never tag for deletion, or delete.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: ec2:StartInstances
-            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-start": "*" }
-          - Effect: Allow
-            Action: ec2:RebootInstances
-            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-reboot": "*" }
-          - Effect: Allow
-            Action: ec2:StopInstances
-            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-stop": "*" }
-          - Sid: DangerCanForceReboot
-            Effect: Allow
-            Action: ec2:CreateImage
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
-          - Effect: Allow
-            Action: ec2:CreateImage
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-reboot-backup": "*" }
-          - Effect: Allow
-            Action: ec2:CreateImage
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-          - Effect: Allow
-            Action: ec2:CreateSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
-          - Effect: Allow
-            Action: ec2:CreateSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-          - Effect: Allow
-            Action: ec2:CreateTags
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-            Condition:
-              StringEquals:
-                ec2:CreateAction:
-                  - CreateImage
-                  - CreateSnapshot
-          - Sid: BackupCreatorCannotTagBackupForDeletion
-            Effect: Deny
-            Action: ec2:CreateTags
-            Resource:
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-              - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-            Condition:
-              ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
-          - Sid: BackupCreatorCannotDeleteImageOrSnapshot
-            Effect: Deny
-            Action:
-              - ec2:DeregisterImage
-              - ec2:DeleteSnapshot
-            Resource: "*"
+        - PolicyName: RdsRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:DescribeDBInstances
+                  - rds:DescribeDBClusters
+                Resource: "*"
+              - Effect: Allow
+                Action: rds:ListTagsForResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
 
-  DoLambdaFnRdsWritePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Tagged RDS database instances, clusters: start, reboot (includes
-        failover), stop, create snapshot. All RDS snapshots: tag, but cannot
-        tag for deletion, or delete.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: rds:StartDBInstance
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-start": "*" }
-          - Effect: Allow
-            Action: rds:RebootDBInstance
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-reboot": "*" }
-          - Effect: Allow
-            Action: rds:RebootDBInstance
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-reboot-failover": "*" }
-          - Effect: Allow
-            Action: rds:StopDBInstance
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-stop": "*" }
-          - Effect: Allow
-            Action: rds:CreateDBSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
-          - Effect: Allow
-            Action: rds:CreateDBSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+        - PolicyName: CloudFormationRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: "*"
 
-          - Effect: Allow
-            Action: rds:StartDBCluster
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-start": "*" }
-          - Effect: Allow
-            Action: rds:RebootDBCluster
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-reboot": "*" }
-          - Effect: Allow
-            Action: rds:StopDBCluster
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-stop": "*" }
-          - Effect: Allow
-            Action: rds:CreateDBClusterSnapshot
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
-          - Effect: Allow
-            Action: rds:CreateDBClusterSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-
-          - Effect: Allow
-            Action: rds:AddTagsToResource
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-
-          - Sid: BackupCreatorCannotTagBackupForDeletion
-            Effect: Deny
-            Action: rds:AddTagsToResource
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-            Condition:
-              ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
-          - Sid: BackupCreatorCannotDeleteDBSnapshot
-            Effect: Deny
-            Action: rds:DeleteDBSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-          - Sid: BackupCreatorCannotDeleteDBClusterSnapshotBackup
-            Effect: Deny
-            Action: rds:DeleteDBClusterSnapshot
-            Resource:
-              - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-
-  DoLambdaFnCloudFormationWritePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: "Tagged CloudFormation stacks: update"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action: cloudformation:UpdateStack
-            Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
-          - Effect: Allow
-            Action: cloudformation:UpdateStack
-            Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
+        - Fn::If:
+            - SqsKmsKeyCustom
+            - PolicyName: SqsKmsEncrypt
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+                      - kms:GenerateDataKey
+                    Resource: !Ref SqsKmsKey
+                    Condition:
+                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+            - !Ref AWS::NoValue
 
   DoLambdaFnRole:
     Type: AWS::IAM::Role
@@ -555,27 +414,188 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol
-        - !Ref DoLambdaFnEc2WritePol
-        - !Ref DoLambdaFnRdsWritePol
-        - !Ref DoLambdaFnCloudFormationWritePol
+        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
+        - Fn::If:
+            - DoLambdaFnRoleAttachLocalPolicyNameBlank
+            - !Ref AWS::NoValue
+            - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${DoLambdaFnRoleAttachLocalPolicyName}"
+      Policies:
 
-  SqsKmsDecryptPol:
-    Type: AWS::IAM::ManagedPolicy
-    Condition: SqsKmsKeyCustom
-    Properties:
-      Description: "Custom KMS key: decrypt SQS messages"
-      Roles: [ !Ref DoLambdaFnRole ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
-              - kms:Decrypt
-            Resource: !Ref SqsKmsKey
-            Condition:
-              StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+        - PolicyName: Ec2Write
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ec2:StartInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+              - Effect: Allow
+                Action: ec2:RebootInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-reboot": "*" }
+              - Effect: Allow
+                Action: ec2:StopInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+              - Sid: DangerCanForceReboot
+                Effect: Allow
+                Action: ec2:CreateImage
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
+              - Effect: Allow
+                Action: ec2:CreateImage
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-reboot-backup": "*" }
+              - Effect: Allow
+                Action: ec2:CreateImage
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+              - Effect: Allow
+                Action: ec2:CreateSnapshot
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
+              - Effect: Allow
+                Action: ec2:CreateSnapshot
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+              - Effect: Allow
+                Action: ec2:CreateTags
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                Condition:
+                  StringEquals:
+                    ec2:CreateAction:
+                      - CreateImage
+                      - CreateSnapshot
+              - Sid: BackupCreatorCannotTagBackupForDeletion
+                Effect: Deny
+                Action: ec2:CreateTags
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                Condition:
+                  ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
+              - Sid: BackupCreatorCannotDeleteBackup
+                Effect: Deny
+                Action:
+                  - ec2:DeregisterImage
+                  - ec2:DeleteSnapshot
+                Resource: "*"
+
+        - PolicyName: RdsWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:StartDBInstance
+                  - rds:StartDBCluster
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+              - Effect: Allow
+                Action:
+                  - rds:RebootDBInstance
+                  - rds:RebootDBCluster
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-reboot": "*" }
+              - Effect: Allow
+                Action:
+                  - rds:RebootDBInstance
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-reboot-failover": "*" }
+              - Effect: Allow
+                Action:
+                  - rds:StopDBInstance
+                  - rds:StopDBCluster
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+              - Effect: Allow
+                Action:
+                  - rds:CreateDBSnapshot
+                  - rds:CreateDBClusterSnapshot
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
+              - Effect: Allow
+                Action: rds:CreateDBSnapshot
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+              - Effect: Allow
+                Action: rds:CreateDBClusterSnapshot
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+              - Effect: Allow
+                Action: rds:AddTagsToResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+              - Sid: BackupCreatorCannotTagBackupForDeletion
+                Effect: Deny
+                Action: rds:AddTagsToResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+                Condition:
+                  ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
+              - Sid: BackupCreatorCannotDeleteBackup
+                Effect: Deny
+                Action:
+                  - rds:DeleteDBSnapshot
+                  - rds:DeleteDBClusterSnapshot
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
+
+        - PolicyName: CloudFormationWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: cloudformation:UpdateStack
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
+              - Effect: Allow
+                Action: cloudformation:UpdateStack
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
+
+        - Fn::If:
+            - SqsKmsKeyCustom
+            - PolicyName: SqsKmsDecrypt
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+                      - kms:Decrypt
+                    Resource: !Ref SqsKmsKey
+                    Condition:
+                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+            - !Ref AWS::NoValue
 
   OperationFailedQueuePol:
     Type: AWS::SQS::QueuePolicy
@@ -718,6 +738,9 @@ Resources:
         Find Lambda function log streams: create, and put events; based on
         AWSLambdaBasicExecutionRole
       Roles: [ !Ref FindLambdaFnRole ]
+      # Policy cannot be in-line, because it depends on an AWS Lambda function
+      # log group, which in turn depends on the [final name of the] function,
+      # and function creation depends on a role.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -726,8 +749,8 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* ,
-            # complicating conversion to log stream ARN
+            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
+            # log stream ARN.
 
   FindLambdaFnSched:
     Type: AWS::Events::Rule
@@ -747,10 +770,10 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref FindLambdaFn
-      Principal: "events.amazonaws.com"
+      Principal: events.amazonaws.com
       SourceArn: !GetAtt FindLambdaFnSched.Arn
 
-  ############################################################################
+  # Administrator should restrict other invocation of this AWS Lambda function
 
   DoLambdaFn:
     Type: AWS::Lambda::Function
@@ -790,6 +813,9 @@ Resources:
         Do Lambda function log streams: create, and put events; based on
         AWSLambdaBasicExecutionRole
       Roles: [ !Ref DoLambdaFnRole ]
+      # Policy cannot be in-line, because it depends on an AWS Lambda function
+      # log group, which in turn depends on the [final name of the] function,
+      # and unction creation depends on a role.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -798,8 +824,8 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* ,
-            # complicating conversion to log stream ARN
+            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
+            # log stream ARN.
 
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
@@ -809,6 +835,8 @@ Resources:
       FunctionName: !Ref DoLambdaFn
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
+
+  # Administrator should restrict other invocation of this AWS Lambda function
 
   DoLambdaFnSqsMapping:
     Type: AWS::Lambda::EventSourceMapping

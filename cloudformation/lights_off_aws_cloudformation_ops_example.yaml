@@ -8,6 +8,10 @@ Description: |-
 
 Parameters:
 
+  PlaceholderHelp:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws#changing-a-cloudformation-stack-parameter-on-schedule"
+
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: >-
@@ -29,6 +33,24 @@ Parameters:
       - "true"
     Default: "false"  # Start without expensive resources
   ############################################################################
+
+Metadata:  # Optional
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Essentials
+        Parameters:
+          - PlaceholderHelp
+          - Enable  # Optional, determines parameter order
+          - VpcId
+    ParameterLabels:
+      PlaceholderHelp:
+        default: For help with this stack, see
+      Enable:
+        default: Enabled?  # Optional, determines parameter label
+      VpcId:
+        default: VPC
 
 Conditions:
 
