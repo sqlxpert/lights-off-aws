@@ -465,13 +465,13 @@ words in the resource type name.
 
 When you include a "child" resource type in an operation definition, the verb
 in the method name defaults to `create`, regardless of the verb that you
-choose for the tag key, and the noun in the method name is synthesized from
-the _child_ resource type. Accordingly, a `sched-backup` tag on an RDS
-database cluster translates to a `create_db_cluster_snapshot` method call.
+choose for the tag key, and the noun in the method name comes from the _child_
+resource type. Accordingly, a `sched-backup` tag on an RDS database cluster
+translates to a `create_db_cluster_snapshot` method call.
 
-A Python dictionary for static parameters, and a Python function for dynamic
-parameters, are optional. These were not needed in the simple operation
-definitions shown above.
+A Python dictionary for static parameters, and a reference to a Python
+function for dynamic parameters, are optional. These were not needed in the
+simple operation definitions shown above.
 
 ```yaml
           - Effect: Allow
