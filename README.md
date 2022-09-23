@@ -152,10 +152,10 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 |Part|Example|Purpose|
 |--|--|--|
-|Prefix|`zsched`|Identify and group resources created by Lights Off. `z` sorts after most manually-created images and snapshots.|
-|Parent name or identifier|`webserver`|Conveniently identify the parent by `Name` tag value or physical identifier. Multiple children of the same parent sort together by creation date and time.|
-|Date and time|`20171231T1400Z`|Group children created at the same time. Minute is always a multiple of 10. Time zone is always UTC (Z).|
-|Random suffix|`g3a8a`|Guarantee a unique name.|
+|Prefix|`zsched`|Distinguishes backups created by Lights Off. `z` sorts after most manually-created images and snapshots.|
+|Parent name or identifier|`webserver`|Meaningfully identifies the parent by `Name` tag value; otherwise, indicates the physical identifier. Groups backups of the same parent.|
+|Date and time|`20171231T1400Z`|Groups backups scheduled for the same time. `Z` stands for the UTC time zone.|
+|Random suffix|`g3a8a`|Guarantees a unique name.|
 
 * Parts are separated by hyphens (`-`).
 * Parent name or identifier may contain additional, internal hyphens.
@@ -165,11 +165,11 @@ Backup operations create a "child" resource (image or snapshot) from a
 
 |Tag|Description|
 |--|--|
-|`Name`|Friendly name of the child. The EC2 Console derives the Name column from the `Name` tag.|
-|`sched-parent-name`|`Name` tag of the parent. May be blank.|
-|`sched-parent-id`|Physical identifier of the parent.|
-|`sched-op`|Operation tag key that prompted creation of the child. Distinguishes special cases, such as whether an EC2 instance was rebooted before an image was created (`sched-reboot-backup`).|
-|`sched-cycle-start`|Date and time when the child was created. Minute is always a multiple of 10. Time zone is always UTC (Z).|
+|`Name`|Friendly name|
+|`sched-parent-name`|Name of the parent (may be blank)|
+|`sched-parent-id`|Physical identifier of the parent|
+|`sched-op`|Operation tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
+|`sched-cycle-start`|Scheduled date and time of the backup (`Z` stands for the UTC time zone)|
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary by AWS service, as do the search capabilities
@@ -297,7 +297,10 @@ deployment method,
    [lights_off_aws.py.zip](/lights_off_aws.py.zip)
    to each bucket. AWS Lambda requires a copy in every region.
 
-### Multi-Account (CloudFormation StackSets)
+### Multi-Account (CloudFormation StackSet)
+
+<details>
+  <summary>Open multi-account (CloudFormation StackSet) details</summary>
 
 To centrally deploy Lights Off to multiple AWS accounts (and multiple
 regions),
@@ -362,8 +365,12 @@ regions),
    Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
+</details>
 
 ### Least-Privilege
+
+<details>
+  <summary>Open least-privilege details</summary>
 
 You can specify a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
@@ -383,6 +390,7 @@ The deployment role covers a single AWS account, but you can copy its in-line
 IAM policy to the `AWSCloudFormationStackSetExecutionRole` in multiple target
 accounts if you want to deploy a CloudFormation StackSet with
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html).
+</details>
 
 ## Software Updates
 
@@ -421,6 +429,9 @@ your own stack's `Enable` parameter to `true` or `false` each time. **E**nable
 must be capitalized in the tag keys, just as it is in the parameter name.
 
 ## Extensibility
+
+<details>
+  <summary>Open extensibility details</summary>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding more AWS services,
@@ -497,6 +508,7 @@ tagging upon creation of snapshots. The role for the "Find" function was also
 updated to authorize describing (listing) RDS database clusters.
 
 What capabilities would _you_ like to add to Lights Off?
+</details>
 
 ## Parting Advice
 
