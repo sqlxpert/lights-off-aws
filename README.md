@@ -258,14 +258,17 @@ encouraged to read the code yourself and to evaluate its security._
   resource-specific statements to `"Deny"`, and add the new, inverted policy
   to people's day-to-day roles.
 
-* Apply a similar `"Deny"` policy to prevent people from directly invoking the
-  Lights Off AWS Lambda functions.
+* Add similar policies to prevent people from directly invoking the Lights Off
+  AWS Lambda functions and from passing the roles defined for the Lights Off
+  fuctions to arbitrary AWS Lambda functions.
 
 * Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
 * Separate production workloads. You might decide not to deploy Lights Off to
   AWS accounts used for production, or you might customize the "Do" function's
-  role, removing authority to reboot or stop production resources.
+  privileges, removing the authority to reboot or stop production resources
+  (you can set the `LocalPolicy` parameter to attach your own, locally-written
+  policy to the function's role).
 
 * Note these AWS limitations:
 
@@ -335,10 +338,7 @@ regions),
               ]
            }
          },
-         "Action": [
-           "s3:GetObject",
-           "s3:GetObjectVersion"
-         ],
+         "Action": "s3:GetObject*",
          "Resource": "arn:aws:s3:::BUCKET_NAME/*"
        }
      ]
@@ -369,9 +369,6 @@ regions),
 
 ### Least-Privilege
 
-<details>
-  <summary>View least-privilege installation steps</summary>
-
 You can specify a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
 to give CloudFormation only the privileges it needs to create a Lights Off
@@ -390,7 +387,6 @@ The deployment role covers a single AWS account, but you can copy its in-line
 IAM policy to the `AWSCloudFormationStackSetExecutionRole` in multiple target
 accounts if you want to deploy a CloudFormation StackSet with
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html).
-</details>
 
 ## Software Updates
 
@@ -495,22 +491,13 @@ simple operation definitions shown above.
             Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
             Condition:
               StringLike: { "aws:ResourceTag/sched-start": "*" }
-          # ...and so on, for other DBCluster actions...
-          - Effect: Allow
-            Action: rds:CreateDBClusterSnapshot
-            Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-            Condition:
-              StringLike: { "aws:ResourceTag/sched-backup": "*" }
 ```
 
-Adding statements like these to the IAM policy for the role used by the "Do"
-AWS Lambda function authorizes operations on RDS database clusters, such as
-starting clusters and creating cluster snapshots &mdash; but only when a
-`sched-` tag key names the specific operation. Several other kinds of
-statements, not shown, were needed to authorize creation of the individual RDS
-database instance snapshots that comprise a cluster snapshot, and to permit
-tagging upon creation of snapshots. The role for the "Find" function was also
-updated to authorize describing (listing) RDS database clusters.
+Actions, resources and conditions like the ones shown above were added to the
+`RdsWrite` policy for the role used by the "Do" AWS Lambda function, to
+authorize operations on RDS database clusters. The role used by the "Find"
+function was also updated to authorize describing (listing) RDS database
+clusters.
 
 What capabilities would _you_ like to add to Lights Off?
 </details>

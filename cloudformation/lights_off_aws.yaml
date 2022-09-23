@@ -242,7 +242,7 @@ Metadata:
       DoLambdaFnReservedConcurrentExecutions:
         default: Parallel operations
       DoLambdaFnRoleAttachLocalPolicyName:
-        default: Additional local policy
+        default: Attach local policy
       DoLambdaFnMemoryMB:
         default: Memory
       DoLambdaFnTimeoutSecs:
