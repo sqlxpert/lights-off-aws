@@ -98,6 +98,8 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
+* Do not copy and paste tag keys from the table to AWS; the ones in the table
+  contains non-breaking (non-ASCII) hyphens.
 * Not all EC2 instances support hibernation.
 * Not all RDS database clusters support cluster-level reboot.
 * If an AWS resource is tagged for multiple operations at the same time, an
@@ -166,10 +168,10 @@ Backup operations create a "child" resource (image or snapshot) from a
 |Tag|Description|
 |--|--|
 |`Name`|Name (as above)|
-|`sched-parent-name`|Name of the parent (may be blank)|
-|`sched-parent-id`|Physical identifier of the parent|
-|`sched-op`|Tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
-|`sched-cycle-start`|Scheduled date and time of the backup|
+|`sched‑parent‑name`|Name of the parent (may be blank)|
+|`sched‑parent‑id`|Physical identifier of the parent|
+|`sched‑op`|Tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
+|`sched‑cycle‑start`|Scheduled date and time of the backup|
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary by AWS service, as do the search capabilities
