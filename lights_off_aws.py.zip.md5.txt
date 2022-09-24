@@ -1,1 +1,1 @@
-3246c40b1d1fca77564c724f3fb4f1c3  lights_off_aws.py.zip
+3c3676db62a921f9c5a222141286c695  lights_off_aws.py.zip

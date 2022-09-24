@@ -47,7 +47,7 @@ QUEUE_MSG_FMT_VERSION = "01"
 
 TAG_KEY_PREFIX = "sched"
 TAG_KEY_DELIM = "-"
-TAG_KEYS_NO_COPY_REGEXP = (
+TAG_KEYS_NEVER_COPY_REGEXP = (
   rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
 COPY_TAGS = (os.environ.get("COPY_TAGS", "").lower() == "true")
@@ -244,19 +244,14 @@ class AWSParentRsrcType(AWSRsrcType):
     self.status_filter_pair = kwargs.get("status_filter_pair", ())
     self.describe_flatten = kwargs.get("describe_flatten", None)
     self.ops = {}
-    for (op_tag_key_words, op_properties) in kwargs["ops"].items():
+    for (op_tag_key_words, op_properties_priority) in kwargs["ops"].items():
       op_tag_key = tag_key_join(op_tag_key_words)
-      op_properties_out = {"op_tag_key": op_tag_key}
-      op_properties_out.update(op_properties)
-      # Default verbs (specification shorthands):
-      if "verb" not in op_properties:
-        op_properties_out["verb"] = (
-          "create"
-          if "child_rsrc_type" in op_properties else
-          op_tag_key_words[0]  # Same as (first) tag key word
-        )
-      op_class = op_properties.get("op_class", AWSOp)
-      self.ops[op_tag_key] = op_class(self, **op_properties_out)
+      op_properties = {
+        "tag_key": op_tag_key,
+        "verb": op_tag_key_words[0],  # Default: 1st tag key word
+      }
+      op_properties.update(op_properties_priority)
+      self.ops[op_tag_key] = AWSOp.new(**op_properties)
     self.__class__.members[svc][self.rsrc_key] = self
 
   # pylint: disable=missing-function-docstring
@@ -331,7 +326,7 @@ class AWSParentRsrcType(AWSRsrcType):
         if op_tags_matched_count == 1:
           op = self.ops[op_tags_matched[0]]
           op_kwargs = op.op_kwargs(rsrc, cycle_start_str)
-          op.op_queue(op_kwargs, cycle_cutoff_epoch_str)
+          op.queue(op_kwargs, cycle_cutoff_epoch_str)
 
         elif op_tags_matched_count > 1:
           logging.error(json.dumps({
@@ -345,20 +340,125 @@ class AWSParentRsrcType(AWSRsrcType):
 
 
 class AWSOp():
-  """Operation on AWS resource of particular type, possibly creating child
+  """Operation on an AWS resource of particular type
   """
-  def __init__(self, rsrc_type, verb, **kwargs):
+  def __init__(self, rsrc_type, **kwargs):
     self.rsrc_type = rsrc_type
-    if "child_rsrc_type" in kwargs:
-      self.child_rsrc_type = kwargs["child_rsrc_type"]
-      noun_source = self.child_rsrc_type
+    self.tag_key = kwargs["tag_key"]
+    verb = kwargs["verb"]
+    self.method_name = f"{verb}_{self.rsrc_type.rsrc_type_in_methods}"
+    self.kwargs_static = kwargs.get("kwargs_static", {})
+    self.kwargs_dynamic = kwargs.get("kwargs_dynamic", None)
+
+  @staticmethod
+  def new(**kwargs):
+    """Create operation of the default, appropriate, or requested, (sub)class
+    """
+    if "class" not in kwargs:
+      op_class = AWSOpChildOut if "child_rsrc_type" in kwargs else AWSOp
+    return op_class(**kwargs)
+
+  def update_stack_kwargs(self, stack_rsrc):
+    """Take an operation and a describe_stack item, return update_stack kwargs
+
+    Preserves previous parameter values except for designated parameter(s):
+                         Param  New
+                         Key    Value
+    otag_key   sched-set-Enable-true
+    otag_key   sched-set-Enable-false
+    .split("-")          [-2]   [-1]
+    """
+    op_tag_key_words = self.tag_key.split(TAG_KEY_DELIM)
+    changing_parameter_key = op_tag_key_words[-2]
+    changing_parameter_new_value = op_tag_key_words[-1]
+    stack_parameters_out = [{
+      "ParameterKey": changing_parameter_key,
+      "ParameterValue": changing_parameter_new_value,
+    }]
+    for stack_parameter_in in stack_rsrc.get("Parameters", []):
+      if stack_parameter_in["ParameterKey"] != changing_parameter_key:
+        stack_parameters_out.append({
+          "ParameterKey": stack_parameter_in["ParameterKey"],
+          "UsePreviousValue": True,
+        })
+    update_stack_kwargs_out = {
+      "UsePreviousTemplate": True,
+      "Parameters": stack_parameters_out,
+    }
+    stack_capabilities_in = stack_rsrc.get("Capabilities", [])
+    if stack_capabilities_in:
+      update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
+    return update_stack_kwargs_out
+
+  def kwargs_rsrc_id(self, rsrc):
+    """Transfer a describe_ item's ID, to start kwargs
+    """
+    return {self.rsrc_type.rsrc_id_key: self.rsrc_type.rsrc_id(rsrc)}
+
+  # pylint: disable=unused-argument
+  def op_kwargs(self, rsrc, cycle_start_str):
+    """Transfer a describe_ item's ID, then add static and kwargs
+    """
+    op_kwargs_out = self.kwargs_rsrc_id(rsrc)
+    op_kwargs_out.update(self.kwargs_static)
+    if self.kwargs_dynamic:
+      op_kwargs_out.update((self.kwargs_dynamic)(self, rsrc))
+    return op_kwargs_out
+
+  def queue(self, op_kwargs, cycle_cutoff_epoch_str):
+    """Send an operation message to the SQS queue
+    """
+    op_msg_attrs = msg_attrs_str_encode((
+      ("version", QUEUE_MSG_FMT_VERSION),
+      ("expires", cycle_cutoff_epoch_str),
+      ("svc", self.rsrc_type.svc),
+      ("op_method_name", self.method_name),
+    ))
+    try:
+      sqs_resp = svc_client_get("sqs").send_message(
+        QueueUrl=QUEUE_URL,
+        MessageAttributes=op_msg_attrs,
+        MessageBody=msg_body_encode(op_kwargs),
+      )
+    except (
+      botocore.exceptions.ClientError,
+      SQSMessageTooLong,
+    ) as sqs_exception:
+      sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
+      # Usually recoverable, try to queue next operation
+    except Exception:
+      sqs_send_log(op_msg_attrs, op_kwargs)
+      raise  # Unrecoverable, stop queueing operations
     else:
-      self.child_rsrc_type = None
-      noun_source = self.rsrc_type
-    self.op_method_name = f"{verb}_{noun_source.rsrc_type_in_methods}"
-    self.op_tag_key = kwargs["op_tag_key"]
-    self.op_kwargs_static = kwargs.get("op_kwargs_static", {})
-    self.op_kwargs_update = kwargs.get("op_kwargs_update", None)
+      sqs_send_log(op_msg_attrs, op_kwargs, resp=sqs_resp)
+
+  def __str__(self):
+    return f"AWSOp {self.tag_key} {self.rsrc_type.svc}.{self.method_name}"
+
+
+class AWSOpMultipleIn(AWSOp):
+  """Operation on multiple AWS resources of a particular type
+  """
+  def __init__(self, rsrc_type, **kwargs):
+    super().__init__(rsrc_type, **kwargs)
+    self.method_name = self.method_name + "s"
+
+  def kwargs_rsrc_id(self, rsrc):
+    """Transfer a describe_ item's ID, to start kwargs
+
+    One resource at a time for uniformity and to avoid partial completion risk
+    """
+    return {self.rsrc_type.rsrc_ids_key: [self.rsrc_type.rsrc_id(rsrc)]}
+
+
+class AWSOpChildOut(AWSOp):
+  """Operation on an AWS resource of particular type, creating child resource
+  """
+  def __init__(self, rsrc_type, **kwargs):
+    verb = "create"
+    super().__init__(rsrc_type, **(kwargs | {"verb": verb}))
+    self.child_rsrc_type = kwargs["child_rsrc_type"]
+    self.method_name = f"{verb}_{self.child_rsrc_type.rsrc_type_in_methods}"
 
   def create_kwargs(
     self,
@@ -371,14 +471,10 @@ class AWSOp():
   ):  # pylint: disable=too-many-arguments
     """Return create_ method kwargs (name, tags) for an image or snapshot
 
-    Calls specific create_kwargs method of the child_rsrc_type being created
+    Calls specific create_kwargs method of child_rsrc_type being created
 
     Child resource name example: zsched-ParentNameOrID-20221101T1450Z-acefg
-    - Prefix, for sorting and grouping in Console ("z..." will sort last)
-    - Use ISO 8601 date and time, for sorting, grouping, and search
-    - Identify parent resource by its Name tag value (an EC2 convention) or ID
-    - Add random suffix to make name collisions nearly impossible
-    - Truncate parent portion to spare other parts of child name
+    Truncate parent portion to spare other parts of child name.
     """
     child_tags_list = []
     parent_name_from_tag = ""
@@ -388,7 +484,7 @@ class AWSOp():
         parent_name_from_tag = parent_tag_dict["Value"]
         if not COPY_TAGS:
           break  # Stop as soon as Name tag has been found
-      elif not re.match(TAG_KEYS_NO_COPY_REGEXP, parent_tag_key):
+      elif not re.match(TAG_KEYS_NEVER_COPY_REGEXP, parent_tag_key):
         child_tags_list.append(parent_tag_dict)
 
     parent_id = self.rsrc_type.rsrc_id(parent_rsrc)
@@ -412,107 +508,18 @@ class AWSOp():
       (tag_key_join(("cycle", "start")), cycle_start_str),
       (tag_key_join(("parent", "id")), parent_id),
       (tag_key_join(("parent", "name")), parent_name_from_tag),
-      (tag_key_join(("op", )), self.op_tag_key),
+      (tag_key_join(("op", )), self.tag_key),
     ):
       child_tags_list.append({"Key": child_tag_key, "Value": child_tag_value})
 
     return self.child_rsrc_type.create_kwargs(child_name, child_tags_list)
 
-  def update_stack_kwargs(self, stack_rsrc):
-    """Take an operation and a describe_stack item, return update_stack kwargs
-
-    Preserves previous parameter values except for designated parameter(s):
-                           Param  New
-                           Key    Value
-    op_tag_key   sched-set-Enable-true
-    op_tag_key   sched-set-Enable-false
-    .split("-")            [-2]   [-1]
-    """
-    op_tag_key_words = self.op_tag_key.split(TAG_KEY_DELIM)
-    changing_parameter_key = op_tag_key_words[-2]
-    changing_parameter_new_value = op_tag_key_words[-1]
-    stack_parameters_out = [{
-      "ParameterKey": changing_parameter_key,
-      "ParameterValue": changing_parameter_new_value,
-    }]
-    for stack_parameter_in in stack_rsrc.get("Parameters", []):
-      if stack_parameter_in["ParameterKey"] != changing_parameter_key:
-        stack_parameters_out.append({
-          "ParameterKey": stack_parameter_in["ParameterKey"],
-          "UsePreviousValue": True,
-        })
-    update_stack_kwargs_out = {
-      "UsePreviousTemplate": True,
-      "Parameters": stack_parameters_out,
-    }
-    stack_capabilities_in = stack_rsrc.get("Capabilities", [])
-    if stack_capabilities_in:
-      update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
-    return update_stack_kwargs_out
-
-  def op_kwargs_rsrc_id(self, rsrc):
-    """Copy a describe_ item's ID, to start kwargs
-    """
-    return {self.rsrc_type.rsrc_id_key: self.rsrc_type.rsrc_id(rsrc)}
-
   def op_kwargs(self, rsrc, cycle_start_str):
-    """Copy a describe_ item's ID, then add static, dynamic, and child kwargs
+    """Add kwargs for child resource creation
     """
-    op_kwargs_out = self.op_kwargs_rsrc_id(rsrc)
-    op_kwargs_out.update(self.op_kwargs_static)
-    if self.op_kwargs_update:
-      op_kwargs_out.update((self.op_kwargs_update)(self, rsrc))
-    if self.child_rsrc_type:
-      op_kwargs_out.update(self.create_kwargs(rsrc, cycle_start_str))
+    op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+    op_kwargs_out.update(self.create_kwargs(rsrc, cycle_start_str))
     return op_kwargs_out
-
-  def op_queue(self, op_kwargs, cycle_cutoff_epoch_str):
-    """Send an operation message to the SQS queue
-    """
-    op_msg_attrs = msg_attrs_str_encode((
-      ("version", QUEUE_MSG_FMT_VERSION),
-      ("expires", cycle_cutoff_epoch_str),
-      ("svc", self.rsrc_type.svc),
-      ("op_method_name", self.op_method_name),
-    ))
-    try:
-      sqs_resp = svc_client_get("sqs").send_message(
-        QueueUrl=QUEUE_URL,
-        MessageAttributes=op_msg_attrs,
-        MessageBody=msg_body_encode(op_kwargs),
-      )
-    except (
-      botocore.exceptions.ClientError,
-      SQSMessageTooLong,
-    ) as sqs_exception:
-      sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
-      # Usually recoverable, try to queue next operation
-    except Exception:
-      sqs_send_log(op_msg_attrs, op_kwargs)
-      raise  # Unrecoverable, stop queueing operations
-    else:
-      sqs_send_log(op_msg_attrs, op_kwargs, resp=sqs_resp)
-
-  def __str__(self):
-    return (
-      f"AWSOp {self.op_tag_key} {self.rsrc_type.svc}.{self.op_method_name}"
-    )
-
-
-class AWSOpMultipleIn(AWSOp):
-  """Operation on multiple AWS resources of particular type
-  """
-
-  def __init__(self, rsrc_type, verb, **kwargs):
-    super().__init__(rsrc_type, verb, **kwargs)
-    self.op_method_name = self.op_method_name + "s"
-
-  def op_kwargs_rsrc_id(self, rsrc):
-    """Copy a describe_ item's ID, to start kwargs
-
-    One resource at a time for uniformity and to avoid partial completion risk
-    """
-    return {self.rsrc_type.rsrc_ids_key: [self.rsrc_type.rsrc_id(rsrc)]}
 
 
 # 4. Data-Driven Specifications ##############################################
@@ -592,19 +599,19 @@ def rsrc_types_init():
         for instance in reservation.get("Instances", [])
       ),
       ops={
-        ("start", ): {"op_class": AWSOpMultipleIn},
-        ("reboot", ): {"op_class": AWSOpMultipleIn},
-        ("stop", ): {"op_class": AWSOpMultipleIn},
+        ("start", ): {"class": AWSOpMultipleIn},
+        ("reboot", ): {"class": AWSOpMultipleIn},
+        ("stop", ): {"class": AWSOpMultipleIn},
         ("hibernate", ): {
+          "class": AWSOpMultipleIn,
           "verb": "stop",
-          "op_class": AWSOpMultipleIn,
-          "op_kwargs_static": {"Hibernate": True},
+          "kwargs_static": {"Hibernate": True},
         },
         ("backup", ): {
           "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Image"],
         },
         ("reboot", "backup"): {
-          "op_kwargs_static": {"NoReboot": False},
+          "kwargs_static": {"NoReboot": False},
           "child_rsrc_type": AWSChildRsrcType.members["ec2"]["Image"],
         },
       },
@@ -630,7 +637,7 @@ def rsrc_types_init():
         ("start", ): {},
         ("stop", ): {},
         ("reboot", ): {},
-        ("reboot", "failover"): {"op_kwargs_static": {"ForceFailover": True}},
+        ("reboot", "failover"): {"kwargs_static": {"ForceFailover": True}},
         ("backup", ): {
           "child_rsrc_type": AWSChildRsrcType.members["rds"]["DBSnapshot"],
         },
@@ -659,11 +666,11 @@ def rsrc_types_init():
       ops={
         ("set", "Enable", "true"): {
           "verb": "update",
-          "op_kwargs_update": AWSOp.update_stack_kwargs,
+          "kwargs_dynamic": AWSOp.update_stack_kwargs,
         },
         ("set", "Enable", "false"): {
           "verb": "update",
-          "op_kwargs_update": AWSOp.update_stack_kwargs,
+          "kwargs_dynamic": AWSOp.update_stack_kwargs,
         },
       },
     )
