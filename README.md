@@ -99,7 +99,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
 * Do not copy and paste tag keys from the table to AWS; the ones in the table
-  contains non-breaking (non-ASCII) hyphens.
+  contain non-breaking (non-ASCII) hyphens.
 * Not all EC2 instances support hibernation.
 * Not all RDS database clusters support cluster-level reboot.
 * If an AWS resource is tagged for multiple operations at the same time, an
