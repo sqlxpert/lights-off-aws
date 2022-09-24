@@ -246,22 +246,17 @@ class AWSParentRsrcType(AWSRsrcType):
     self.ops = {}
     for (op_tag_key_words, op_properties) in kwargs["ops"].items():
       op_tag_key = tag_key_join(op_tag_key_words)
-      op_properties_add = {"op_tag_key": op_tag_key}
+      op_properties_out = {"op_tag_key": op_tag_key}
+      op_properties_out.update(op_properties)
       # Default verbs (specification shorthands):
       if "verb" not in op_properties:
-        op_properties_add["verb"] = (
+        op_properties_out["verb"] = (
           "create"
           if "child_rsrc_type" in op_properties else
           op_tag_key_words[0]  # Same as (first) tag key word
         )
-      op_class = (
-        AWSOpMultiple
-        if op_properties.get("multiple_rsrcs", False) else
-        AWSOp
-      )
-      self.ops[op_tag_key] = op_class(
-        self, **(op_properties | op_properties_add)
-      )
+      op_class = op_properties.get("op_class", AWSOp)
+      self.ops[op_tag_key] = op_class(self, **op_properties_out)
     self.__class__.members[svc][self.rsrc_key] = self
 
   # pylint: disable=missing-function-docstring
@@ -504,7 +499,7 @@ class AWSOp():
     )
 
 
-class AWSOpMultiple(AWSOp):
+class AWSOpMultipleIn(AWSOp):
   """Operation on multiple AWS resources of particular type
   """
 
@@ -597,12 +592,12 @@ def rsrc_types_init():
         for instance in reservation.get("Instances", [])
       ),
       ops={
-        ("start", ): {"multiple_rsrcs": True},
-        ("reboot", ): {"multiple_rsrcs": True},
-        ("stop", ): {"multiple_rsrcs": True},
+        ("start", ): {"op_class": AWSOpMultipleIn},
+        ("reboot", ): {"op_class": AWSOpMultipleIn},
+        ("stop", ): {"op_class": AWSOpMultipleIn},
         ("hibernate", ): {
           "verb": "stop",
-          "multiple_rsrcs": True,
+          "op_class": AWSOpMultipleIn,
           "op_kwargs_static": {"Hibernate": True},
         },
         ("backup", ): {
