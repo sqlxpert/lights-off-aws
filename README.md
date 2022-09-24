@@ -168,8 +168,8 @@ Backup operations create a "child" resource (image or snapshot) from a
 |`Name`|Name (as above)|
 |`sched-parent-name`|Name of the parent (may be blank)|
 |`sched-parent-id`|Physical identifier of the parent|
-|`sched-op`|Operation tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
-|`sched-cycle-start`|Scheduled date and time of the backup (`Z` stands for the UTC time zone)|
+|`sched-op`|Tag key that prompted the backup (`sched-reboot-backup` versus `sched-backup`, for example)|
+|`sched-cycle-start`|Scheduled date and time of the backup|
 
 * Although AWS stores most of this information as resource properties/metadata,
   the field names/keys vary by AWS service, as do the search capabilities
