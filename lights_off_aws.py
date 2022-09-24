@@ -348,10 +348,12 @@ class AWSOp():
 
   @staticmethod
   def new(rsrc_type, tag_key_words, **kwargs):
-    """Create operation of the default, appropriate, or requested, (sub)class
+    """Create an op of the requested, appropriate, or default (sub)class
     """
-    if "class" not in kwargs:
-      op_class = AWSOpChildOut if "child_rsrc_type" in kwargs else AWSOp
+    op_class = kwargs.get(
+      "class",
+      AWSOpChildOut if "child_rsrc_type" in kwargs else AWSOp
+    )
     return op_class(rsrc_type, tag_key_words, **kwargs)
 
   def update_stack_kwargs(self, stack_rsrc):
