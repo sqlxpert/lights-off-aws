@@ -340,7 +340,7 @@ class AWSOp():
     self.rsrc_type = rsrc_type
     self.tag_key_words = tag_key_words
     self.tag_key = tag_key_join(tag_key_words)
-    verb = kwargs.get("verb", tag_key_words[0]) # Default: 1st tag key word
+    verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st tag key word
     self.method_name = f"{verb}_{self.rsrc_type.rsrc_type_in_methods}"
     self.kwargs_static = kwargs.get("kwargs_static", {})
     self.kwargs_dynamic = kwargs.get("kwargs_dynamic", None)
