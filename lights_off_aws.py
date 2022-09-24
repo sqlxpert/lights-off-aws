@@ -254,7 +254,14 @@ class AWSParentRsrcType(AWSRsrcType):
           if "child_rsrc_type" in op_properties else
           op_tag_key_words[0]  # Same as (first) tag key word
         )
-      self.ops[op_tag_key] = AWSOp(self, **(op_properties | op_properties_add))
+      op_class = (
+        AWSOpMultiple
+        if op_properties.get("multiple_rsrcs", False) else
+        AWSOp
+      )
+      self.ops[op_tag_key] = op_class(
+        self, **(op_properties | op_properties_add)
+      )
     self.__class__.members[svc][self.rsrc_key] = self
 
   # pylint: disable=missing-function-docstring
@@ -343,9 +350,9 @@ class AWSParentRsrcType(AWSRsrcType):
 
 
 class AWSOp():
-  """Operation on an AWS resource type, possibly creating a child resource
+  """Operation on AWS resource of particular type, possibly creating child
   """
-  def __init__(self, rsrc_type, verb, multiple_rsrcs=False, **kwargs):
+  def __init__(self, rsrc_type, verb, **kwargs):
     self.rsrc_type = rsrc_type
     if "child_rsrc_type" in kwargs:
       self.child_rsrc_type = kwargs["child_rsrc_type"]
@@ -353,11 +360,7 @@ class AWSOp():
     else:
       self.child_rsrc_type = None
       noun_source = self.rsrc_type
-    self.multiple_rsrcs = multiple_rsrcs
-    noun_suffix_plural = "s" if self.multiple_rsrcs else ""
-    self.op_method_name = (
-      f"{verb}_{noun_source.rsrc_type_in_methods}{noun_suffix_plural}"
-    )
+    self.op_method_name = f"{verb}_{noun_source.rsrc_type_in_methods}"
     self.op_tag_key = kwargs["op_tag_key"]
     self.op_kwargs_static = kwargs.get("op_kwargs_static", {})
     self.op_kwargs_update = kwargs.get("op_kwargs_update", None)
@@ -452,16 +455,15 @@ class AWSOp():
       update_stack_kwargs_out["Capabilities"] = stack_capabilities_in
     return update_stack_kwargs_out
 
+  def op_kwargs_rsrc_id(self, rsrc):
+    """Copy a describe_ item's ID, to start kwargs
+    """
+    return {self.rsrc_type.rsrc_id_key: self.rsrc_type.rsrc_id(rsrc)}
+
   def op_kwargs(self, rsrc, cycle_start_str):
     """Copy a describe_ item's ID, then add static, dynamic, and child kwargs
     """
-    rsrc_id = self.rsrc_type.rsrc_id(rsrc)
-    op_kwargs_out = (
-      # One at a time, for uniformity and to eliminate partial completion risk
-      {self.rsrc_type.rsrc_ids_key: [rsrc_id]}
-      if self.multiple_rsrcs else
-      {self.rsrc_type.rsrc_id_key: rsrc_id}
-    )
+    op_kwargs_out = self.op_kwargs_rsrc_id(rsrc)
     op_kwargs_out.update(self.op_kwargs_static)
     if self.op_kwargs_update:
       op_kwargs_out.update((self.op_kwargs_update)(self, rsrc))
@@ -500,6 +502,22 @@ class AWSOp():
     return (
       f"AWSOp {self.op_tag_key} {self.rsrc_type.svc}.{self.op_method_name}"
     )
+
+
+class AWSOpMultiple(AWSOp):
+  """Operation on multiple AWS resources of particular type
+  """
+
+  def __init__(self, rsrc_type, verb, **kwargs):
+    super().__init__(rsrc_type, verb, **kwargs)
+    self.op_method_name = self.op_method_name + "s"
+
+  def op_kwargs_rsrc_id(self, rsrc):
+    """Copy a describe_ item's ID, to start kwargs
+
+    One resource at a time for uniformity and to avoid partial completion risk
+    """
+    return {self.rsrc_type.rsrc_ids_key: [self.rsrc_type.rsrc_id(rsrc)]}
 
 
 # 4. Data-Driven Specifications ##############################################
