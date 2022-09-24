@@ -211,10 +211,10 @@ encouraged to read the code yourself and to evaluate its security._
   operations, and at that, only when a resource has a `sched-` tag key that
   names the specific operation.
 
-* A least-privilege queue policy for the queue linking the two functions. This
-  scheduled operation queue can only consume messages from the "Find" function
-  and produce messages for the "Do" function (or for a dead-letter queue, in
-  the case of failed operations). Encryption in transit is required.
+* A least-privilege queue policy for the queue linking the two functions. The
+  operation queue can only consume messages from the "Find" function and
+  produce messages for the "Do" function (or for a dead-letter queue, in the
+  case of failed operations). Encryption in transit is required.
 
 * Readable IAM policies, formatted as CloudFormation YAML rather than as JSON,
   and broken down into discrete statements by resource, by service, or by
@@ -250,38 +250,33 @@ encouraged to read the code yourself and to evaluate its security._
   prompt backup creation) delete backups as well.
 
 * Prevent ordinary AWS users from modifying components of Lights Off, most of
-  which are easily identified by `LightsOff` in ARNs and/or in the automatic
-  `aws:cloudformation:stack-name` tag. Limiting most people's permissions so
-  that the deployment role is _necessary_ for modifying Lighs Off is one way.
-  You could also copy the role's in-line IAM policy, delete the statements
-  with `"Resource": "*"`, change the `"Effect"` of the remaining,
+  which are identified by `LightsOff` in ARNs and in the automatic
+  `aws:cloudformation:stack-name` tag. Limiting people's permissions so that
+  the deployment role is _necessary_ for modifying Lights Off is ideal. Short
+  of that, you could copy the deployment role's in-line IAM policy, delete the
+  statements with `"Resource": "*"`, change the `"Effect"` of the remaining,
   resource-specific statements to `"Deny"`, and add the new, inverted policy
   to people's day-to-day roles.
 
 * Add similar policies to prevent people from directly invoking the Lights Off
-  AWS Lambda functions and from passing the roles defined for the Lights Off
-  fuctions to arbitrary AWS Lambda functions.
+  AWS Lambda functions and from passing the roles defined for those functions
+  to other, arbitrary functions.
 
 * Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
 * Separate production workloads. You might decide not to deploy Lights Off to
   AWS accounts used for production, or you might customize the "Do" function's
-  privileges, removing the authority to reboot or stop production resources
-  (you can set the `LocalPolicy` parameter to attach your own, locally-written
-  policy to the function's role).
+  role, removing the authority to reboot and stop production resources (set
+  the `AttachLocalPolicy` parameter of your Lights Off CloudFormation stack).
 
 * Note these AWS limitations:
 
-  * Permission to create an image includes permission to reboot an EC2
-    instance. (Explicitly denying the reboot privilege does not help.) A
-    harmless privilege is married with a potentially disruptive one.
+  * Permission to create an image includes permission to reboot the EC2
+    instance at the same time. (Explicitly denying the reboot privilege does
+    not help.)
 
   * Permission to add a specific RDS tag includes permission to add _any
     other_ tags at the same time.
-
-  * It's not possible to set an AWS Lambda function's resource-based policy
-    directly, and CloudFormation can be used to add permissions but not to
-    add restrictions (such as preventing invocation outside Lights Off).
 
 ## Advanced Installation
 
@@ -369,7 +364,7 @@ regions),
 
 ### Least-Privilege
 
-You can specify a
+You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
 to give CloudFormation only the privileges it needs to create a Lights Off
 CloudFormation stack. First, create a CloudFormation stack named
@@ -378,7 +373,7 @@ CloudFormation stack. First, create a CloudFormation stack named
 . Later, when you create a stack named `LightsOff` from
 [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml) ,
 scroll up to the Permissions section and set IAM role -
-optional to `LightsOffPrereq-DeploymentRole` . If your privileges are
+optional to `LightsOffPrereq-DeploymentRole` . If your own privileges are
 limited, you might need explicit permission to pass the deployment role to
 CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
 policy for an example of the necessary statement.
