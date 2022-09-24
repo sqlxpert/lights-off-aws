@@ -93,14 +93,14 @@ def unique_suffix(
   return "".join(random.choice(chars_allowed) for dummy in range(char_count))
 
 
-def msg_attrs_str_encode(attrs_dict_in):
-  """Take an attr_name: attr_value dict, return an SQS messageAttributes dict
+def msg_attrs_str_encode(attr_pairs):
+  """Take a list of name, value pairs, return an SQS messageAttributes dict
 
   String attributes only!
   """
   return {
     attr_name: {"DataType": "String", "StringValue": attr_value}
-    for (attr_name, attr_value) in attrs_dict_in.items()
+    for (attr_name, attr_value) in attr_pairs
   }
 
 
@@ -474,12 +474,12 @@ class AWSOp():
   def op_queue(self, op_kwargs, cycle_cutoff_epoch_str):
     """Send an operation message to the SQS queue
     """
-    op_msg_attrs = msg_attrs_str_encode({
-      "version": QUEUE_MSG_FMT_VERSION,
-      "expires": cycle_cutoff_epoch_str,
-      "svc": self.rsrc_type.svc,
-      "op_method_name": self.op_method_name,
-    })
+    op_msg_attrs = msg_attrs_str_encode((
+      ("version", QUEUE_MSG_FMT_VERSION),
+      ("expires", cycle_cutoff_epoch_str),
+      ("svc", self.rsrc_type.svc),
+      ("op_method_name", self.op_method_name),
+    ))
     try:
       sqs_resp = svc_client_get("sqs").send_message(
         QueueUrl=QUEUE_URL,

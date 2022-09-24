@@ -219,8 +219,7 @@ encouraged to read the code yourself and to evaluate its security._
   case of failed operations). Encryption in transit is required.
 
 * Readable IAM policies, formatted as CloudFormation YAML rather than as JSON,
-  and broken down into discrete statements by resource, by service, or by
-  principal.
+  and broken down into discrete statements by service, resource or principal.
 
 * Optional encryption at rest with custom AWS Key Management System (KMS)
   keys, for queue message bodies (which contain the identifiers and tags of
@@ -251,8 +250,8 @@ encouraged to read the code yourself and to evaluate its security._
 * Never let a role that can create backups (or, in this case, set tags to
   prompt backup creation) delete backups as well.
 
-* Prevent ordinary AWS users from modifying components of Lights Off, most of
-  which are identified by `LightsOff` in ARNs and in the automatic
+* Prevent people from modifying components of Lights Off, most of which can be
+  identified by `LightsOff` in ARNs and in the automatic
   `aws:cloudformation:stack-name` tag. Limiting people's permissions so that
   the deployment role is _necessary_ for modifying Lights Off is ideal. Short
   of that, you could copy the deployment role's in-line IAM policy, delete the
