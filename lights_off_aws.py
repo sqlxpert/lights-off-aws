@@ -562,7 +562,7 @@ def rsrc_types_init():
       ("DB", "Snapshot"),
       "Identifier",
       name_chars_max=255,
-      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--+",
       create_kwargs=lambda child_name, child_tags_list: {
         "DBSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
@@ -574,7 +574,7 @@ def rsrc_types_init():
       ("DB", "Cluster", "Snapshot"),
       "Identifier",
       name_chars_max=63,
-      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--+",
       create_kwargs=lambda child_name, child_tags_list: {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
