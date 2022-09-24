@@ -489,11 +489,11 @@ simple operation definitions shown above.
               StringLike: { "aws:ResourceTag/sched-start": "*" }
 ```
 
-Actions, resources and conditions like the ones shown above were added to the
-`RdsWrite` policy for the role used by the "Do" AWS Lambda function, to
-authorize operations on RDS database clusters. The role used by the "Find"
-function was also updated to authorize describing (listing) RDS database
-clusters.
+Statements like the one shown above were added to the `RdsWrite` policy for
+the Identity and Access Management (IAM) role used by the "Do" AWS Lambda
+function, to authorize operations on RDS database clusters. The role used by
+the "Find" function was also updated to authorize describing (listing) RDS
+database clusters.
 
 What capabilities would _you_ like to add to Lights Off?
 </details>
