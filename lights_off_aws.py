@@ -424,7 +424,7 @@ class AWSOp():
     return self.child_rsrc_type.create_kwargs(child_name, child_tags_list)
 
   def update_stack_kwargs(self, stack_rsrc):
-    """Take a describe_stack item and an operation, return update_stack kwargs
+    """Take an operation and a describe_stack item, return update_stack kwargs
 
     Preserves previous parameter values except for designated parameter(s):
                            Param  New
