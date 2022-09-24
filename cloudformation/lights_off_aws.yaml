@@ -440,6 +440,11 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-stop": "*" }
+              - Effect: Allow
+                Action: ec2:StopInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: { "aws:ResourceTag/sched-hibernate": "*" }
               - Sid: DangerCanForceReboot
                 Effect: Allow
                 Action: ec2:CreateImage
