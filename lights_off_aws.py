@@ -230,7 +230,7 @@ class AWSChildRsrcType(AWSRsrcType):
     self.name_chars_max = kwargs["name_chars_max"]
     self.name_chars_unsafe_regexp = kwargs.get("name_chars_unsafe_regexp", "")
     self.create_kwargs = kwargs["create_kwargs"]
-    self.__class__.members[svc][self.rsrc_key] = self
+    self.__class__.members[svc][self.rsrc_key] = self  # Register self!
 
 
 class AWSParentRsrcType(AWSRsrcType):
@@ -244,15 +244,9 @@ class AWSParentRsrcType(AWSRsrcType):
     self.status_filter_pair = kwargs.get("status_filter_pair", ())
     self.describe_flatten = kwargs.get("describe_flatten", None)
     self.ops = {}
-    for (op_tag_key_words, op_properties_priority) in kwargs["ops"].items():
-      op_tag_key = tag_key_join(op_tag_key_words)
-      op_properties = {
-        "tag_key": op_tag_key,
-        "verb": op_tag_key_words[0],  # Default: 1st tag key word
-      }
-      op_properties.update(op_properties_priority)
-      self.ops[op_tag_key] = AWSOp.new(**op_properties)
-    self.__class__.members[svc][self.rsrc_key] = self
+    for (op_tag_key_words, op_properties) in kwargs["ops"].items():
+      AWSOp.new(self, op_tag_key_words, **op_properties)
+    self.__class__.members[svc][self.rsrc_key] = self  # Register self!
 
   # pylint: disable=missing-function-docstring
 
@@ -342,38 +336,38 @@ class AWSParentRsrcType(AWSRsrcType):
 class AWSOp():
   """Operation on an AWS resource of particular type
   """
-  def __init__(self, rsrc_type, **kwargs):
+  def __init__(self, rsrc_type, tag_key_words, **kwargs):
     self.rsrc_type = rsrc_type
-    self.tag_key = kwargs["tag_key"]
-    verb = kwargs["verb"]
+    self.tag_key_words = tag_key_words
+    self.tag_key = tag_key_join(tag_key_words)
+    verb = kwargs.get("verb", tag_key_words[0]) # Default: 1st tag key word
     self.method_name = f"{verb}_{self.rsrc_type.rsrc_type_in_methods}"
     self.kwargs_static = kwargs.get("kwargs_static", {})
     self.kwargs_dynamic = kwargs.get("kwargs_dynamic", None)
+    self.rsrc_type.ops[self.tag_key] = self  # Register in parent AWSRsrcType!
 
   @staticmethod
-  def new(**kwargs):
+  def new(rsrc_type, tag_key_words, **kwargs):
     """Create operation of the default, appropriate, or requested, (sub)class
     """
     if "class" not in kwargs:
       op_class = AWSOpChildOut if "child_rsrc_type" in kwargs else AWSOp
-    return op_class(**kwargs)
+    return op_class(rsrc_type, tag_key_words, **kwargs)
 
   def update_stack_kwargs(self, stack_rsrc):
     """Take an operation and a describe_stack item, return update_stack kwargs
 
     Preserves previous parameter values except for designated parameter(s):
-                         Param  New
-                         Key    Value
-    otag_key   sched-set-Enable-true
-    otag_key   sched-set-Enable-false
-    .split("-")          [-2]   [-1]
+                             Param  New
+                             Key    Value
+    tag_key        sched-set-Enable-true
+    tag_key        sched-set-Enable-false
+    tag_key_words            [-2]   [-1]
     """
-    op_tag_key_words = self.tag_key.split(TAG_KEY_DELIM)
-    changing_parameter_key = op_tag_key_words[-2]
-    changing_parameter_new_value = op_tag_key_words[-1]
+    changing_parameter_key = self.tag_key_words[-2]
     stack_parameters_out = [{
       "ParameterKey": changing_parameter_key,
-      "ParameterValue": changing_parameter_new_value,
+      "ParameterValue": self.tag_key_words[-1],
     }]
     for stack_parameter_in in stack_rsrc.get("Parameters", []):
       if stack_parameter_in["ParameterKey"] != changing_parameter_key:
@@ -439,8 +433,8 @@ class AWSOp():
 class AWSOpMultipleIn(AWSOp):
   """Operation on multiple AWS resources of a particular type
   """
-  def __init__(self, rsrc_type, **kwargs):
-    super().__init__(rsrc_type, **kwargs)
+  def __init__(self, rsrc_type, tag_key_words, **kwargs):
+    super().__init__(rsrc_type, tag_key_words, **kwargs)
     self.method_name = self.method_name + "s"
 
   def kwargs_rsrc_id(self, rsrc):
@@ -454,9 +448,9 @@ class AWSOpMultipleIn(AWSOp):
 class AWSOpChildOut(AWSOp):
   """Operation on an AWS resource of particular type, creating child resource
   """
-  def __init__(self, rsrc_type, **kwargs):
+  def __init__(self, rsrc_type, tag_key_words, **kwargs):
     verb = "create"
-    super().__init__(rsrc_type, **(kwargs | {"verb": verb}))
+    super().__init__(rsrc_type, tag_key_words, **(kwargs | {"verb": verb}))
     self.child_rsrc_type = kwargs["child_rsrc_type"]
     self.method_name = f"{verb}_{self.child_rsrc_type.rsrc_type_in_methods}"
 
