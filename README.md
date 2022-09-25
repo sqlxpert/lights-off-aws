@@ -133,7 +133,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   example.)
 * 2 digits required for hour, minute, and numeric day of month
 * Days before times, and hours before minutes (For fast matching, compound
-  daily or weekly terms should go first.)
+  weekly and monthly terms should go first.)
 * The day, the hour and the minute must all be specified in some way
 * Consider `dTH:M=01T00:00` for end-of-month, because some months lack `d=29`
   through `d=31`
