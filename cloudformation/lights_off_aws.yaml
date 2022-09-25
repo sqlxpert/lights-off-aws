@@ -517,6 +517,10 @@ Resources:
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-reboot": "*" }
               - Effect: Allow
+                Action: rds:RebootDBCluster
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
+              - Effect: Allow
                 Action:
                   - rds:RebootDBInstance
                 Resource:
