@@ -90,7 +90,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 ## Tag Keys (Operations)
 
-|`sched-` + ...|`-stop` `-start`|`-hibernate` `-start`|`-backup`|`-reboot-backup`|`-reboot`|`-reboot-failover`|`-set-Enable-false` `-set-Enable-true`|
+|`sched‑`&nbsp;+&nbsp;&hellip;|`‑stop` `‑start`|`‑hibernate` `‑start`|`‑backup`|`‑reboot‑backup`|`‑reboot`|`‑reboot‑failover`|`‑set‑Enable‑false` `‑set‑Enable‑true`|
 |--|--|--|--|--|--|--|--|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||snapshot|||||
@@ -98,6 +98,8 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
+* Do not copy and paste from this table to AWS; tag keys in the table contain
+  non-breaking (non-ASCII) hyphens!
 * Not all EC2 instances support hibernation.
 * Not all RDS database clusters support cluster-level reboot.
 * If an AWS resource is tagged for multiple operations at the same time, an
