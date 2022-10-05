@@ -64,10 +64,10 @@ Resources:
 
   ############################################################################
   # Separately, you must define a service role that allows CloudFormation to
-  # create, update and delete ALL of the resources in your template, and you
-  # MUST select that role when you create a stack from your template.
-  # Otherwise, Lights Off will not be able to update your stack. Test the role
-  # by performing a stack update. See
+  # create, tag, update, untag, and delete ALL of the resources in your
+  # template, and you MUST select that role when you create a stack from your
+  # template. Otherwise, Lights Off will not be able to update your stack.
+  # Test your deployment role by performing a stack update. See
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html
   #
   # Before creating a stack from this sample template, create an IAM role.
@@ -78,6 +78,22 @@ Resources:
   #
   # Least-privilege example: DeploymentRole in lights_off_aws_prereq.yaml
   # supports creation of a stack from lights_off_aws.yaml
+  #
+  # Permission to create, modify, and delete arbitrary tags for stack
+  # resources is necessary because CloudFormation automatically propagates
+  # stack-level tags (including the sched-set-Enable-true and -false tags that
+  # you will add) to resources that it creates. If your deployment role does
+  # not allow tagging, then stack updates will fail. Because CloudFormation is
+  # updated regularly to propagate stack tags to more resource types, it is
+  # wise to provide tagging privileges for all resource types in your
+  # template, even if CloudFormation cannot yet tag them. In many cases, you
+  # can achieve least-privilege with a condition key:
+  #
+  # "StringLike": { "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*" }
+  #
+  # where KEYWORD is some word that you will require in the name of all stacks
+  # created using your deployment role, and that you will not allow in the
+  # names of any other stacks.
   ############################################################################
 
   ConditionalSecGrp:

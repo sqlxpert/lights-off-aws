@@ -98,8 +98,8 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)|||||||&check;|
 
-* Do not copy and paste tag keys from the table to AWS; the ones in the table
-  contain non-breaking (non-ASCII) hyphens.
+* Do not copy and paste tag keys from the table to AWS; the table uses
+  non-breaking (non-ASCII) hyphens for formatting purposes.
 * Not all EC2 instances support hibernation.
 * Not all RDS database clusters support cluster-level reboot.
 * If an AWS resource is tagged for multiple operations at the same time, an
@@ -156,7 +156,7 @@ Backup operations create a "child" resource (image or snapshot) from a
 |--|--|--|
 |Prefix|`zsched`|Distinguishes backups created by Lights Off. `z` sorts after most manually-created images and snapshots.|
 |Parent name or identifier|`webserver`|Meaningfully identifies the parent by `Name` tag value; otherwise, indicates the physical identifier. Groups backups of the same parent.|
-|Date and time|`20171231T1400Z`|Groups backups scheduled for the same date and time. `Z` stands for the UTC time zone.|
+|Date and time|`20171231T1400Z`|Groups backups scheduled for the same date and time. `Z` stands for UTC time.|
 |Random suffix|`g3a8a`|Guarantees a unique name.|
 
 * Parts are separated by hyphens (`-`).
@@ -406,12 +406,10 @@ accounts if you want to deploy a CloudFormation StackSet with
 Using tags on your own CloudFormation stack to change a stack parameter on
 schedule is an advanced Lights Off feature.
 
-A sample use case is preserving the free/low-cost resources of an AWS Client
-VPN setup but deleting the `AWS::EC2::ClientVpnTargetNetworkAssociation` at
-the end of the work day. At 10¢ per hour, this saves up to $650 per year.
-(Temporarily opening after-hours VPN access is as simple as manually updating
-the VPN stack or temporarily adding the next multiple of 10 minutes to the VPN
-stack's `sched-set-Enable-true` tag!)
+A sample use case is turning off an AWS Client VPN at the end of the day, when
+no one else will be connecting. See
+[10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn)
+for potential savings of $600 per year.
 
 To make your own CloudFormation template compatible with Lights Off, follow
 the instructions in the sample template,
@@ -442,7 +440,7 @@ supported) required the following additions:
       ("DB", "Cluster", "Snapshot"),
       "Identifier",
       name_chars_max=63,
-      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--",
+      name_chars_unsafe_regexp=r"[^a-zA-Z0-9-]|--+",
       create_kwargs=lambda child_name, child_tags_list: {
         "DBClusterSnapshotIdentifier": child_name,
         "Tags": child_tags_list,
