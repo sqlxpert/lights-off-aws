@@ -64,7 +64,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
    _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
    in
-   [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt?raw=true)
+   [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt?raw=true)
 
 5. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
