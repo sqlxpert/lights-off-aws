@@ -59,18 +59,18 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
    _Security Tip:_ Block public access to the bucket, and limit write access.
 
 4. Upload a locally-saved copy of
-   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=)
+   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true)
    to your S3 bucket.
 
    _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
    in
-   [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt?raw=)
+   [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt?raw=true)
 
 5. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
    Select Upload a template file, then click Choose file and navigate to a
    locally-saved copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=)
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    . On the next page, set:
 
    * Stack name: `LightsOff`
