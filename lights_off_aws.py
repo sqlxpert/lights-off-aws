@@ -22,7 +22,7 @@ logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
 
 SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
 SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
-SCHED_REGEXP_STRFTIME_FMT = (rf"""
+SCHED_REGEXP_STRFTIME_FMT = rf"""
   (^|{SCHED_DELIMS})
   (
     # Specific monthly or weekly day and time, or...
@@ -39,7 +39,7 @@ SCHED_REGEXP_STRFTIME_FMT = (rf"""
     )
   )
   ({SCHED_DELIMS}|$)
-""")
+"""
 
 QUEUE_URL = os.environ.get("QUEUE_URL", "")
 QUEUE_MSG_BYTES_MAX = int(os.environ.get("QUEUE_MSG_BYTES_MAX", "-1"))
@@ -50,6 +50,7 @@ TAG_KEY_DELIM = "-"
 TAG_KEYS_NEVER_COPY_REGEXP = (
   rf"^((aws|ec2|rds):|{TAG_KEY_PREFIX}{TAG_KEY_DELIM})"
 )
+# pylint: disable=superfluous-parens
 COPY_TAGS = (os.environ.get("COPY_TAGS", "").lower() == "true")
 
 
@@ -464,7 +465,7 @@ class AWSOpChildOut(AWSOp):
     name_delim=TAG_KEY_DELIM,
     base_name_chars=23,
     fill_char="X"
-  ):  # pylint: disable=too-many-arguments
+  ):  # pylint: disable=too-many-positional-arguments,too-many-arguments
     """Return create_ method kwargs (name, tags) for an image or snapshot
 
     Calls specific create_kwargs method of child_rsrc_type being created
@@ -729,9 +730,8 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
     except Exception:
       op_log(event)
       raise
+    if boto3_success(resp):
+      op_log(event, resp=resp, log_level=logging.INFO)
     else:
-      if boto3_success(resp):
-        op_log(event, resp=resp, log_level=logging.INFO)
-      else:
-        op_log(event, resp=resp)
-        raise RuntimeError("Miscellaneous AWS erorr")
+      op_log(event, resp=resp)
+      raise RuntimeError("Miscellaneous AWS erorr")

@@ -1,9 +1,13 @@
 # Start, reboot, stop and back up AWS resources using schedules in tags
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
+[MAIN]
+
+load-plugins=pylint.extensions.no_self_use
+
 [MESSAGES CONTROL]
 
-disable=bad-continuation,fixme,locally-disabled
+disable=fixme,locally-disabled
 
 [REPORTS]
 
