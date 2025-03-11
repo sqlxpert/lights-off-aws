@@ -36,12 +36,9 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 ## Quick Start
 
-1. Copy this Git repository to your local computer. (The green Code button at
-   the top right opens a pop-up menu that shows several ways.)
+1. Log in to the AWS Console as an administrator.
 
-2. Log in to the AWS Console as an administrator.
-
-3. Tag an
+2. Tag an
    [EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)
    with:
 
@@ -49,7 +46,7 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
      \+ 20 minutes. Round up to :00, :10, :20, :30, :40, or :50.
 
-4. Create an
+3. Create an
    [S3 bucket](https://console.aws.amazon.com/s3/home)
    for AWS Lambda function source code. Name it:
 
@@ -61,29 +58,29 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
    _Security Tip:_ Block public access to the bucket, and limit write access.
 
-5. Upload
-   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
+4. Upload a locally-saved copy of
+   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true)
    to your S3 bucket.
 
    _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
    in
-   [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt)
+   [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt?raw=true)
 
-6. Create a
+5. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Select Upload a template file, then click Choose file and navigate to
-   your local copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml)
+   Select Upload a template file, then click Choose file and navigate to a
+   locally-saved copy of
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    . On the next page, set:
 
    * Stack name: `LightsOff`
    * Lambda code S3 bucket: Exclude the region. For example, if your bucket is
      my-bucket-us-east-1, enter `my-bucket`.
 
-7. After about 20 minutes, check
+6. After about 20 minutes, check
    [images (AMIs)](https://console.aws.amazon.com/ec2/v2/home#Images:sort=desc:creationDate).
 
-8. Before deregistering (deleting) the image that was created, note its ID
+7. Before deregistering (deleting) the image that was created, note its ID
    (`ami-`) so that you delete the underlying
    [EBS snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:visibility=owned-by-me;v=3;tag:Name=:zsched-;sort=desc:startTime).
    Remember to delete the `sched-backup` tag from your EC2 instance.
@@ -107,19 +104,19 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 
 ## Tag Values (Schedules)
 
-* Terms:
+### Terms
 
-  |Type|Minimum|Maximum|Wildcard|
-  |--|--|--|--|
-  |Day of month|`d=01`|`d=31`|`d=_`|
-  |Day of week|`u=1` (Monday)|`u=7` (Sunday)||
-  |Hour|`H=00`|`H=23`|`H=_`|
-  |Minute (multiple of 10)|`M=00`|`M=50`||
-  |Daily|`H:M=00:00`|`H:M=23:50`||
-  |Weekly|`uTH:M=1T00:00`|`uTH:M=7T23:50`||
-  |Monthly|`dTH:M=01T00:00`|`dTH:M=31T23:50`||
+  |Type|Literal Values|Wildcard|
+  |--|--|--|
+  |Day of month|`d=01` ... `d=31`|`d=_`|
+  |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
+  |Hour|`H=00` ... `H=23`|`H=_`|
+  |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
+  |Daily|`H:M=00:00` ... `H:M=23:50`||
+  |Weekly|`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
+  |Monthly|`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
 
-* Examples:
+### Examples
 
   |Tag Value|Scenario|Meaning|
   |--|--|--|
@@ -128,22 +125,20 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
   |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of the month|
 
+### Rules
+
 * UTC time zone on a 24-hour clock
-* Last digit of minute must be 0 (14:20 means _between 14:20 and 14:30_, for
-  example.)
-* 2 digits required for hour, minute, and numeric day of month
 * Days before times, and hours before minutes (For fast matching, compound
   weekly and monthly terms should go first.)
 * The day, the hour and the minute must all be specified in some way
 * Consider `dTH:M=01T00:00` for end-of-month, because some months lack `d=29`
   through `d=31`
-* Rationale for:
-  * Separator and wildcard: [RDS does not allow , or \*](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
-  * Letters:
+
+### Rationale
+
+* Separator and wildcard: [RDS does not allow , or \*](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
+* Letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
-  * Weekday numbers:
-  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)
-  (`cron` differs.)
 
 ## Child Resources
 
@@ -361,6 +356,7 @@ regions),
    Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
+
 </details>
 
 ### Least-Privilege
