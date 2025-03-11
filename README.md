@@ -59,18 +59,18 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
    _Security Tip:_ Block public access to the bucket, and limit write access.
 
 4. Upload a locally-saved copy of
-   [lights_off_aws.py.zip](/raw/refs/heads/main/lights_off_aws.py.zip)
+   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=)
    to your S3 bucket.
 
    _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
    in
-   [lights_off_aws.py.zip.md5.txt](/raw/refs/heads/main/lights_off_aws.py.zip.md5.txt)
+   [lights_off_aws.py.zip.md5.txt](lights_off_aws.py.zip.md5.txt?raw=)
 
 5. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
    Select Upload a template file, then click Choose file and navigate to a
    locally-saved copy of
-   [lights_off_aws.yaml](/raw/refs/heads/main/cloudformation/lights_off_aws.yaml)
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=)
    . On the next page, set:
 
    * Stack name: `LightsOff`
@@ -112,7 +112,6 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
   |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
   |Hour|`H=00` ... `H=23`|`H=_`|
   |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
-  |--|--|--|
   |Daily|`H:M=00:00` ... `H:M=23:50`||
   |Weekly|`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
   |Monthly|`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
@@ -138,7 +137,6 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 ### Rationale
 
 * Separator and wildcard: [RDS does not allow , or \*](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
-
 * Letters:
   [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
 

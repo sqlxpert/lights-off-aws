@@ -203,7 +203,6 @@ Resources:
                   - iam:AttachRolePolicy
                   - iam:DetachRolePolicy
                   - iam:PutRolePolicy
-                  - iam:GetRolePolicy
                   - iam:DeleteRolePolicy
                   - iam:ListEntitiesForPolicy
                 Resource:
