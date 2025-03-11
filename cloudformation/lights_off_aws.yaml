@@ -715,7 +715,7 @@ Resources:
         S3Key: !Sub "${LambdaFnFileName}.py.zip"
       Architectures:
         - arm64
-      Runtime: python3.9
+      Runtime: python3.13
       Environment:
         Variables:
           "QUEUE_URL": !Ref OperationQueue
@@ -793,7 +793,7 @@ Resources:
         S3Key: !Sub "${LambdaFnFileName}.py.zip"
       Architectures:
         - arm64
-      Runtime: python3.9
+      Runtime: python3.13
       Environment:
         Variables:
           "LOG_LEVEL": !Ref LogLevel
