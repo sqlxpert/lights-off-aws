@@ -107,12 +107,12 @@ Lifecycle Manager, or Systems Manager existed. It still has advantages:
 ### Terms
 
   |Type|Literal Values|Wildcard|
-  |--|--|--|--|
+  |--|--|--|
   |Day of month|`d=01` ... `d=31`|`d=_`|
   |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
   |Hour|`H=00` ... `H=23`|`H=_`|
   |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
-  |--|--|--|--|
+  |--|--|--|
   |Daily|`H:M=00:00` ... `H:M=23:50`||
   |Weekly|`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
   |Monthly|`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
