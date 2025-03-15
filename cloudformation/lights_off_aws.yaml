@@ -12,19 +12,20 @@ Parameters:
     Type: String
     Default: "https://github.com/sqlxpert/lights-off-aws#quick-start"
 
+  PlaceholderSuggestedStackName:
+    Type: String
+    Default: "LightsOff"
+
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      Exclude the region suffix, even though this stack REQUIRES a region
-      suffix in the S3 bucket name. For example, if you are creating this
-      stack in the US East (Northern Virginia) region and you set this to
-      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
-      must have been created in the US East (Northern Virginia) region, and
-      must contain lights_off_aws.py.zip . These requirements apply in EVERY
-      region where you create a Lights Off CloudFormation stack. If you are
-      are creating a CloudFormation StackSet, then the file must also be
-      readable by every target AWS account, which generally requires that each
-      bucket have a bucket policy.
+      Exclude the region, even though this stack requires a region suffix in
+      the bucket name. For example, if your bucket is "my-bucket-us-east-1",
+      specify "my-bucket". The bucket must have been created in the same
+      region where you are creating this stack, and must contain
+      lights_off_aws.py.zip . These requirements apply in every region where
+      you create the stack. For a StackSet, the file must also be readable by
+      every target AWS account, which generally requires bucket policies.
 
   Enable:
     Type: String
@@ -37,20 +38,84 @@ Parameters:
       - "false"
       - "true"
 
-  CopyTags:
-    Type: String
-    Description: >-
-      Whether to copy tags to backups
-    Default: "true"
-    AllowedValues:
-      - "false"
-      - "true"
-
   PlaceholderAdvancedParameters:
     Type: String
     Default: ""
     AllowedValues:
       - ""
+
+  BackupRoleName:
+    Type: String
+    Description: >-
+      The IAM role that AWS Backup will assume when creating backups. Specify
+      only the name, not the ARN. For a StackSet, the role must exist, and
+      have the same name, in every target AWS account. Roles are account-wide,
+      not regional. AWS Backup creates
+      "service-role/AWSBackupDefaultServiceRole" the first time you start a
+      backup job in the AWS Console. Otherwise, if you want to use this
+      default service role, you must create it explicitly. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles
+      . Security warning: The AWS Lambda execution role for the "Do" function
+      receives permission to iam:PassRole the backup role you name here to the
+      AWS Backup service.
+    Default: "service-role/AWSBackupDefaultServiceRole"
+
+  BackupVaultName:
+    Type: String
+    Description: >-
+      The vault where backups will be stored. Specify only the name, not the
+      ARN. The vault must have been created in the same AWS account and region
+      where you are creating this stack. Vaults are regional. For a StackSet,
+      the vault must exist, and have the same name, in every target AWS
+      account and region. AWS Backup creates the "Default" vault the first
+      time you access the Backup Vaults page in the AWS Console. Otherwise,
+      you must explicitly create a vault. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html
+    Default: "Default"
+
+  BackupStartWindowMinutes:
+    Type: Number
+    Description: >-
+      How many minutes AWS Backup should wait before canceling a backup job
+      that has not started. Does not extend BackupCompleteWindowMinutes.
+    MinValue: 60
+    Default: 60
+    MaxValue: 52560000 # 100 years
+
+  BackupCompleteWindowMinutes:
+    Type: Number
+    Description: >-
+      How many minutes AWS Backup should wait before canceling a backup job
+      that has not finished. Must be greater than or equal to
+      BackupStartWindowMinutes. Do not schedule backups of the same resource
+      more often than this.
+    MinValue: 60
+    Default: 360
+    MaxValue: 52560000 # 100 years
+
+  BackupMoveToColdStorageAfterDays:
+    Type: Number
+    Description: >-
+      How many days AWS Backup should wait before moving a backup to less
+      expensive storage. Ignored if not supported for a particular resource
+      type. To avoid cold storage, specify -1 . See https://docs.aws.amazon.com/aws-backup/latest/devguide/backup-feature-availability.html#features-by-resource
+    Default: -1
+
+  BackupDeleteAfterDays:
+    Type: Number
+    Description: >-
+      How many days AWS Backup should wait before deleting a backup. To retain
+      backups indefinitely, specify -1 .
+    Default: 7
+
+  # OptInToArchiveForSupportedResources:
+  #   Type: String
+  #   Description: >-
+  #     Whether AWS Backup should 
+  #   Default: "true"
+  #   AllowedValues:
+  #     - "False"
+  #     - "true"
 
   FindLambdaFnMemoryMB:
     Type: Number
@@ -71,14 +136,12 @@ Parameters:
   DoLambdaFnRoleAttachLocalPolicyName:
     Type: String
     Description: >-
-      The name of a locally-written "managed" IAM policy to be attached the
+      The name of a customer-managed IAM policy to be attached to the "Do"
       function's role. By including "Effect": "Deny" statements, you could,
-      for example, prevent the function from rebooting or stopping production
-      resources. Specify only the policy name, not the ARN. If you are
-      creating a CloudFormation StackSet, then the policy MUST (a) exist in,
-      and (b) have exactly the same name in, EVERY target AWS account.
-      Policies are not per-region; there can be only one policy with this
-      name in each account. See
+      for example, prevent the rebooting or stopping of production resources.
+      Specify only the name, not the ARN. For a StackSet, the policy must
+      exist, and have exactly the same name, in every target AWS account.
+      Policies are account-wide, not regional. See
       https://github.com/sqlxpert/lights-off-aws/blob/main/README.md#security-steps-you-can-take
     Default: ""
 
@@ -116,10 +179,17 @@ Parameters:
   SqsKmsKey:
     Type: String
     Description: >-
-      If blank, queue messages will not be encrypted. Specify "alias/aws/sqs"
-      for the AWS-managed SQS service KMS key, which allows for encryption but
-      not for any key access restrictions or cross-account access. To use a
-      custom KMS key, specify an ARN with the key ID, not an alias.
+      If this is blank, queue messages will not be encrypted. To use the
+      AWS-managed key (which does not support key policy restrictions, or
+      cross-region or cross-account usage), specify "alias/aws/sqs". To use a
+      custom key, specify "ACCOUNT:key/KEY_ID". Whether the custom key is a
+      single-region key, a multi-region key primary, or a multi-region key
+      replica, it must be in the same region where you are creating this
+      stack. If the custom key is in a different AWS account than this stack,
+      you must update the key policy to allow cross-account usage. For a
+      StackSet, if you wish to use a custom key, it must be multi-region
+      ("mrk-" prefix in the KEY_ID), and a replica (or the primary key itself)
+      must exist in every target region.
     Default: ""
 
   QueueMessageBytesMax:
@@ -165,11 +235,17 @@ Parameters:
   CloudWatchLogsKmsKey:
     Type: String
     Description: >-
-      If blank, logs will receive default non-KMS CloudWatch Logs encryption.
-      To use a KMS key, which must be a custom key, specify an ARN with the
-      key ID, not an alias. You MUST first give CloudWatch Logs access to the
-      key by editing the key's key policy. See
+      If this is blank, default non-KMS CloudWatch Logs encryption applies. To
+      use a KMS key, which must be a custom key, specify "ACCOUNT:key/KEY_ID".
+      Whether the custom key is a single-region key, a multi-region key
+      primary, or a multi-region key replica, it must be in the same region
+      where you are creating this stack. Even if the custom key is in the same
+      AWS account as this stack, you must update the key policy to allow usage
+      by CloudWatch Logs. See
       https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html#cmk-permissions
+      . For a StackSet, the custom key must be multi-region ("mrk-" prefix in
+      the KEY_ID), and a replica (or the primary key itself) must exist in
+      every target region.
     Default: ""
 
   LambdaFnFileName:
@@ -183,12 +259,15 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Essentials
+          default: For Reference
         Parameters:
           - PlaceholderHelp
+          - PlaceholderSuggestedStackName
+      - Label:
+          default: Essential
+        Parameters:
           - LambdaSourceS3BucketNamePrefix
           - Enable
-          - CopyTags
       - Label:
           default: >-
             Advanced Parameters...
@@ -196,7 +275,17 @@ Metadata:
           - PlaceholderAdvancedParameters
       - Label:
           default: >-
-            AWS Lambda function to find resources with scheduled operations
+            AWS Backup
+        Parameters:
+          - BackupRoleName
+          - BackupVaultName
+          - BackupStartWindowMinutes
+          - BackupCompleteWindowMinutes
+          - BackupMoveToColdStorageAfterDays
+          - BackupDeleteAfterDays
+      - Label:
+          default: >-
+            AWS Lambda function to find resources with schedule tags
         Parameters:
           - FindLambdaFnMemoryMB
           - FindLambdaFnTimeoutSecs
@@ -227,14 +316,26 @@ Metadata:
     ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
       LambdaSourceS3BucketNamePrefix:
         default: S3 bucket for AWS Lambda function source code
       Enable:
         default: Enabled?
-      CopyTags:
-        default: Copy tags to backups?
       PlaceholderAdvancedParameters:
-        default: Do not change parameters below this line unless necessary!
+        default: Do not change parameters below, unless necessary!
+      BackupRoleName:
+        default: IAM role name
+      BackupVaultName:
+        default: Vault name
+      BackupStartWindowMinutes:
+        default: Minutes before canceling, if not started
+      BackupCompleteWindowMinutes:
+        default: Minutes before canceling, if not finished
+      BackupMoveToColdStorageAfterDays:
+        default: Days before moving to lower-cost storage
+      BackupDeleteAfterDays:
+        default: Days before deleting
       FindLambdaFnMemoryMB:
         default: Memory
       FindLambdaFnTimeoutSecs:
@@ -290,7 +391,10 @@ Resources:
         Fn::If:
           - SqsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref SqsKmsKey
+          - Fn::If:
+              - SqsKmsKeyCustom
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+              - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         Fn::If:
           - SqsKmsKeyBlank
@@ -308,7 +412,10 @@ Resources:
         Fn::If:
           - SqsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref SqsKmsKey
+          - Fn::If:
+              - SqsKmsKeyCustom
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+              - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         Fn::If:
           - SqsKmsKeyBlank
@@ -386,7 +493,9 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: cloudformation:DescribeStacks
+                Action:
+                  - cloudformation:ListStacks
+                  - cloudformation:DescribeStacks
                 Resource: "*"
 
         - Fn::If:
@@ -399,7 +508,7 @@ Resources:
                     Action:
                       # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
                       - kms:GenerateDataKey
-                    Resource: !Ref SqsKmsKey
+                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                     Condition:
                       StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
             - !Ref AWS::NoValue
@@ -445,48 +554,6 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-hibernate": "*" }
-              - Sid: DangerCanForceReboot
-                Effect: Allow
-                Action: ec2:CreateImage
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateImage
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-reboot-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateImage
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-              - Effect: Allow
-                Action: ec2:CreateSnapshot
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateSnapshot
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-              - Effect: Allow
-                Action: ec2:CreateTags
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-                Condition:
-                  StringEquals:
-                    ec2:CreateAction:
-                      - CreateImage
-                      - CreateSnapshot
-              - Sid: BackupCreatorCannotTagBackupForDeletion
-                Effect: Deny
-                Action: ec2:CreateTags
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-                Condition:
-                  ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -536,37 +603,6 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-stop": "*" }
-              - Effect: Allow
-                Action:
-                  - rds:CreateDBSnapshot
-                  - rds:CreateDBClusterSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: rds:CreateDBSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Effect: Allow
-                Action: rds:CreateDBClusterSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Effect: Allow
-                Action: rds:AddTagsToResource
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Sid: BackupCreatorCannotTagBackupForDeletion
-                Effect: Deny
-                Action: rds:AddTagsToResource
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-                Condition:
-                  ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -590,6 +626,20 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
+
+        - PolicyName: BackupWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: backup:StartBackupJob
+                Resource: !Sub "arn:${AWS::Partition}:backup:${AWS::Region}:${AWS::AccountId}:backup-vault:${BackupVaultName}"
+              - Sid: Changed
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
+                Condition:
+                  StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
 
         - Fn::If:
             - SqsKmsKeyCustom
@@ -718,10 +768,11 @@ Resources:
       Runtime: python3.13
       Environment:
         Variables:
+          "LOG_LEVEL": !Ref LogLevel
           "QUEUE_URL": !Ref OperationQueue
           "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
-          "LOG_LEVEL": !Ref LogLevel
-          "COPY_TAGS": !Ref CopyTags
+          "BACKUP_ROLE_ARN": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
+          "BACKUP_VAULT_NAME": !Ref BackupVaultName
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
       ReservedConcurrentExecutions: 1  # Only one Find process at a time!
       Timeout: !Ref FindLambdaFnTimeoutSecs
@@ -738,7 +789,7 @@ Resources:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref CloudWatchLogsKmsKey
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
   FindLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
@@ -813,7 +864,7 @@ Resources:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref CloudWatchLogsKmsKey
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
   DoLambdaFnLogWritePol:
     Type: AWS::IAM::ManagedPolicy
