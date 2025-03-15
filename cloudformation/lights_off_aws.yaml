@@ -386,7 +386,9 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: cloudformation:DescribeStacks
+                Action:
+                  - cloudformation:ListStacks
+                  - cloudformation:DescribeStacks
                 Resource: "*"
 
         - Fn::If:
