@@ -13,11 +13,17 @@ import logging
 import datetime
 import re
 import json
-import collections
 import botocore
 import boto3
 
-logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
+logger = logging.getLogger()
+
+
+def environ_int(environ_var_name):
+  """Take name of an environment variable, return its integer value
+  """
+  return int(os.environ[environ_var_name])
+
 
 SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
 SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside char class
@@ -41,20 +47,16 @@ SCHED_REGEXP_STRFTIME_FMT = rf"""
 """
 
 QUEUE_URL = os.environ["QUEUE_URL"]
-QUEUE_MSG_BYTES_MAX = int(os.environ["QUEUE_MSG_BYTES_MAX"])
+QUEUE_MSG_BYTES_MAX = environ_int("QUEUE_MSG_BYTES_MAX")
 QUEUE_MSG_FMT_VERSION = "01"
 
-BACKUP_ROLE_ARN = os.environ["BACKUP_ROLE_ARN"]
-BACKUP_VAULT_NAME = os.environ["BACKUP_VAULT_NAME"]
-
 ARN_DELIM = ":"
+BACKUP_ROLE_ARN = os.environ["BACKUP_ROLE_ARN"]
 ARN_PARTS = BACKUP_ROLE_ARN.split(ARN_DELIM)
 # arn:partition:service:region:account-id:resource-type/resource-id
 # [0] [1]       [2]     [3]    [4]        [5]
-AWS_PARTITION = ARN_PARTS[1]
 # https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
-AWS_REGION = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
-AWS_ACCOUNT = ARN_PARTS[4]
+ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
 
 # 1. Custom Exceptions #######################################################
 
@@ -69,9 +71,18 @@ class SQSMessageTooLong(ValueError):
 def log(entry_type, entry_value, log_level=logging.INFO):
   """Emit a JSON-format log entry
   """
-  logging.log(
-    log_level,
-    json.dumps({"type": entry_type, "value": entry_value}, default=str)
+  entry_value_out = json.loads(json.dumps(entry_value, default=str))
+  # Avoids "Object of type datetime is not JSON serializable" in
+  # https://github.com/aws/aws-lambda-python-runtime-interface-client/blob/9efb462/awslambdaric/lambda_runtime_log_utils.py#L109-L135
+  #
+  # The JSON encoder in the AWS Lambda Python runtime isn't configured to
+  # serialize datatime values in responses returned by AWS's own Python SDK!
+  #
+  # Powertools for Lambda is too heavy for a simple deployment.
+  # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
+
+  logger.log(
+    log_level, "", extra={"type": entry_type, "value": entry_value_out}
   )
 
 
@@ -177,14 +188,14 @@ def boto3_success(resp):
 class AWSRsrcType():
   """AWS resource type, with identification properties and various operations
   """
-  members = collections.defaultdict(dict)
+  members = {}
 
   # pylint: disable=too-many-arguments,too-many-positional-arguments
   def __init__(
     self,
     svc,
     rsrc_type_words,
-    ops,
+    ops_dict,
     rsrc_id_key_suffix="Id",
     arn_key_suffix="Arn",
     tags_key="Tags",
@@ -200,14 +211,9 @@ class AWSRsrcType():
       self.arn_prefix = ""
       self.arn_key = f"{self.name_in_keys}{arn_key_suffix}"
     else:
-      self.arn_prefix = ARN_DELIM.join([
-        "arn",
-         AWS_PARTITION,
-         svc,
-         AWS_REGION,
-         AWS_ACCOUNT,
-         f"{self.name_in_methods}/",
-      ])
+      self.arn_prefix = ARN_DELIM.join(
+        ARN_PARTS[0:2] + [svc] + ARN_PARTS[3:5] + [f"{self.name_in_methods}/"]
+      )
       self.arn_key = self.rsrc_id_key
     self.tags_key = tags_key
 
@@ -220,13 +226,13 @@ class AWSRsrcType():
       )
 
     self.ops = {}
-    for (op_tag_key_words, op_properties) in ops.items():
-      AWSOp.new(self, op_tag_key_words, **op_properties)
-
-    self.__class__.members[svc][self.name_in_keys] = self  # Register self
+    for (op_tag_key_words, op_properties) in ops_dict.items():
+      op = AWSOp.new(self, op_tag_key_words, **op_properties)
+      self.ops[op.tag_key] = op
+    self.__class__.members[(svc, self.name_in_keys)] = self  # Register me!
 
   def __str__(self):
-    return f"AWSRsrcType {self.svc} {self.name_in_keys}"
+    return " ".join([self.__class__.__name__, self.svc, self.name_in_keys])
 
   # pylint: disable=missing-function-docstring
 
@@ -309,6 +315,7 @@ class AWSRsrcType():
 class AWSOp():
   """Operation on 1 AWS resource
   """
+
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     self.rsrc_type = rsrc_type
     self.tag_key_words = tag_key_words
@@ -317,7 +324,6 @@ class AWSOp():
     verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st word
     self.method_name = f"{verb}_{self.rsrc_type.name_in_methods}"
     self.kwargs_add = kwargs.get("kwargs_add", {})
-    self.rsrc_type.ops[self.tag_key] = self  # Register under AWSRsrcType
 
   @staticmethod
   def new(rsrc_type, tag_key_words, **kwargs):
@@ -368,7 +374,9 @@ class AWSOp():
       sqs_send_log(send_kwargs, "AWS_RESPONSE", sqs_resp)
 
   def __str__(self):
-    return f"AWSOp {self.tag_key} {self.rsrc_type.svc}.{self.method_name}"
+    return " ".join([
+      self.__class__.__name__, self.tag_key, self.svc, self.method_name
+    ])
 
 
 class AWSOpMultipleRsrcs(AWSOp):
@@ -415,12 +423,8 @@ class AWSOpUpdateStack(AWSOp):
           "UsePreviousValue": True,
         })
     op_kwargs_out.update({
-      # WARNING: Use of the final, transformed template instead of the initial
-      # one makes this incompatible with AWS::LanguageExtensions , which adds
-      # Fn::ForEach , Fn::Length and Fn::ToJsonString to CloudFormation.
-      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-aws-languageextensions.html
-      # A slow, individual get_template(TemplateStage="Original", ...) call
-      # would be needed, because describe_stacks does not return templates.
+      # Use of final template instead of original makes this incompatible with
+      # CloudFormation transforms. describe_stacks does not return templates.
       "UsePreviousTemplate": True,
       "Parameters": stack_parameters_out,
     })
@@ -433,6 +437,38 @@ class AWSOpUpdateStack(AWSOp):
 class AWSOpBackUp(AWSOp):
   """On-demand AWS Backup operation
   """
+
+  backup_kwargs_add = {}
+
+  @classmethod
+  def backup_kwargs_add_init(cls):
+    """Populate start_backup_job static kwargs, if not yet done
+    """
+    if not cls.backup_kwargs_add:
+      lifecycle = {}
+
+      cold_storage_after_days = environ_int("BACKUP_COLD_STORAGE_AFTER_DAYS")
+      if cold_storage_after_days > 0:
+        lifecycle.update({
+          "OptInToArchiveForSupportedResources": True,
+          "MoveToColdStorageAfterDays": cold_storage_after_days,
+        })
+
+      delete_after_days = environ_int("BACKUP_DELETE_AFTER_DAYS")
+      if delete_after_days > 0:
+        lifecycle["DeleteAfterDays"] = delete_after_days
+
+      cls.backup_kwargs_add.update({
+        "IamRoleArn": BACKUP_ROLE_ARN,
+        "BackupVaultName": os.environ["BACKUP_VAULT_NAME"],
+        "StartWindowMinutes": environ_int("BACKUP_START_WINDOW_MINUTES"),
+        "CompleteWindowMinutes": environ_int(
+          "BACKUP_COMPLETE_WINDOW_MINUTES"
+        ),
+      })
+      if lifecycle:
+        cls.backup_kwargs_add["Lifecycle"] = lifecycle
+
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     super().__init__(rsrc_type, tag_key_words, **kwargs)
     self.svc = "backup"
@@ -447,11 +483,9 @@ class AWSOpBackUp(AWSOp):
     """Take a describe_ result, return start_backup_job kwargs
     """
     op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
-    op_kwargs_out.update({
-      "IamRoleArn": BACKUP_ROLE_ARN,
-      "BackupVaultName": BACKUP_VAULT_NAME,
-      "StartWindowMinutes": 60,
-      "RecoveryPointTags": {tag_key_join(("time")): cycle_start_str},
+    self.__class__.backup_kwargs_add_init()
+    op_kwargs_out.update(self.__class__.backup_kwargs_add | {
+      "RecoveryPointTags": {tag_key_join(("time", )): cycle_start_str},
     })
     return op_kwargs_out
 
@@ -547,7 +581,7 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   (cycle_start, cycle_cutoff) = cycle_start_end(
     datetime.datetime.now(datetime.timezone.utc)
   )
-  cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%M")
+  cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%MZ")
   cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
   sched_regexp = re.compile(
     cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
@@ -555,11 +589,10 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   log("START", cycle_start_str)
   log("SCHED_REGEXP_VERBOSE", sched_regexp.pattern)
   rsrc_types_init()
-  for rsrc_types in AWSRsrcType.members.values():
-    for rsrc_type in rsrc_types.values():
-      rsrc_type.rsrcs_find(
-        sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
-      )
+  for rsrc_type in AWSRsrcType.members.values():
+    rsrc_type.rsrcs_find(
+      sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
+    )
 
 # 6. "Do" Operations Lambda Function Handler #################################
 

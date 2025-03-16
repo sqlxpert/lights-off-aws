@@ -16,27 +16,26 @@ Parameters:
     Type: String
     Default: "LightsOff"
 
-  LambdaSourceS3BucketNamePrefix:
-    Type: String
-    Description: >-
-      Exclude the region, even though this stack requires a region suffix in
-      the bucket name. For example, if your bucket is "my-bucket-us-east-1",
-      specify "my-bucket". The bucket must have been created in the same
-      region where you are creating this stack, and must contain
-      lights_off_aws.py.zip . These requirements apply in every region where
-      you create the stack. For a StackSet, the file must also be readable by
-      every target AWS account, which generally requires bucket policies.
-
   Enable:
     Type: String
     Description: >-
-      Whether the "Find" AWS Lambda function will run automatically, checking
-      every 10 minutes for AWS resources with scheduled operations, and whether
-      the "Do" function will run automatically, executing queued operations.
+      Whether the "Find" AWS Lambda function will run, checking every 10
+      minutes for AWS resources with scheduled operations
     Default: "true"
     AllowedValues:
       - "false"
       - "true"
+
+  LambdaSourceS3BucketNamePrefix:
+    Type: String
+    Description: >-
+      Name (without the region suffix) of the S3 bucket containing the AWS
+      Lambda source code bundle, lights_off_aws.py.zip . For example, if your
+      bucket is named "my-bucket-us-east-1", specify "my-bucket". The bucket
+      must have been created in the same region where you are creating this
+      stack. For a StackSet, a bucket (with the region suffix in its name)
+      must exist in every target region, must contain the bundle, and must
+      have a bucket policy allowing read access by every target AWS account.
 
   PlaceholderAdvancedParameters:
     Type: String
@@ -47,17 +46,16 @@ Parameters:
   BackupRoleName:
     Type: String
     Description: >-
-      The IAM role that AWS Backup will assume when creating backups. Specify
-      only the name, not the ARN. For a StackSet, the role must exist, and
-      have the same name, in every target AWS account. Roles are account-wide,
-      not regional. AWS Backup creates
+      The IAM role that the AWS Backup service will assume when creating
+      backups. Specify only the name, not the ARN. For a StackSet, the role
+      must exist, and have the same name, in every target AWS account. Roles
+      are account-wide, not regional. AWS Backup creates
       "service-role/AWSBackupDefaultServiceRole" the first time you start a
-      backup job in the AWS Console. Otherwise, if you want to use this
-      default service role, you must create it explicitly. See
+      backup job in the AWS Console. Otherwise, if you want to use this role,
+      you must create it explicitly. See
       https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles
       . Security warning: The AWS Lambda execution role for the "Do" function
-      receives permission to iam:PassRole the backup role you name here to the
-      AWS Backup service.
+      receives permission to iam:PassRole the backup role to AWS Backup.
     Default: "service-role/AWSBackupDefaultServiceRole"
 
   BackupVaultName:
@@ -65,11 +63,11 @@ Parameters:
     Description: >-
       The vault where backups will be stored. Specify only the name, not the
       ARN. The vault must have been created in the same AWS account and region
-      where you are creating this stack. Vaults are regional. For a StackSet,
-      the vault must exist, and have the same name, in every target AWS
-      account and region. AWS Backup creates the "Default" vault the first
-      time you access the Backup Vaults page in the AWS Console. Otherwise,
-      you must explicitly create a vault. See
+      where you are creating this stack. For a StackSet, the vault must exist,
+      and have the same name, in every target AWS account and region. AWS
+      Backup creates the "Default" vault the first time you access the Backup
+      Vaults page in the AWS Console. Otherwise, you must explicitly create a
+      vault. See
       https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html
     Default: "Default"
 
@@ -77,7 +75,7 @@ Parameters:
     Type: Number
     Description: >-
       How many minutes AWS Backup should wait before canceling a backup job
-      that has not started. Does not extend BackupCompleteWindowMinutes.
+      that has not started. This does not extend BackupCompleteWindowMinutes .
     MinValue: 60
     Default: 60
     MaxValue: 52560000 # 100 years
@@ -86,42 +84,38 @@ Parameters:
     Type: Number
     Description: >-
       How many minutes AWS Backup should wait before canceling a backup job
-      that has not finished. Must be greater than or equal to
-      BackupStartWindowMinutes. Do not schedule backups of the same resource
-      more often than this.
+      that has not finished. This must be at least BackupStartWindowMinutes .
+      Schedule backups for the same resource at least this many minutes apart.
     MinValue: 60
     Default: 360
     MaxValue: 52560000 # 100 years
 
-  BackupMoveToColdStorageAfterDays:
+  BackupColdStorageAfterDays:
     Type: Number
     Description: >-
-      How many days AWS Backup should wait before moving a backup to less
-      expensive storage. Ignored if not supported for a particular resource
-      type. To avoid cold storage, specify -1 . See https://docs.aws.amazon.com/aws-backup/latest/devguide/backup-feature-availability.html#features-by-resource
+      How many days AWS Backup should wait before moving a backup to storage
+      that is less expensive per byte but has a minimum billable retention
+      period. To avoid cold storage, specify -1 . For some resource types,
+      requesting cold storage has no effect. If you specify a value other than
+      -1 , OptInToArchiveForSupportedResources will be set to true in backup
+      lifecycle policies. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/backup-feature-availability.html#features-by-resource
     Default: -1
 
   BackupDeleteAfterDays:
     Type: Number
     Description: >-
       How many days AWS Backup should wait before deleting a backup. To retain
-      backups indefinitely, specify -1 .
+      backups indefinitely, specify -1 . If you request both cold storage and
+      deletion ( BackupColdStorageAfterDays and BackupDeleteAfterDays are both
+      other than -1 ), specify at least BackupColdStorageAfterDays + 90 days.
     Default: 7
-
-  # OptInToArchiveForSupportedResources:
-  #   Type: String
-  #   Description: >-
-  #     Whether AWS Backup should 
-  #   Default: "true"
-  #   AllowedValues:
-  #     - "False"
-  #     - "true"
 
   FindLambdaFnMemoryMB:
     Type: Number
     Description: >-
       How many megabytes of memory to allocate to the "Find" AWS Lambda
-      function. Increase only in case of out-of-memory errors. See
+      function. Increase this only in case of out-of-memory errors. See
       https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html
     Default: 128
 
@@ -129,7 +123,7 @@ Parameters:
     Type: Number
     Description: >-
       How many seconds before execution of the "Find" AWS Lambda function
-      is canceled. Increase only in case of time-out errors. See
+      is canceled. Increase this only in case of time-out errors. See
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
 
@@ -157,22 +151,22 @@ Parameters:
     Type: Number
     Description: >-
       How many megabytes of memory to allocate to the "Do" AWS Lambda
-      function. Increase only in case of out-of-memory errors.
+      function. Increase this only in case of out-of-memory errors.
     Default: 128
 
   DoLambdaFnTimeoutSecs:
     Type: Number
     Description: >-
       How many seconds before execution of the "Do" AWS Lambda function is
-      canceled. Increase only in case of time-out errors.
+      canceled. Increase this only in case of time-out errors.
     Default: 30
 
   OperationQueueVisibilityTimeoutSecs:
     Type: Number
     Description: >-
       How many seconds SQS waits for the "Do" AWS Lambda function to accept
-      and process a message representing one scheduled operation. Must be at
-      least as large as DoLambdaFnTimeoutSecs . In case of problems, see
+      and process a message representing one scheduled operation. This must be
+      at least DoLambdaFnTimeoutSecs . In case of problems, see
       https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
     Default: 90
 
@@ -195,7 +189,7 @@ Parameters:
   QueueMessageBytesMax:
     Type: Number
     Description: >-
-      Maximum number of bytes in an operation queue message
+      The maximum number of bytes in an operation queue message
     MinValue: 1024
     Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
@@ -266,8 +260,8 @@ Metadata:
       - Label:
           default: Essential
         Parameters:
-          - LambdaSourceS3BucketNamePrefix
           - Enable
+          - LambdaSourceS3BucketNamePrefix
       - Label:
           default: >-
             Advanced Parameters...
@@ -281,7 +275,7 @@ Metadata:
           - BackupVaultName
           - BackupStartWindowMinutes
           - BackupCompleteWindowMinutes
-          - BackupMoveToColdStorageAfterDays
+          - BackupColdStorageAfterDays
           - BackupDeleteAfterDays
       - Label:
           default: >-
@@ -332,7 +326,7 @@ Metadata:
         default: Minutes before canceling, if not started
       BackupCompleteWindowMinutes:
         default: Minutes before canceling, if not finished
-      BackupMoveToColdStorageAfterDays:
+      BackupColdStorageAfterDays:
         default: Days before moving to lower-cost storage
       BackupDeleteAfterDays:
         default: Days before deleting
@@ -429,20 +423,6 @@ Resources:
         maxReceiveCount: 1
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
 
-  LambdaFnLogGrpCreatePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Log group: create; run-time fallback in case a Lambda function's
-        original log group has been deleted; see AWSLambdaBasicExecutionRole
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-            Resource: "*"
-
   # In-line policies apply only to their roles, which, in turn, can only be
   # assumed by AWS Lambda functions. Separate, "managed" policies could be
   # attached to other roles or users, allowing permission escalation.
@@ -458,9 +438,28 @@ Resources:
           - Effect: Allow
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
       Policies:
+
+        - PolicyName: CloudWatchLogsCreateLogGroupIfDeleted
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}"
+
+        - PolicyName: CloudWatchLogsWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
+                # !GetAtt LogGroup.Arn end with :* instead of allowing us to
+                # append :log-stream:* to make a LogStream ARN
 
         - PolicyName: Ec2Read
           PolicyDocument:
@@ -523,12 +522,32 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
         - Fn::If:
             - DoLambdaFnRoleAttachLocalPolicyNameBlank
             - !Ref AWS::NoValue
             - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${DoLambdaFnRoleAttachLocalPolicyName}"
       Policies:
+
+        - PolicyName: CloudWatchLogsCreateLogGroupIfDeleted
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}"
+
+        - PolicyName: CloudWatchLogsWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
+                # !GetAtt LogGroup.Arn end with :* instead of allowing us to
+                # append :log-stream:* to make a LogStream ARN
 
         - PolicyName: Ec2Write
           PolicyDocument:
@@ -756,6 +775,16 @@ Resources:
                 aws:SourceArn:
                   - !GetAtt OperationFailedQueue.Arn
 
+  FindLambdaFnLogGrp:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref LogsRetainDays
+      KmsKeyId:
+        Fn::If:
+          - CloudWatchLogsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
+
   FindLambdaFn:
     Type: AWS::Lambda::Function
     Properties:
@@ -768,49 +797,23 @@ Resources:
       Runtime: python3.13
       Environment:
         Variables:
-          "LOG_LEVEL": !Ref LogLevel
           "QUEUE_URL": !Ref OperationQueue
           "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
           "BACKUP_ROLE_ARN": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
           "BACKUP_VAULT_NAME": !Ref BackupVaultName
+          "BACKUP_START_WINDOW_MINUTES": !Ref BackupStartWindowMinutes
+          "BACKUP_COMPLETE_WINDOW_MINUTES": !Ref BackupCompleteWindowMinutes
+          "BACKUP_COLD_STORAGE_AFTER_DAYS": !Ref BackupColdStorageAfterDays
+          "BACKUP_DELETE_AFTER_DAYS": !Ref BackupDeleteAfterDays
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
       ReservedConcurrentExecutions: 1  # Only one Find process at a time!
       Timeout: !Ref FindLambdaFnTimeoutSecs
       MemorySize: !Ref FindLambdaFnMemoryMB
-
-  FindLambdaFnLogGrp:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      # Lambda names the log group after the function, so a CloudWatch-assigned
-      # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${FindLambdaFn}"
-      RetentionInDays: !Ref LogsRetainDays
-      KmsKeyId:
-        Fn::If:
-          - CloudWatchLogsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
-
-  FindLambdaFnLogWritePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Find Lambda function log streams: create, and put events; based on
-        AWSLambdaBasicExecutionRole
-      Roles: [ !Ref FindLambdaFnRole ]
-      # Policy cannot be in-line, because it depends on an AWS Lambda function
-      # log group, which in turn depends on the [final name of the] function,
-      # and function creation depends on a role.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
-            # log stream ARN.
+      LoggingConfig:
+        LogGroup: !Ref FindLambdaFnLogGrp
+        LogFormat: JSON
+        SystemLogLevel: WARN
+        ApplicationLogLevel: !Ref LogLevel
 
   FindLambdaFnSched:
     Type: AWS::Events::Rule
@@ -825,6 +828,7 @@ Resources:
           - DISABLED
       Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
 
+  # Administrator should block other invocation of this AWS Lambda function
   FindLambdaFnPerm:
     Type: AWS::Lambda::Permission
     Properties:
@@ -833,7 +837,15 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt FindLambdaFnSched.Arn
 
-  # Administrator should restrict other invocation of this AWS Lambda function
+  DoLambdaFnLogGrp:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref LogsRetainDays
+      KmsKeyId:
+        Fn::If:
+          - CloudWatchLogsKmsKeyBlank
+          - !Ref AWS::NoValue
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
   DoLambdaFn:
     Type: AWS::Lambda::Function
@@ -847,46 +859,22 @@ Resources:
       Runtime: python3.13
       Environment:
         Variables:
-          "LOG_LEVEL": !Ref LogLevel
+          # Not used, but epeated here to allow use of a single AWS Lambda
+          # source code file for both functions:
+          "QUEUE_URL": !Ref OperationQueue
+          "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
+          "BACKUP_ROLE_ARN": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
       Handler: !Sub "${LambdaFnFileName}.lambda_handler_do"
       ReservedConcurrentExecutions: !Ref DoLambdaFnReservedConcurrentExecutions
       Timeout: !Ref DoLambdaFnTimeoutSecs
       MemorySize: !Ref DoLambdaFnMemoryMB
+      LoggingConfig:
+        LogGroup: !Ref DoLambdaFnLogGrp
+        LogFormat: JSON
+        SystemLogLevel: WARN
+        ApplicationLogLevel: !Ref LogLevel
 
-  DoLambdaFnLogGrp:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      # Lambda names the log group after the function, so a CloudWatch-assigned
-      # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${DoLambdaFn}"
-      RetentionInDays: !Ref LogsRetainDays
-      KmsKeyId:
-        Fn::If:
-          - CloudWatchLogsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
-
-  DoLambdaFnLogWritePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Do Lambda function log streams: create, and put events; based on
-        AWSLambdaBasicExecutionRole
-      Roles: [ !Ref DoLambdaFnRole ]
-      # Policy cannot be in-line, because it depends on an AWS Lambda function
-      # log group, which in turn depends on the [final name of the] function,
-      # and unction creation depends on a role.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
-            # log stream ARN.
-
+  # Administrator should block other invocation of this AWS Lambda function
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
     DependsOn: OperationQueuePol
@@ -896,7 +884,6 @@ Resources:
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
 
-  # Administrator should restrict other invocation of this AWS Lambda function
 
   DoLambdaFnSqsMapping:
     Type: AWS::Lambda::EventSourceMapping

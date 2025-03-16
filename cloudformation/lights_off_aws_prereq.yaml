@@ -12,24 +12,25 @@ Parameters:
     Type: String
     Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege"
 
+  PlaceholderSuggestedStackName:
+    Type: String
+    Default: "LightsOffPrereq"
+
   LambdaSourceS3BucketNamePrefix:
     Type: String
     Description: >-
-      Exclude the region suffix, even though Lights Off REQUIRES a region
-      suffix in the S3 bucket name. For example, if you are creating this
-      stack in the US East (Northern Virginia) region and you set this to
-      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
-      must have been created in the US East (Northern Virginia) region, and
-      must contain lights_off_aws.py.zip . These requirements apply in EVERY
-      region where you create a Lights Off CloudFormation stack. If you are
-      are creating a CloudFormation StackSet, then the file must also be
-      readable by every target AWS account, which generally requires that each
-      bucket have a bucket policy.
+      Name (without the region suffix) of the S3 bucket containing the AWS
+      Lambda source code bundle, lights_off_aws.py.zip . For example, if your
+      bucket is named "my-bucket-us-east-1", specify "my-bucket". The bucket
+      must have been created in the same region where you are creating this
+      stack. For a StackSet, a bucket (with the region suffix in its name)
+      must exist in every target region, must contain the bundle, and must
+      have a bucket policy allowing read access by every target AWS account.
 
   StackNameBase:
     Type: String
     Description: >-
-      When using the DeploymentRole provided by this stack, you MUST include
+      When using the DeploymentRole provided by this stack, you must include
       this string in the name of any Lights Off CloudFormation stack or
       StackSet that you create. For security, no other stack or StackSet's
       name should include this string. You may add prefixes and suffixes to
@@ -44,9 +45,13 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Essentials
+          default: For Reference
         Parameters:
           - PlaceholderHelp
+          - PlaceholderSuggestedStackName
+      - Label:
+          default: Essential
+        Parameters:
           - LambdaSourceS3BucketNamePrefix
           - StackNameBase
     ParameterLabels:
@@ -82,9 +87,9 @@ Resources:
             Version: "2012-10-17"
             Statement:
 
-              # Sufficient only for the current AWS account. For a multi-account
-              # deployment, also allow access from all StackSets target accounts,
-              # in each S3 bucket's bucket policy.
+              # Sufficient only for the current AWS account. For a
+              # multi-account deployment, also allow access from all StackSets
+              # target accounts, in each S3 bucket's bucket policy.
               - Effect: Allow
                 Action:
                   - s3:GetObject*
@@ -130,8 +135,8 @@ Resources:
                   - logs:TagLogGroup
                   - logs:UntagLogGroup
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:StackSet-*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:*${StackNameBase}*"
               - Effect: Allow
                 Action:
                   - logs:DescribeLogGroups
@@ -180,20 +185,6 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
               - Effect: Allow
                 Action:
-                  - iam:CreatePolicy
-                  - iam:GetPolicy
-                  - iam:DeletePolicy
-                  - iam:CreatePolicyVersion
-                  - iam:ListPolicyVersions
-                  - iam:GetPolicyVersion
-                  - iam:DeletePolicyVersion
-                  - iam:TagPolicy
-                  - iam:UntagPolicy
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
-              - Effect: Allow
-                Action:
                   - iam:CreateRole
                   - iam:GetRole
                   - iam:DeleteRole
@@ -207,9 +198,7 @@ Resources:
                   - iam:ListEntitiesForPolicy
                 Resource:
                   - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
                   - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
               - Effect: Allow
                 Action:
                   - iam:TagRole
