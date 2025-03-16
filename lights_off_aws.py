@@ -126,9 +126,9 @@ def sqs_send_log(send_kwargs, entry_type, entry_value):
   """Log SQS send_message content and outcome
   """
   if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
-    log_level=logging.INFO
+    log_level = logging.INFO
   else:
-    log_level=logging.ERROR
+    log_level = logging.ERROR
   log("SQS_SEND", send_kwargs, log_level=log_level)
   log(entry_type, entry_value, log_level=log_level)
 
@@ -184,12 +184,12 @@ class AWSRsrcType():
     self,
     svc,
     rsrc_type_words,
+    ops,
     rsrc_id_key_suffix="Id",
     arn_key_suffix="Arn",
     tags_key="Tags",
     status_filter_pair=(),
     describe_flatten=None,
-    ops=None
   ):
     self.svc = svc
     self.name_in_methods = "_".join(rsrc_type_words).lower()
@@ -467,16 +467,7 @@ def rsrc_types_init():
     AWSRsrcType(
       "ec2",
       ("Instance", ),
-      arn_key_suffix=None,
-      status_filter_pair=(
-        "instance-state-name", ("running", "stopping", "stopped")
-      ),
-      describe_flatten=lambda resp: (
-        instance
-        for reservation in resp.get("Reservations", [])
-        for instance in reservation.get("Instances", [])
-      ),
-      ops={
+      {
         ("start", ): {"class": AWSOpMultipleRsrcs},
         ("reboot", ): {"class": AWSOpMultipleRsrcs},
         ("stop", ): {"class": AWSOpMultipleRsrcs},
@@ -487,55 +478,62 @@ def rsrc_types_init():
         },
         ("backup", ): {"class": AWSOpBackUp},
       },
+      arn_key_suffix=None,
+      status_filter_pair=(
+        "instance-state-name", ("running", "stopping", "stopped")
+      ),
+      describe_flatten=lambda resp: (
+        instance
+        for reservation in resp.get("Reservations", [])
+        for instance in reservation.get("Instances", [])
+      ),
     )
 
     AWSRsrcType(
       "ec2",
       ("Volume", ),
+      {("backup", ): {"class": AWSOpBackUp}},
       arn_key_suffix=None,
       status_filter_pair=("status", ("available", "in-use")),
-      ops={
-        ("backup", ): {"class": AWSOpBackUp},
-      },
     )
 
     AWSRsrcType(
       "rds",
       ("DB", "Instance"),
-      rsrc_id_key_suffix="Identifier",
-      tags_key="TagList",
-      ops={
+      {
         ("start", ): {},
         ("stop", ): {},
         ("reboot", ): {},
         ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
         ("backup", ): {"class": AWSOpBackUp},
       },
+      rsrc_id_key_suffix="Identifier",
+      tags_key="TagList",
     )
 
     AWSRsrcType(
       "rds",
       ("DB", "Cluster"),
-      rsrc_id_key_suffix="Identifier",
-      tags_key="TagList",
-      ops={
+      {
         ("start", ): {},
         ("stop", ): {},
         ("reboot", ): {},
         ("backup", ): {"class": AWSOpBackUp},
       },
+      rsrc_id_key_suffix="Identifier",
+      tags_key="TagList",
     )
 
     AWSRsrcType(
       "cloudformation",
       ("Stack", ),
-      rsrc_id_key_suffix="Name",
-      arn_key_suffix="Id",
-      ops={
+      {
         ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
         ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
         ("backup", ): {"class": AWSOpBackUp},
       },
+      rsrc_id_key_suffix="Name",
+      arn_key_suffix="Id",
     )
 
 
