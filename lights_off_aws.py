@@ -20,7 +20,7 @@ import boto3
 logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
 
 SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
-SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside class
+SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside char class
 SCHED_REGEXP_STRFTIME_FMT = rf"""
   (^|{SCHED_DELIMS})
   (
@@ -44,9 +44,6 @@ QUEUE_URL = os.environ["QUEUE_URL"]
 QUEUE_MSG_BYTES_MAX = int(os.environ["QUEUE_MSG_BYTES_MAX"])
 QUEUE_MSG_FMT_VERSION = "01"
 
-TAG_KEY_PREFIX = "sched"
-TAG_KEY_DELIM = "-"
-
 BACKUP_ROLE_ARN = os.environ["BACKUP_ROLE_ARN"]
 BACKUP_VAULT_NAME = os.environ["BACKUP_VAULT_NAME"]
 
@@ -69,6 +66,15 @@ class SQSMessageTooLong(ValueError):
 # 2. Helpers #################################################################
 
 
+def log(entry_type, entry_value, log_level=logging.INFO):
+  """Emit a JSON-format log entry
+  """
+  logging.log(
+    log_level,
+    json.dumps({"type": entry_type, "value": entry_value}, default=str)
+  )
+
+
 def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   """Take a datetime, return 10-minute floor and ceiling less 1 minute
   """
@@ -85,13 +91,11 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
 def tag_key_join(tag_key_words):
   """Take a tuple of strings, add a prefix, join, and return a tag key
   """
-  return TAG_KEY_DELIM.join((TAG_KEY_PREFIX, ) + tag_key_words)
+  return "-".join(("sched", ) + tag_key_words)
 
 
 def msg_attrs_str_encode(attr_pairs):
-  """Take a list of name, value pairs, return an SQS messageAttributes dict
-
-  String attributes only!
+  """Take list of string name, value pairs, return SQS MessageAttributes dict
   """
   return {
     attr_name: {"DataType": "String", "StringValue": attr_value}
@@ -112,50 +116,29 @@ def msg_body_encode(msg_in):
   msg_out_len = len(bytes(msg_out, "utf-8"))
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
     raise SQSMessageTooLong(
-      f"JSON string too long: {msg_out_len} bytes exceeds "
-      f"{QUEUE_MSG_BYTES_MAX} bytes; increase QueueMessageBytesMax "
-      "CloudFormation parameter"
+      f"JSON string too long: {msg_out_len} > {QUEUE_MSG_BYTES_MAX} bytes; "
+      "increase QueueMessageBytesMax in CloudFormation"
     )
   return msg_out
 
 
-def sqs_send_log(msg_attrs, msg_body, resp=None, exception=None):
-  """Log SQS send_message attempt at appropriate level
+def sqs_send_log(send_kwargs, entry_type, entry_value):
+  """Log SQS send_message content and outcome
   """
-  log_level = logging.INFO
-  if exception is not None:
-    log_level = logging.ERROR
-    logging.log(
-      log_level,
-      json.dumps({"type": "EXCEPTION", "exception": exception}, default=str)
-    )
-  if resp is not None:
-    if not boto3_success(resp):
-      log_level = logging.ERROR
-    logging.log(
-      log_level,
-      json.dumps({"type": "AWS_RESPONSE", "aws_response": resp}, default=str)
-    )
-  logging.log(
-    log_level,
-    json.dumps(
-      {"type": "SQS_MSG", "msg_attrs": msg_attrs, "msg_body": msg_body},
-      default=str
-  ))
+  if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
+    log_level=logging.INFO
+  else:
+    log_level=logging.ERROR
+  log("SQS_SEND", send_kwargs, log_level=log_level)
+  log(entry_type, entry_value, log_level=log_level)
 
 
 def op_log(event, resp=None, log_level=logging.ERROR):
   """Log Lambda function event and AWS SDK method call response
   """
-  logging.log(
-    log_level,
-    json.dumps({"type": "LAMBDA_EVENT", "lambda_event": event}, default=str)
-  )
+  log("LAMBDA_EVENT", event, log_level=log_level)
   if resp is not None:
-    logging.log(
-      log_level,
-      json.dumps({"type": "AWS_RESPONSE", "aws_response": resp}, default=str)
-    )
+    log("AWS_RESPONSE", resp, log_level=log_level)
 
 
 svc_clients = {}
@@ -201,32 +184,40 @@ class AWSRsrcType():
     self,
     svc,
     rsrc_type_words,
-    rsrc_id_key_suffix,
+    rsrc_id_key_suffix="Id",
     arn_key_suffix="Arn",
+    tags_key="Tags",
     status_filter_pair=(),
     describe_flatten=None,
     ops=None
   ):
     self.svc = svc
     self.name_in_methods = "_".join(rsrc_type_words).lower()
+
     self.name_in_keys = "".join(rsrc_type_words)
     self.rsrc_id_key = f"{self.name_in_keys}{rsrc_id_key_suffix}"
     if arn_key_suffix:
-      self.rsrc_arn_get = lambda resp: resp[
-        f"{self.name_in_keys}{arn_key_suffix}"
-      ]
+      self.arn_prefix = ""
+      self.arn_key = f"{self.name_in_keys}{arn_key_suffix}"
     else:
-      self.rsrc_arn_get = lambda resp: ARN_DELIM.join([
+      self.arn_prefix = ARN_DELIM.join([
         "arn",
          AWS_PARTITION,
          svc,
          AWS_REGION,
          AWS_ACCOUNT,
-         f"{self.name_in_methods}/{resp[self.rsrc_id_key]}",
+         f"{self.name_in_methods}/",
       ])
+      self.arn_key = self.rsrc_id_key
+    self.tags_key = tags_key
 
     self.status_filter_pair = status_filter_pair
-    self.describe_flatten = describe_flatten
+    if describe_flatten:
+      self.describe_flatten = describe_flatten
+    else:
+      self.describe_flatten = lambda resp: resp.get(
+        f"{self.name_in_keys}s", []
+      )
 
     self.ops = {}
     for (op_tag_key_words, op_properties) in ops.items():
@@ -262,28 +253,22 @@ class AWSRsrcType():
     return describe_kwargs_out
 
   def rsrc_id(self, rsrc):
-    """Return a resource's ID, using the key for the resource type
+    """Take 1 describe_ result, return the resource ID
     """
     return rsrc[self.rsrc_id_key]
 
   def arn(self, rsrc):
-    """Return a resource's ID, using the key for the resource type
+    """Take 1 describe_ result, return the ARN
     """
-    return self.rsrc_arn_get(rsrc)
+    return f"{self.arn_prefix}{rsrc[self.arn_key]}"
 
   def rsrc_tags_list(self, rsrc):  # pylint: disable=no-self-use
-    """Return a resource's raw-format list of tags
-
-    Currently generic using .get(), but could be specialized by rsrc_type:
-    Key        Services
-    "Tags"     EC2, CloudFormation
-    "TagList"  RDS
-    Key may be missing if no tags are defined.
+    """Take 1 describe_ result, return raw resource tags
     """
-    return rsrc.get("Tags", rsrc.get("TagList", []))
+    return rsrc.get(self.tags_key, [])  # Key may be missing if no tags
 
   def op_tags_match(self, rsrc, sched_regexp):
-    """Scan a resource's tags to find operations scheduled for current cycle
+    """Scan 1 resource's tags to find operations scheduled for current cycle
     """
     ops_tag_keys = self.ops_tag_keys
     op_tags_matched = []
@@ -300,31 +285,29 @@ class AWSRsrcType():
       f"describe_{self.name_in_methods}s"
     )
     for resp in paginator.paginate(**self.describe_kwargs):
-      if self.describe_flatten:
-        rsrcs = self.describe_flatten(resp)
-      else:
-        rsrcs = resp.get(f"{self.name_in_keys}s", [])
-      for rsrc in rsrcs:
+      for rsrc in self.describe_flatten(resp):
         op_tags_matched = self.op_tags_match(rsrc, sched_regexp)
         op_tags_matched_count = len(op_tags_matched)
 
         if op_tags_matched_count == 1:
           op = self.ops[op_tags_matched[0]]
-          op_kwargs = op.op_kwargs(rsrc, cycle_start_str)
-          op.queue(op_kwargs, cycle_cutoff_epoch_str)
+          op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
         elif op_tags_matched_count > 1:
-          logging.error(json.dumps({
-            "type": "MULTIPLE_OPS",
-            "svc": self.svc,
-            "rsrc_type": self.name_in_keys,
-            "rsrc_id": self.rsrc_id(rsrc),
-            "op_tags_matched": op_tags_matched,
-            "cycle_start_str": cycle_start_str,
-          }))
+          log(
+            "MULTIPLE_OPS",
+            {
+              "svc": self.svc,
+              "rsrc_type": self.name_in_keys,
+              "rsrc_id": self.rsrc_id(rsrc),
+              "op_tags_matched": op_tags_matched,
+              "cycle_start_str": cycle_start_str,
+            },
+            log_level=logging.ERROR
+          )
 
 
 class AWSOp():
-  """Operation on a single AWS resource
+  """Operation on 1 AWS resource
   """
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     self.rsrc_type = rsrc_type
@@ -333,7 +316,7 @@ class AWSOp():
     self.svc = rsrc_type.svc
     verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st word
     self.method_name = f"{verb}_{self.rsrc_type.name_in_methods}"
-    self.kwargs_static = kwargs.get("kwargs_static", {})
+    self.kwargs_add = kwargs.get("kwargs_add", {})
     self.rsrc_type.ops[self.tag_key] = self  # Register under AWSRsrcType
 
   @staticmethod
@@ -353,10 +336,10 @@ class AWSOp():
     """Take a describe_ result, return another method's kwargs
     """
     op_kwargs_out = self.kwarg_rsrc_id(rsrc)
-    op_kwargs_out.update(self.kwargs_static)
+    op_kwargs_out.update(self.kwargs_add)
     return op_kwargs_out
 
-  def queue(self, op_kwargs, cycle_cutoff_epoch_str):
+  def queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
     """Send an operation message to the SQS queue
     """
     op_msg_attrs = msg_attrs_str_encode((
@@ -365,30 +348,31 @@ class AWSOp():
       ("svc", self.svc),
       ("op_method_name", self.method_name),
     ))
+    send_kwargs = {
+      "QueueUrl": QUEUE_URL,
+      "MessageAttributes": op_msg_attrs,
+      "MessageBody": msg_body_encode(self.op_kwargs(rsrc, cycle_start_str)),
+    }
     try:
-      sqs_resp = svc_client_get("sqs").send_message(
-        QueueUrl=QUEUE_URL,
-        MessageAttributes=op_msg_attrs,
-        MessageBody=msg_body_encode(op_kwargs),
-      )
+      sqs_resp = svc_client_get("sqs").send_message(**send_kwargs)
     except (
       botocore.exceptions.ClientError,
       SQSMessageTooLong,
     ) as sqs_exception:
-      sqs_send_log(op_msg_attrs, op_kwargs, exception=sqs_exception)
+      sqs_send_log(send_kwargs, "EXCEPTION", sqs_exception)
       # Usually recoverable, try to queue next operation
     except Exception as misc_exception:
-      sqs_send_log(op_msg_attrs, op_kwargs, exception=misc_exception)
+      sqs_send_log(send_kwargs, "EXCEPTION", misc_exception)
       raise  # Unrecoverable, stop queueing operations
     else:
-      sqs_send_log(op_msg_attrs, op_kwargs, resp=sqs_resp)
+      sqs_send_log(send_kwargs, "AWS_RESPONSE", sqs_resp)
 
   def __str__(self):
     return f"AWSOp {self.tag_key} {self.rsrc_type.svc}.{self.method_name}"
 
 
 class AWSOpMultipleRsrcs(AWSOp):
-  """Operation on multiple AWS resources of a particular type
+  """Operation on multiple AWS resources of the same type
   """
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     super().__init__(rsrc_type, tag_key_words, **kwargs)
@@ -409,7 +393,7 @@ class AWSOpUpdateStack(AWSOp):
     super().__init__(rsrc_type, tag_key_words, verb="update", **kwargs)
 
   def op_kwargs(self, rsrc, cycle_start_str):
-    """Take a describe_stacks result, return update_stack kwargs
+    """Take 1 describe_stacks result, return update_stack kwargs
 
     Preserves previous parameter values except for designated parameter(s):
                              Param  New
@@ -467,7 +451,7 @@ class AWSOpBackUp(AWSOp):
       "IamRoleArn": BACKUP_ROLE_ARN,
       "BackupVaultName": BACKUP_VAULT_NAME,
       "StartWindowMinutes": 60,
-      "RecoveryPointTags": {tag_key_join(("cycle", "start")): cycle_start_str},
+      "RecoveryPointTags": {tag_key_join(("time")): cycle_start_str},
     })
     return op_kwargs_out
 
@@ -483,7 +467,6 @@ def rsrc_types_init():
     AWSRsrcType(
       "ec2",
       ("Instance", ),
-      "Id",
       arn_key_suffix=None,
       status_filter_pair=(
         "instance-state-name", ("running", "stopping", "stopped")
@@ -500,7 +483,7 @@ def rsrc_types_init():
         ("hibernate", ): {
           "class": AWSOpMultipleRsrcs,
           "verb": "stop",
-          "kwargs_static": {"Hibernate": True},
+          "kwargs_add": {"Hibernate": True},
         },
         ("backup", ): {"class": AWSOpBackUp},
       },
@@ -509,7 +492,6 @@ def rsrc_types_init():
     AWSRsrcType(
       "ec2",
       ("Volume", ),
-      "Id",
       arn_key_suffix=None,
       status_filter_pair=("status", ("available", "in-use")),
       ops={
@@ -520,12 +502,13 @@ def rsrc_types_init():
     AWSRsrcType(
       "rds",
       ("DB", "Instance"),
-      "Identifier",
+      rsrc_id_key_suffix="Identifier",
+      tags_key="TagList",
       ops={
         ("start", ): {},
         ("stop", ): {},
         ("reboot", ): {},
-        ("reboot", "failover"): {"kwargs_static": {"ForceFailover": True}},
+        ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
         ("backup", ): {"class": AWSOpBackUp},
       },
     )
@@ -533,7 +516,8 @@ def rsrc_types_init():
     AWSRsrcType(
       "rds",
       ("DB", "Cluster"),
-      "Identifier",
+      rsrc_id_key_suffix="Identifier",
+      tags_key="TagList",
       ops={
         ("start", ): {},
         ("stop", ): {},
@@ -545,7 +529,7 @@ def rsrc_types_init():
     AWSRsrcType(
       "cloudformation",
       ("Stack", ),
-      "Name",
+      rsrc_id_key_suffix="Name",
       arn_key_suffix="Id",
       ops={
         ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
@@ -561,21 +545,17 @@ def rsrc_types_init():
 def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   """Find and queue AWS resources for scheduled operations, based on tags
   """
-  logging.info(
-    json.dumps({"type": "LAMBDA_EVENT", "lambda_event": event}, default=str)
-  )
+  log("LAMBDA_EVENT", event)
   (cycle_start, cycle_cutoff) = cycle_start_end(
     datetime.datetime.now(datetime.timezone.utc)
   )
-  cycle_start_str = cycle_start.strftime("%Y%m%dT%H%MZ")
+  cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%M")
   cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
   sched_regexp = re.compile(
     cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
   )
-  logging.info(json.dumps({"type": "START", "cycle_start": cycle_start_str}))
-  logging.info(json.dumps(
-    {"type": "SCHED_REGEXP_VERBOSE", "sched_regexp": sched_regexp.pattern}
-  ))
+  log("START", cycle_start_str)
+  log("SCHED_REGEXP_VERBOSE", sched_regexp.pattern)
   rsrc_types_init()
   for rsrc_types in AWSRsrcType.members.values():
     for rsrc_type in rsrc_types.values():
