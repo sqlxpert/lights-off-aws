@@ -1,25 +1,24 @@
 # Lights Off!
 
-Do you forget to turn the lights off? Lights Off can:
+Do you forget to turn the lights off? Now you can:
 
-1. Stop and restart EC2 instances and RDS databases based on cron-style
-   schedules in their tags. Perfect for development and test systems that sit
-   idle overnight and on weekends, this simple trick cuts AWS costs up to 66%.
+1. Stop, restart and back up EC2 instances and RDS/Aurora databases based on
+   cron-style schedules in their tags.
 
-2. Back up EC2 instances, EBS volumes, and RDS databases. Tags on the
-   resources tell you exactly when backups will occur. You benefit from the
-   AWS Backup service without having to write, and reference, backup plans.
+2. Set AWS Backup schedules in resource tags, not central backup plans.
 
-3. Delete and recreate expensive infrastructure in your own CloudFormation
-   stacks.
+3. Easily deploy this solution across multiple AWS accounts and regions.
 
 Jump to:
-[Quick Install](#quick-start) &bull;
-[Tags](#tag-keys-operations) &bull;
-[Schedules](#tag-values-schedules) &bull;
-[Security](#security) &bull;
-[Multi-Region/Multi-Account](#advanced-installation) &bull;
-[Advice](#general-advice)
+[Quick Install](#quick-start)
+&bull;
+[Tags](#tag-keys-operations)
+&bull;
+[Schedules](#tag-values-schedules)
+&bull;
+[Security](#security)
+&bull;
+[Multi-Region/Multi-Account](#advanced-installation)
 
 ## Quick Start
 
@@ -74,13 +73,12 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||||||||
+|Tag|||`sched-backup`|`sched-reboot`|`sched-reboot-failover`||
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
-|Stop|`sched-stop`|`sched-hibernate`||||`sched-set-Enable-false`|
-|Start|`sched-start`|`sched-start`||||`sched-set-Enable-true`|
-|Other|||`sched-backup`|`sched-reboot`|`sched-reboot-failover`||
+|Stop tag|`sched-stop`|`sched-hibernate`||||`sched-set-Enable-false`|
+|Start tag|`sched-start`|`sched-start`||||`sched-set-Enable-true`|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;|||
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||snapshot||||
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot||||
 |[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;||
 |[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot||&check;||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
