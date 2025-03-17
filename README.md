@@ -2,10 +2,11 @@
 
 Do you forget to turn the lights off? Now you can:
 
-- Stop, restart and back up EC2 instances and RDS/Aurora databases based on
+- Stop, restart and back up EC2 instances and RDS/Aurora databases with
   cron-style schedules in their tags.
 
-- Set AWS Backup schedules in resource tags, not central backup plans.
+- Set, and view, AWS Backup schedules in resource tags, not central backup
+  plans.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
 
@@ -28,7 +29,7 @@ Jump to:
    [EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)
    with:
 
-   * `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
+   - `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
      \+ 20 minutes. Round up to :00, :10, :20, :30, :40, or :50.
 
@@ -36,7 +37,7 @@ Jump to:
    [S3 bucket](https://console.aws.amazon.com/s3/home)
    for AWS Lambda function source code. Name it:
 
-   * `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
+   - `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
      and us-east-1 with the code for the
      [region](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
      of your EC2 instance. Check, near the top right of the EC2 Console and
@@ -59,8 +60,8 @@ Jump to:
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    . On the next page, set:
 
-   * Stack name: `LightsOff`
-   * Lambda code S3 bucket: Exclude the region. For example, if your bucket is
+   - Stack name: `LightsOff`
+   - Lambda code S3 bucket: Exclude the region. For example, if your bucket is
      my-bucket-us-east-1, enter `my-bucket` .
 
 6. After about 20 minutes, check
@@ -79,21 +80,19 @@ Jump to:
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot||||
 |[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;||
-|[RDS database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot||&check;||
+|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot|&check;|||
 |[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
 
-* All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
-* Not all EC2 instances support hibernation.
-* Not all RDS database clusters support cluster-level reboot.
-* Scheduling multiple operations on the same resource at the same time
-  produces an error.
+- All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
+- Not all EC2 instances support hibernation.
+- Not all RDS database clusters support cluster-level reboot.
 
 ## Tag Values (Schedules)
 
 ### Terms
 
-  |Type|Literal Values|Wildcard|
-  |--|--|--|
+  |Type|Literals|Wildcard|
+  |:---|:---:|:---:|
   |Day of month|`d=01` ... `d=31`|`d=_`|
   |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
   |Hour|`H=00` ... `H=23`|`H=_`|
@@ -105,34 +104,35 @@ Jump to:
 ### Examples
 
   |Tag Value|Scenario|Meaning|
-  |--|--|--|
-  |`d=01 d=15 H=03 H=19 M=00`|`cron`-style|03:00 and 19:00 the 1st and 15th days of the month|
+  |---|:---:|---|
+  |`d=01 d=15 H=03 H=19 M=00`|cron|03:00 and 19:00 the 1st and 15th days of the month|
   |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour, _plus_ 08:50 every day|
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
   |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of the month|
 
 ### Rules
 
-* Universal Coordinated Time
-* 24-hour clock
-* Days before times, and hours before minutes
-* The day, the hour and the minute must all be specified in some way
-* For end-of-month, use start-of-month, `dTH:M=01T00:00` , because some months
-  lack `d=29` through `d=31`
+- Universal Coordinated Time
+- 24-hour clock
+- Days before times, hours before minutes
+- The day, the hour and the minute must all be specified in some way
+- Instead of end-of-month, use start-of-month ( `dTH:M=01T00:00` )
+- Scheduling multiple operations on the same resource at the same time
+  produces an error
 
 ### Rationale
 
-* Separator and wildcard: [RDS does not allow , or \*](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
-* Letters:
-  [`strftime()`](http://manpages.ubuntu.com/manpages/xenial/man3/strftime.3.html#description)
+- Space as separator and underscore as wildcard: [RDS does not allow comma or asterisk](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
+- Letters:
+  [`strftime()`](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description)
 
 ## Backups
 
 ### Services
 
-* Use AWS Backup to list and delete backups.
-* Use EC2 and RDS to view the underlying images and snapshots.
-* Use AWS Backup, or EC2 and RDS, to restore (create new resources from)
+- Use AWS Backup to list and delete backups.
+- Use EC2 and RDS to view the underlying images and snapshots.
+- Use AWS Backup, or EC2 and RDS, to restore (create new resources from)
   backups.
 
 ### Tags
@@ -145,19 +145,19 @@ was _scheduled_ to occur.
 
 ## On/Off Switch
 
-* You can toggle the `Enable` parameter of your Lights Off CloudFormation
+- You can toggle the `Enable` parameter of your Lights Off CloudFormation
   stack.
-* While Enable is `false`, scheduled operations do not happen; they are
+- While Enable is `false`, scheduled operations do not happen; they are
   skipped permanently.
 
 ## Logging
 
-* Check the
+- Check the
   [`LightsOff` CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-* Log entries are JSON objects. For application log entries, reference the
+- Log entries are JSON objects. For application log entries, reference the
   `type` key for a consistent classification and the `value` key for the data.
   System log entries use other keys, including `message` .
-* To see more or fewer log entries, change the `LogLevel` parameter in
+- To see more or fewer log entries, change the `LogLevel` parameter in
   CloudFormation.
 
 ## Security
@@ -169,48 +169,48 @@ which is open-source._
 
 ### Design Goals
 
-* Distinct, least-privilege roles for the AWS Lambda functions that find
+- Distinct, least-privilege roles for the AWS Lambda functions that find
   resources and "do" scheduled operations. The "do" function is only
   authorized to perform a small set of operations, and at that, only when a
   resource has the right tag key. (The AWS Backup service creates backups,
   using a role that you specify.)
 
-* A least-privilege policy for the queue linking the two functions. The
+- A least-privilege policy for the queue linking the two functions. The
   operation queue can only consume messages from the "find" function and
   produce messages for the "do" function (or a dead-letter queue, if an
   operation fails). Encryption in transit is required.
 
-* Readable IAM policies, formatted as CloudFormation YAML rather than as JSON
+- Readable IAM policies, formatted as CloudFormation YAML rather than as JSON
   and broken down into discrete statements by service, resource or principal.
 
-* Optional encryption at rest with custom AWS Key Management System (KMS)
+- Optional encryption at rest with custom AWS Key Management System (KMS)
   keys, for queue message bodies (which contain the identifiers and tags of
   AWS resources) and for log entries.
 
-* No data storage other than in queues and logs. Retention periods for the
+- No data storage other than in queues and logs. Retention periods for the
   dead letter queue and the logs are configurable. The fixed retention period
   for the operation queue is short.
 
-* Tolerance for clock drift in a distributed system. The "find" function
+- Tolerance for clock drift in a distributed system. The "find" function
   starts 1 minute into the 10-minute cycle and operation queue entries expire
   9 minutes into the cycle.
 
-* A checksum for the AWS Lambda function source code bundle. (The bundle is
+- A checksum for the AWS Lambda function source code bundle. (The bundle is
   included for the benefit of new users and those without formal pipelines.)
 
-* An optional, least-privilege CloudFormation service role for deployment.
+- An optional, least-privilege CloudFormation service role for deployment.
 
 ### Security Steps You Can Take
 
-* Only allow trusted people and services to tag AWS resources. You can
+- Only allow trusted people and services to tag AWS resources. You can
   deny the right to add, change and delete `sched-` tags by including the
   [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
   in a permission boundary.
 
-* Never authorize a role that can create backups (or, in this case, set tags
+- Never authorize a role that can create backups (or, in this case, set tags
   to schedule backups) delete backups as well.
 
-* Prevent people from modifying components of Lights Off, most of which can be
+- Prevent people from modifying components of Lights Off, most of which can be
   identified by `LightsOff` in ARNs and in the automatic
   `aws:cloudformation:stack-name` tag. Limiting people's permissions so that
   the deployment role is _necessary_ for stack modifications is ideal. Short
@@ -219,14 +219,14 @@ which is open-source._
   resource-specific statements to `"Deny"`, and include the inverted policy in
   a permission boundary.
 
-* Add policies to prevent people from directly invoking Lights Off AWS Lambda
+- Add policies to prevent people from directly invoking Lights Off AWS Lambda
   functions and from passing the associated roles to any other functions.
 
-* Log infrastructure changes using AWS CloudTrail, and set up alerts.
+- Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
-* Automatically copy backups to an AWS Backup vault in an isolated account.
+- Automatically copy backups to an AWS Backup vault in an isolated account.
 
-* Separate production workloads. You might choose not to deploy Lights Off to
+- Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might customize the "do" function's
   role, removing the authority to reboot and stop production resources (
   `AttachLocalPolicy` ).
@@ -304,8 +304,8 @@ regions),
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    . On the next page, set:
 
-   * StackSet name: `LightsOff`
-   * Lambda code S3 bucket: Exclude regions. For example, if your buckets are
+   - StackSet name: `LightsOff`
+   - Lambda code S3 bucket: Exclude regions. For example, if your buckets are
      my-bucket-us-east-1 and my-bucket-us-west-2, enter `my-bucket` .
 
 6. Two pages later, under Deployment targets, select Deploy to Organizational
@@ -337,10 +337,10 @@ target accounts if you want to deploy a StackSet with
 
 ## Software Updates
 
-* For CloudFormation template changes, update your CloudFormation stack or
+- For CloudFormation template changes, update your CloudFormation stack or
   StackSet in-place.
 
-* For AWS Lambda function Python source code changes, upload the new
+- For AWS Lambda function Python source code changes, upload the new
   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true) bundle to S3 and
   create a new `LightsOff2` CloudFormation stack or StackSet, but set `Enable`
   to `false` . After you've deleted the old `LightsOff` stack or StackSet,
@@ -436,11 +436,11 @@ What AWS resources and operations would _you_ like to add?
 
 ## General Advice
 
-* Routinely test your backups! Are backups happening as scheduled? Can you
+- Routinely test your backups! Are backups happening as scheduled? Can you
   restore your backups successfully? AWS Backup's restore testing feature
   can help.
 
-* Be aware: of charges for running AWS Lambda functions, queueing to SQS,
+- Be aware: of charges for running AWS Lambda functions, queueing to SQS,
   logging to CloudWatch Logs, storing backups, and deleting backups from cold
   storage too early; of minimum billing periods when you stop an RDS database
   or an EC2 instance with a commercial license; of ongoing storage charges for
@@ -448,32 +448,55 @@ What AWS resources and operations would _you_ like to add?
   automatically restarts a database that has been stopped for 7 days. Other AWS
   charges may apply!
 
-* Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
+- Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
   [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
   as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
 
 ## Future Work
 
-* Automated testing
-* Makefile for AWS Lambda .zip bundle
-* Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
+- Automated testing
+- Makefile for AWS Lambda .zip bundle
+- Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
   CloudFormation stack parameter to an arbitrary value
 
 ## History
 
-This project was originally called TagSchedOps. I began working on it in 2017,
-long before AWS Backup, Data Lifecycle Manager, or Systems Manager existed.
+This project was originally called TagSchedOps. I wrote the first version in
+2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
+remains a simple alternative to Systems Manager Automation runbooks for
+starting, rebooting and stopping EC2 instances and RDS databases. As of March,
+2025, it is integrated with AWS Backup, leveraging the security and management
+benefits (including backup retention lifecycle policies) but offering a simple
+alternative to backup plans.
+
+Despite adding features over time, I have been able to reduce the number of
+lines of Python code for the AWS Lambda functions from 775 to 530. I had
+gotten the core CloudFormation YAML template from approximately 2,140 lines
+down to 800, but that number has crept up to 830 in 2025. New parameters for
+AWS Backup are the main culprit. AWS Lambda advanced logging controls reduced
+IAM policy lines but added configuration lines.
+
+|Year|Python Lines|CloudFormation YAML Lines|
+|:---:|:---:|:---:|
+|2017|775|2,140|
+|2018|750|No change|
+|2022|630|800 &check;|
+|2025|530 &check;|830|
+
+Line counts are from GitHub and are only approximate.
 
 ## Dedication
 
-This work is dedicated to ej Salazar, Marianne and R&eacute;gis Marcelin,
-and also to the wonderful colleagues I've worked with over the years.
+This work is dedicated to ej, Marianne and R&eacute;gis, and also to the
+wonderful colleagues I've worked with over the years. Thank you to Lee for
+suggesting the name and to Corey for sharing the original version with the AWS
+user community.
 
 ## Licenses
 
 |Scope|Link|Included Copy|
-|--|--|--|
+|:---|:---:|:---:|
 |Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](/LICENSE-CODE.md)|
 |Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
 
