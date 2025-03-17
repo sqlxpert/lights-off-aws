@@ -2,15 +2,15 @@
 
 Do you forget to turn the lights off? Now you can:
 
-1. Stop, restart and back up EC2 instances and RDS/Aurora databases based on
-   cron-style schedules in their tags.
+- Stop, restart and back up EC2 instances and RDS/Aurora databases based on
+  cron-style schedules in their tags.
 
-2. Set AWS Backup schedules in resource tags, not central backup plans.
+- Set AWS Backup schedules in resource tags, not central backup plans.
 
-3. Easily deploy this solution across multiple AWS accounts and regions.
+- Easily deploy this solution across multiple AWS accounts and regions.
 
 Jump to:
-[Quick Install](#quick-start)
+[Quick Start](#quick-start)
 &bull;
 [Tags](#tag-keys-operations)
 &bull;
@@ -73,10 +73,9 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-|Tag|||`sched-backup`|`sched-reboot`|`sched-reboot-failover`||
+||`sched-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-false`|
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
-|Stop tag|`sched-stop`|`sched-hibernate`||||`sched-set-Enable-false`|
-|Start tag|`sched-start`|`sched-start`||||`sched-set-Enable-true`|
+||`sched-start`|`sched-start`||||`sched-set-Enable-true`|
 |[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;|||
 |[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot||||
 |[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;||
