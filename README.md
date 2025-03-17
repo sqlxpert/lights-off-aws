@@ -91,7 +91,7 @@ Jump to:
 ### Simple Terms
 
   |Type|Wildcard|Literals|
-  |:---:|:---:|:---:|
+  |:---|:---:|:---:|
   |Day of month|`d=_`|`d=01` ... `d=31`|
   |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))||`u=1` (Monday) ... `u=7` (Sunday)|
   |Hour|`H=_`|`H=00` ... `H=23`|
@@ -99,11 +99,11 @@ Jump to:
 
 ### Compound Terms
 
-  |Type|Literals|Note|
-  |:---:|:---:|:---:|
-  |Once a day||`H:M=00:00` ... `H:M=23:50`|`d=` or `u=` is also required|
-  |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
-  |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
+  |Type|Note|Literals|
+  |:---|:---:|:---:|
+  |Once a day|Requires `d=` or `u=`|`H:M=00:00` ... `H:M=23:50`|
+  |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
+  |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
 ### Examples
 
@@ -445,8 +445,10 @@ What AWS resources and operations would _you_ like to add?
 
 ## Advice
 
-- Routinely test your backups! Are they happening as scheduled? Can you
-  restore them successfully? AWS Backup's restore testing feature can help.
+- Test your backups often! Are they finishing on-schedule? Can they be
+  restored? The
+  [AWS Backup restore testing feature](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
+  can help.
 
 - Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
   KMS, backup storage, and early deletion of cold storage backups; of the
@@ -472,7 +474,7 @@ backup plans. Despite adding features, I have cut many lines of code.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
-|2017| &asymp;775|&asymp;2,140|
+|2017| &asymp; 775|&asymp; 2,140|
 |2018|750|No change|
 |2022|630|800 &check;|
 |2025|530 &check;|830|
