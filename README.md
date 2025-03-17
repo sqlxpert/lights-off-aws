@@ -1,6 +1,6 @@
 # Lights Off!
 
-Do you forget to turn the lights off? Now you can:
+Ever forget to turn the lights off? Now you can:
 
 - Stop, restart and back up EC2 instances and RDS/Aurora databases with
   cron-style schedules in their tags.
@@ -74,13 +74,13 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot`|`sched-reboot-failover`|
+||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-reboot-failover`|`sched-backup`|
 |:---|:---:|:---:|:---:|:---:|:---:|
 ||**`sched-start`**|**`sched-start`**||||
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;||
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot|||
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;|
-|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot|&check;||
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||image (AMI)|
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||volume snapshot|
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|database snapshot|
+|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||cluster snapshot|
 
 - All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
 - Not all EC2 instances support hibernation.
@@ -88,17 +88,22 @@ Jump to:
 
 ## Tag Values (Schedules)
 
-### Terms
+### Simple Terms
 
-  |Type|Literals|Wildcard|
+  |Type|Wildcard|Literals|
   |:---:|:---:|:---:|
-  |Day of month|`d=01` ... `d=31`|`d=_`|
-  |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
-  |Hour|`H=00` ... `H=23`|`H=_`|
-  |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
-  |Daily|`H:M=00:00` ... `H:M=23:50`||
-  |Weekly|`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
-  |Monthly|`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
+  |Day of month|`d=_`|`d=01` ... `d=31`|
+  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
+  |Hour|`H=_`|`H=00` ... `H=23`|
+  |Minute (multiple of 10)||`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`|
+
+### Compound Terms
+
+  |Type|Literals|Note|
+  |:---:|:---:|:---:|
+  |Once a day||`H:M=00:00` ... `H:M=23:50`|`d=` or `u=` is also required|
+  |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`||
+  |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`||
 
 ### Examples
 
