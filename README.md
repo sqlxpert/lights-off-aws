@@ -93,7 +93,7 @@ Jump to:
   |Type|Wildcard|Literals|
   |:---:|:---:|:---:|
   |Day of month|`d=_`|`d=01` ... `d=31`|
-  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
+  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))||`u=1` (Monday) ... `u=7` (Sunday)|
   |Hour|`H=_`|`H=00` ... `H=23`|
   |Minute (multiple of 10)||`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`|
 
