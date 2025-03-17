@@ -90,7 +90,7 @@ Jump to:
 
 ### Simple Terms
 
-  |Type|Wildcard|Literals|
+  |Type|Wildcard|Literals ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|
   |:---|:---:|:---:|
   |Day of month|`d=_`|`d=01` ... `d=31`|
   |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))||`u=1` (Monday) ... `u=7` (Sunday)|
@@ -101,7 +101,7 @@ Jump to:
 
   |Type|Note|Literals|
   |:---|:---:|:---:|
-  |Once a day|Requires `d=` or `u=`|`H:M=00:00` ... `H:M=23:50`|
+  |Once a day|`d=` or `u=` first!|`H:M=00:00` ... `H:M=23:50`|
   |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
   |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
@@ -124,11 +124,9 @@ Jump to:
 - Scheduling multiple operations on the same resource at the same time
   produces an error
 
-### Rationale
-
-- Space as separator and underscore as wildcard: [RDS does not allow comma or asterisk](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging)
-- Letters:
-  [`strftime()`](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description)
+Trivia: I chose a space as the separator and an underscore as the wildcard
+because
+[RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
 
 ## Backups
 
