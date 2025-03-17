@@ -92,7 +92,7 @@ Jump to:
 ### Terms
 
   |Type|Literals|Wildcard|
-  |:---|:---:|:---:|
+  |:---:|:---:|:---:|
   |Day of month|`d=01` ... `d=31`|`d=_`|
   |[ISO 8601 weekday](https://en.wikipedia.org/wiki/ISO_8601#Week_dates)|`u=1` (Monday) ... `u=7` (Sunday)||
   |Hour|`H=00` ... `H=23`|`H=_`|
@@ -104,7 +104,7 @@ Jump to:
 ### Examples
 
   |Tag Value|Scenario|Meaning|
-  |---|:---:|---|
+  |:---:|:---:|:---:|
   |`d=01 d=15 H=03 H=19 M=00`|cron|03:00 and 19:00 the 1st and 15th days of the month|
   |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour, _plus_ 08:50 every day|
   |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
@@ -139,7 +139,7 @@ Jump to:
 
 AWS Backup copies resource tags to backups on a best effort basis. For
 convenience, Lights Off adds an
-[ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations)-formatted
+[ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations)
 `sched-time` tag (example: `2024-12-31T14:00Z`) to indicate when the backup
 was _scheduled_ to occur.
 
@@ -153,10 +153,10 @@ was _scheduled_ to occur.
 ## Logging
 
 - Check the
-  [`LightsOff` CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
+  [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
 - Log entries are JSON objects. For application log entries, reference the
   `type` key for a consistent classification and the `value` key for the data.
-  System log entries use other keys, including `message` .
+  System log entries use other keys.
 - To see more or fewer log entries, change the `LogLevel` parameter in
   CloudFormation.
 
@@ -204,7 +204,7 @@ which is open-source._
 
 - Only allow trusted people and services to tag AWS resources. You can
   deny the right to add, change and delete `sched-` tags by including the
-  [`aws:TagKeys` condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
+  [aws:TagKeys condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
   in a permission boundary.
 
 - Never authorize a role that can create backups (or, in this case, set tags
@@ -344,7 +344,7 @@ target accounts if you want to deploy a StackSet with
   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true) bundle to S3 and
   create a new `LightsOff2` CloudFormation stack or StackSet, but set `Enable`
   to `false` . After you've deleted the old `LightsOff` stack or StackSet,
-  update the new one, chaning `Enable` to `true`. A simple blue/green
+  update the new one, changing `Enable` to `true`. This simple blue/green
   deployment procedure avoids the problem of making CloudFormation notice that
   the Lambda bundle has changed.
 
@@ -372,12 +372,12 @@ scheduled times, Lights Off will toggle your own stack's `Enable` parameter to
 unchanged. Capitalize **E**nable in the tag keys, just as in the parameter
 name.
 
-Not every resource needs to be deleted and recreated based on the `Enable`
-parameter. You need only condition creation of _expensive_ resources on the
-`Enable` parameter. In the AWS Client VPN stack, the server and client
-certificates, endpoints and network security groups are always retained,
-because they don't cost anything. The expensive VPN attachments can be deleted
-and recreated with no need to reconfigure VPN clients.
+Not every resource needs to be deleted and recreated; you need only condition
+the creation of _expensive_ resources on the `Enable` parameter. In the AWS
+Client VPN stack, the server and client certificates, endpoints and network
+security groups are always retained, because they don't cost anything. The
+expensive VPN attachments can be deleted and recreated with no need to
+reconfigure VPN clients.
 </details>
 
 ## Extensibility
@@ -408,15 +408,20 @@ adding:
 
 Most method names can be derived mechanically if you use the same verb in the
 method name and the tag key, and break the resource type name into words.
-words. Given the tag key `sched-start` and the words `DB` and `Cluster` ,
-the method name `start_db_cluster` follows.
+Given the tag key `sched-start` and the words `DB` and `Cluster` , the method
+name `start_db_cluster` follows.
 
 Optionally, you can add a dictionary of static keyword arguments. You can also
 sub-class the `AWSOp` class if a method requires truly complex arguments.
 
 The AWS Backup `start_backup_job` method takes an Amazon Resource Name (ARN),
 whose format is standard for all resource types. As long as AWS Backup
-supports resource type in question, there is nothing special to do.
+supports the resource type that you want, there is nothing special to do.
+
+Adding statements like the one below to the Identity and Access Management
+(IAM) policy for the role used by the "do" AWS Lambda function authorizes
+operations on a new resource type. You must also authorize the role used by
+the "find" function to describe (list) resources of the new type.
 
 ```yaml
           - Effect: Allow
@@ -425,11 +430,6 @@ supports resource type in question, there is nothing special to do.
             Condition:
               StringLike: { "aws:ResourceTag/sched-start": "*" }
 ```
-
-Adding statements like the one above to the Identity and Access Management
-(IAM) policy for the role used by the "do" AWS Lambda function authorizes
-operations on the new resource type. You must also authorize the role used by
-the "find" function to describe (list) resources of the new resource type.
 
 What AWS resources and operations would _you_ like to add?
 </details>
@@ -468,14 +468,9 @@ remains a simple alternative to Systems Manager Automation runbooks for
 starting, rebooting and stopping EC2 instances and RDS databases. As of March,
 2025, it is integrated with AWS Backup, leveraging the security and management
 benefits (including backup retention lifecycle policies) but offering a simple
-alternative to backup plans.
-
-Despite adding features over time, I have been able to reduce the number of
-lines of Python code for the AWS Lambda functions from 775 to 530. I had
-gotten the core CloudFormation YAML template from approximately 2,140 lines
-down to 800, but that number has crept up to 830 in 2025. New parameters for
-AWS Backup are the main culprit. AWS Lambda advanced logging controls reduced
-IAM policy lines but added configuration lines.
+alternative to backup plans. Despite adding features over time, I have been
+able to reduce the number of lines of code for the AWS Lambda functions and
+the core CloudFormation template.
 
 |Year|Python Lines|CloudFormation YAML Lines|
 |:---:|:---:|:---:|
@@ -484,7 +479,7 @@ IAM policy lines but added configuration lines.
 |2022|630|800 &check;|
 |2025|530 &check;|830|
 
-Line counts are from GitHub and are only approximate.
+Line counts are from GitHub and are approximate.
 
 ## Dedication
 
@@ -496,7 +491,7 @@ user community.
 ## Licenses
 
 |Scope|Link|Included Copy|
-|:---|:---:|:---:|
+|:---:|:---:|:---:|
 |Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](/LICENSE-CODE.md)|
 |Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
 
