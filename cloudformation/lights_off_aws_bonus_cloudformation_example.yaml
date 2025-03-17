@@ -2,7 +2,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
-  Demonstrates making your own CloudFormation template compatible with
+  Demonstrates deleting and recreating AWS resources in your own
+  CloudFormation stack, based on cron-style schedules in stack tags.
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
@@ -10,18 +11,22 @@ Parameters:
 
   PlaceholderHelp:
     Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#changing-a-cloudformation-stack-parameter-on-schedule"
+    Default: "https://github.com/sqlxpert/lights-off-aws#bonus-deleting-and-recreating-expensive-resources-on-a-schedule"
+
+  PlaceholderSuggestedStackName:
+    Type: String
+    Default: "LightsOffBonusCloudFormationExample"
 
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: >-
-      Identifier of the Virtual Private Cloud in which sample security groups
-      will be created
+      Identifier of the Virtual Private Cloud in which the sample security
+      groups will be created
 
   ############################################################################
-  # Add this parameter:
-  Enable:  # Do not change logical name!
-    Type: String  # Will be coerced; no Boolean parameter type available
+  # Add this parameter to your template:
+  Enable:  # Do not change the parameter name or the capitalization!
+    Type: String  # No Boolean parameter type is available
     Description: >-
       Whether to create expensive resources. Lights Off will automatically
       update the stack, causing the resources to be created or deleted based
@@ -31,24 +36,30 @@ Parameters:
     AllowedValues:
       - "false"
       - "true"
-    Default: "false"  # Start without expensive resources
+    Default: "false"  # Start without the expensive resources
   ############################################################################
 
-Metadata:  # Optional
+Metadata:  # Optional section, for AWS Console users
 
   AWS::CloudFormation::Interface:
-    ParameterGroups:
+    ParameterGroups:  # Orders parameters and groups them into sections
       - Label:
-          default: Essentials
+          default: For Reference
         Parameters:
           - PlaceholderHelp
-          - Enable  # Optional, determines parameter order
+          - PlaceholderSuggestedStackName
+      - Label:
+          default: Essential
+        Parameters:
+          - Enable
           - VpcId
-    ParameterLabels:
+    ParameterLabels:  # Determines parameter labels
       PlaceholderHelp:
         default: For help with this stack, see
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
       Enable:
-        default: Enabled?  # Optional, determines parameter label
+        default: Enabled?
       VpcId:
         default: VPC
 
@@ -83,11 +94,10 @@ Resources:
   # resources is necessary because CloudFormation automatically propagates
   # stack-level tags (including the sched-set-Enable-true and -false tags that
   # you will add) to resources that it creates. If your deployment role does
-  # not allow tagging, then stack updates will fail. Because CloudFormation is
-  # updated regularly to propagate stack tags to more resource types, it is
-  # wise to provide tagging privileges for all resource types in your
-  # template, even if CloudFormation cannot yet tag them. In many cases, you
-  # can achieve least-privilege with a condition key:
+  # not allow tagging, stack updates will fail. Because CloudFormation is
+  # regularly updated to propagate stack tags to more resource types, it is
+  # best to provide tagging privileges for all of the resource types in your
+  # template. In many cases, you can achieve least-privilege with a condition:
   #
   # "StringLike": { "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*" }
   #
@@ -99,16 +109,15 @@ Resources:
   ConditionalSecGrp:
     Type: AWS::EC2::SecurityGroup
     ##########################################################################
-    # Use Condition attribute to conditionally create an expensive resource
+    # Conditionally creates an entire resource
     Condition: EnableTrue
     ##########################################################################
     Properties:
       GroupDescription:
         Fn::Sub: >-
-          Demonstrates creation/deletion based on schedules in the
-          sched-set-Enable-true/-false tags of the ${AWS::StackName}
-          CloudFormation stack. See
-          https://github.com/sqlxpert/lights-off-aws
+          Demonstrates deletion and recreation of a resource (this security
+          group) based on schedules in the
+          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-ConditionalSecGrp"
@@ -119,10 +128,9 @@ Resources:
     Properties:
       GroupDescription:
         Fn::Sub: >-
-          Demonstrates a rule created/deleted based on schedules in the
-          sched-set-Enable-true/-false tags of the ${AWS::StackName}
-          CloudFormation stack. See
-          https://github.com/sqlxpert/lights-off-aws
+          Demonstrates deletion and recreation of a resource property (a
+          security group ingress rule) based on schedules in the
+          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-SecGrpWithConditionalRule"
@@ -134,7 +142,11 @@ Resources:
           ToPort: 53
           CidrIp: 8.8.8.8/32
         ######################################################################
-        # Use Fn::If to conditionally add a resource property, list item, etc.
+        # Fn::If: [ EnableTrue, PROPERTY_IF_ENABLED, PROPERTY_IF_NOT_ENABLED ]
+        # conditionally sets or adds a resource property, or conditionally
+        # adds or removes a list item. If a resource property key is to be
+        # omitted when Enable is false, specify
+        # !Ref AWS::NoValue (a pseudo-parameter) for PROPERTY_IF_DISABLED.
         - Fn::If:
             - EnableTrue
             - Description: Conditional rule

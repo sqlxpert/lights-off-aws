@@ -30,14 +30,13 @@ Parameters:
   StackNameBase:
     Type: String
     Description: >-
-      When using the DeploymentRole provided by this stack, you must include
-      this string in the name of any Lights Off CloudFormation stack or
-      StackSet that you create. For security, no other stack or StackSet's
-      name should include this string. You may add prefixes and suffixes to
-      your future stack or StackSet's name. For example, if you set this to
-      "LightsOff", you can alternate between a "LightsOff1" stack and a
-      "LightsOff2" stack for blue/green deployment of updates, or you can
-      create a "TestLightsOff" stack marked for testing.
+      String that must be in the name of any CloudFormation stack or StackSet
+      created using the deployment role. For security, do not include this
+      string in the name of any unrelated stack or StackSet. You may add
+      prefixes or suffixes when naming a stack or StackSet to be created with
+      the deployment role. For example, if you specify "LightsOff", you can
+      alternate between "LightsOff1" and "LightsOff2" stacks for blue/green
+      updates, and you can create a "TestLightsOff" stack for testing.
     Default: "LightsOff"
 
 Metadata:

@@ -447,7 +447,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}"
+                Resource: !GetAtt FindLambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -458,8 +458,8 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
-                # !GetAtt LogGroup.Arn end with :* instead of allowing us to
-                # append :log-stream:* to make a LogStream ARN
+                # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
+                # append :log-stream:* to make a log stream ARN
 
         - PolicyName: Ec2Read
           PolicyDocument:
@@ -535,7 +535,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}"
+                Resource: !GetAtt DoLambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -546,8 +546,8 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
-                # !GetAtt LogGroup.Arn end with :* instead of allowing us to
-                # append :log-stream:* to make a LogStream ARN
+                # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
+                # append :log-stream:* to make a log stream ARN
 
         - PolicyName: Ec2Write
           PolicyDocument:

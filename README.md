@@ -5,7 +5,7 @@ Do you forget to turn the lights off? Now you can:
 - Stop, restart and back up EC2 instances and RDS/Aurora databases with
   cron-style schedules in their tags.
 
-- Set, and view, AWS Backup schedules in resource tags, not central backup
+- Set and view AWS Backup schedules in resource tags, not central backup
   plans.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
@@ -37,8 +37,8 @@ Jump to:
    [S3 bucket](https://console.aws.amazon.com/s3/home)
    for AWS Lambda function source code. Name it:
 
-   - `my-bucket-us-east-1` , replacing my-bucket with the name of your choice,
-     and us-east-1 with the code for the
+   - `my-bucket-us-east-1` , replacing _my-bucket_ with the name of your choice,
+     and _us-east-1_ with the code for the
      [region](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
      of your EC2 instance. Check, near the top right of the EC2 Console and
      the S3 Console, that the region is the same.
@@ -74,14 +74,13 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot`|`sched-reboot-failover`|`sched-set-Enable-false`|
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|
-||`sched-start`|`sched-start`||||`sched-set-Enable-true`|
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;|||
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot||||
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;||
-|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot|&check;|||
-|[CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks)||||||&check;|
+||`sched-stop`|`sched-hibernate`|`sched-backup`|`sched-reboot`|`sched-reboot-failover`|
+|:---|:---:|:---:|:---:|:---:|:---:|
+||`sched-start`|`sched-start`||||
+|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|image (AMI)|&check;||
+|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||volume snapshot|||
+|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||database snapshot|&check;|&check;|
+|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||cluster snapshot|&check;||
 
 - All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
 - Not all EC2 instances support hibernation.
@@ -157,7 +156,7 @@ was _scheduled_ to occur.
 - Log entries are JSON objects. For application log entries, reference the
   `type` key for a consistent classification and the `value` key for the data.
   System log entries use other keys.
-- To see more or fewer log entries, change the `LogLevel` parameter in
+- For more or fewer log entries, change the `LogLevel` parameter in
   CloudFormation.
 
 ## Security
@@ -169,23 +168,23 @@ which is open-source._
 
 ### Design Goals
 
-- Distinct, least-privilege roles for the AWS Lambda functions that find
-  resources and "do" scheduled operations. The "do" function is only
-  authorized to perform a small set of operations, and at that, only when a
-  resource has the right tag key. (The AWS Backup service creates backups,
-  using a role that you specify.)
+- Least-privilege roles for the AWS Lambda functions that find resources and
+  "do" scheduled operations. The "do" fdnction is authorized to perform a
+  small set of operations, and at that, only when a resource has the correct
+  tag key. (The AWS Backup service creates backups, using a role that you
+  specify.)
 
-- A least-privilege policy for the queue linking the two functions. The
-  operation queue can only consume messages from the "find" function and
-  produce messages for the "do" function (or a dead-letter queue, if an
-  operation fails). Encryption in transit is required.
+- A least-privilege queue policy. The operation queue can only consume
+  messages from the "find" function and produce messages for the "do" function
+  (or a dead-letter queue, if an operation fails). Encryption in transit is
+  required.
 
 - Readable IAM policies, formatted as CloudFormation YAML rather than as JSON
   and broken down into discrete statements by service, resource or principal.
 
 - Optional encryption at rest with custom AWS Key Management System (KMS)
-  keys, for queue message bodies (which contain the identifiers and tags of
-  AWS resources) and for log entries.
+  keys, for queue message bodies (which contain resource identifiers) and for
+  log entries (which may contain resource metadata).
 
 - No data storage other than in queues and logs. Retention periods for the
   dead letter queue and the logs are configurable. The fixed retention period
@@ -193,7 +192,7 @@ which is open-source._
 
 - Tolerance for clock drift in a distributed system. The "find" function
   starts 1 minute into the 10-minute cycle and operation queue entries expire
-  9 minutes into the cycle.
+  9 minutes in.
 
 - A checksum for the AWS Lambda function source code bundle. (The bundle is
   included for the benefit of new users and those without formal pipelines.)
@@ -235,7 +234,7 @@ which is open-source._
 
 ### Multi-Region
 
-If you plan to deploy Lights Off to multiple regions, always:
+If you plan to deploy Lights Off in multiple regions,
 
 1. Create S3 buckets with the same name prefix but different region codes in
    all target
@@ -252,15 +251,12 @@ If you plan to deploy Lights Off to multiple regions, always:
 <details>
   <summary>View multi-account installation steps</summary>
 
-To centrally deploy Lights Off to multiple AWS accounts (and multiple
-regions),
+To deploy Lights Off to multiple AWS accounts (and multiple regions),
 
 1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
    accounts and regions.
 
-2. Follow the
-   [multi-region instructions](#multi-region),
-   above.
+2. Follow the [multi-region instructions](#multi-region), above.
 
 3. Edit the bucket policy of each S3 bucket, allowing read access from all AWS
    accounts within the target Organizational Unit (OU). Look up your
@@ -348,36 +344,35 @@ target accounts if you want to deploy a StackSet with
   deployment procedure avoids the problem of making CloudFormation notice that
   the Lambda bundle has changed.
 
-## Updating a CloudFormation Stack on a Schedule
+## Bonus: Deleting and Recreating Expensive Resources on a Schedule
 
 <details>
   <summary>View scheduled stack update setup details</summary>
 
-You can use Lights Off to delete and recreate expensive AWS infrastructure in
-your own CloudFormation stack, on a schedule.
+As a bonus, Lights Off can delete and recreate all kinds of expensive AWS
+infrastructure resources defined in your own CloudFormation stacks, based on
+cron-style schedules in stack tags.
 
-Turning off expensive AWS Client VPN resources overnight, while developers are
-asleep, is a sample use case. See
+Deleting AWS Client VPN resources overnight, while developers are asleep, is
+a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn?tab=readme-ov-file#automatic-scheduling)
 for potential savings of $600 per year.
 
 To make your own CloudFormation template compatible, see
-[lights_off_aws_cloudformation_ops_example.yaml](/cloudformation/lights_off_aws_cloudformation_ops_example.yaml)
-. CloudFormation "transforms" are not compatible.
+[lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
+. CloudFormation "transforms" are not currently supported.
 
-`sched-set-Enable-true` and `sched-set-Enable-false` tags on your own
-CloudFormation stack determine when Lights Off will update the stack. At the
-scheduled times, Lights Off will toggle your own stack's `Enable` parameter to
-`true` or `false` , while leaving other parameters, and template itself,
-unchanged. Capitalize **E**nable in the tag keys, just as in the parameter
-name.
+Not every resource needs to be deleted and recreated; condition the creation
+of _expensive_ resources on the `Enable` parameter. In the AWS Client VPN
+stack, the server and client certificates, endpoints and network security
+groups are never deleted, because they don't cost anything. The expensive VPN
+attachments can be deleted and recreated with no need to reconfigure clients.
 
-Not every resource needs to be deleted and recreated; you need only condition
-the creation of _expensive_ resources on the `Enable` parameter. In the AWS
-Client VPN stack, the server and client certificates, endpoints and network
-security groups are always retained, because they don't cost anything. The
-expensive VPN attachments can be deleted and recreated with no need to
-reconfigure VPN clients.
+Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
+your own CloudFormation stack. At the scheduled times, Lights Off will perform
+a stack update, toggling the value of the `Enable` parameter to `true` or
+`false` while leaving other parameters, and template itself, unchanged.
+(Capitalize **E**nable in the tag keys, just as in the parameter name.)
 </details>
 
 ## Extensibility
@@ -406,17 +401,17 @@ adding:
     )
 ```
 
-Most method names can be derived mechanically if you use the same verb in the
-method name and the tag key, and break the resource type name into words.
-Given the tag key `sched-start` and the words `DB` and `Cluster` , the method
-name `start_db_cluster` follows.
+Most method names can be derived mechanically if you use the verb from the
+method name in the tag key and divide the resource type name into words. Given
+the tag key `sched-start` and the words `DB` and `Cluster` , the method name
+`start_db_cluster` follows.
 
 Optionally, you can add a dictionary of static keyword arguments. You can also
-sub-class the `AWSOp` class if a method requires truly complex arguments.
+sub-class the `AWSOp` class if a method requires complex arguments.
 
-The AWS Backup `start_backup_job` method takes an Amazon Resource Name (ARN),
-whose format is standard for all resource types. As long as AWS Backup
-supports the resource type that you want, there is nothing special to do.
+The `start_backup_job` method takes an Amazon Resource Name (ARN), whose
+format is consistent for all resource types. As long as AWS Backup supports
+the resource type you're interested in, there is no extra work to do.
 
 Adding statements like the one below to the Identity and Access Management
 (IAM) policy for the role used by the "do" AWS Lambda function authorizes
@@ -434,43 +429,33 @@ the "find" function to describe (list) resources of the new type.
 What AWS resources and operations would _you_ like to add?
 </details>
 
-## General Advice
+## Advice
 
-- Routinely test your backups! Are backups happening as scheduled? Can you
-  restore your backups successfully? AWS Backup's restore testing feature
-  can help.
+- Routinely test your backups! Are they happening as scheduled? Can you
+  restore them successfully? AWS Backup's restore testing feature can help.
 
-- Be aware: of charges for running AWS Lambda functions, queueing to SQS,
-  logging to CloudWatch Logs, storing backups, and deleting backups from cold
-  storage too early; of minimum billing periods when you stop an RDS database
-  or an EC2 instance with a commercial license; of ongoing storage charges for
-  stopped EC2 instances and RDS databases; and of charges that resume when RDS
-  automatically restarts a database that has been stopped for 7 days. Other AWS
-  charges may apply!
+- Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
+  KMS, backup storage, and early deletion of cold storage backups; of the
+  minimum billing period when you stop an RDS database or an EC2 instance with
+  a commercial license; of ongoing storage charges for stopped EC2 instances
+  and RDS databases; and of resumption of charges when RDS restarts a stopped
+  database after the 7-day limit. Other charges may apply!
 
 - Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
   [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
   as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
 
-## Future Work
-
-- Automated testing
-- Makefile for AWS Lambda .zip bundle
-- Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
-  CloudFormation stack parameter to an arbitrary value
-
-## History
+## Progress
 
 This project was originally called TagSchedOps. I wrote the first version in
 2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
 remains a simple alternative to Systems Manager Automation runbooks for
-starting, rebooting and stopping EC2 instances and RDS databases. As of March,
-2025, it is integrated with AWS Backup, leveraging the security and management
-benefits (including backup retention lifecycle policies) but offering a simple
-alternative to backup plans. Despite adding features over time, I have been
-able to reduce the number of lines of code for the AWS Lambda functions and
-the core CloudFormation template.
+starting and stopping EC2 instances and RDS databases. As of March, 2025, it
+is integrated with AWS Backup, leveraging the security and management benefits
+(including backup retention lifecycle policies) but offering a simple
+alternative to backup plans. Despite adding features, I have cut many lines of
+code from the AWS Lambda functions and the core CloudFormation template.
 
 |Year|Python Lines|CloudFormation YAML Lines|
 |:---:|:---:|:---:|
@@ -480,6 +465,13 @@ the core CloudFormation template.
 |2025|530 &check;|830|
 
 Line counts are from GitHub and are approximate.
+
+## Future Goals
+
+- Automated testing
+- Makefile for AWS Lambda .zip bundle
+- Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
+  CloudFormation stack parameter to an arbitrary value
 
 ## Dedication
 
