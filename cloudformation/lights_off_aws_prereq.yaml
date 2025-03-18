@@ -16,17 +16,6 @@ Parameters:
     Type: String
     Default: "LightsOffPrereq"
 
-  LambdaSourceS3BucketNamePrefix:
-    Type: String
-    Description: >-
-      Name (without the region suffix) of the S3 bucket containing the AWS
-      Lambda source code bundle, lights_off_aws.py.zip . For example, if your
-      bucket is named "my-bucket-us-east-1", specify "my-bucket". The bucket
-      must have been created in the same region where you are creating this
-      stack. For a StackSet, a bucket (with the region suffix in its name)
-      must exist in every target region, must contain the bundle, and must
-      have a bucket policy allowing read access by every target AWS account.
-
   StackNameBase:
     Type: String
     Description: >-
@@ -51,13 +40,10 @@ Metadata:
       - Label:
           default: Essential
         Parameters:
-          - LambdaSourceS3BucketNamePrefix
           - StackNameBase
     ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
-      LambdaSourceS3BucketNamePrefix:
-        default: S3 bucket for AWS Lambda function source code
       StackNameBase:
         default: >-
           Name of future stack or StackSet
@@ -85,15 +71,6 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-
-              # Sufficient only for the current AWS account. For a
-              # multi-account deployment, also allow access from all StackSets
-              # target accounts, in each S3 bucket's bucket policy.
-              - Effect: Allow
-                Action:
-                  - s3:GetObject*
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${LambdaSourceS3BucketNamePrefix}-*/*"
 
               - Effect: Allow
                 Action:

@@ -2,10 +2,6 @@
 """Start, reboot, stop and back up AWS resources using schedules in tags
 
 github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
-
-Bundle for AWS Lambda:
-  zip -9 lights_off_aws.py.zip lights_off_aws.py
-  md5sum lights_off_aws.py.zip > lights_off_aws.py.zip.md5.txt
 """
 
 import os
@@ -564,7 +560,6 @@ def rsrc_types_init():
       {
         ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
         ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
-        ("backup", ): {"class": AWSOpBackUp},
       },
       rsrc_id_key_suffix="Name",
       arn_key_suffix="Id",

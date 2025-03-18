@@ -17,7 +17,7 @@ Jump to:
 &bull;
 [Schedules](#tag-values-schedules)
 &bull;
-[Multi-Region/Multi-Account](#advanced-installation)
+[Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
 &bull;
 [Security](#security)
 
@@ -25,35 +25,16 @@ Jump to:
 
 1. Log in to the AWS Console as an administrator.
 
-2. Tag an
+2. Tag a running, non-essential
    [EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)
    with:
 
-   - `sched-backup` : `d=_ H:M=11:30` , replacing 11:30 with the
+   - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
-     \+ 20 minutes. Round up to :00, :10, :20, :30, :40, or :50.
+     \+ 20 minutes, rounded **up** to `:00` , `:10` , `:20` , `:30` , `:40` ,
+     or `:50` .
 
-3. Create an
-   [S3 bucket](https://console.aws.amazon.com/s3/home)
-   for AWS Lambda function source code. Name it:
-
-   - `my-bucket-us-east-1` , replacing _my-bucket_ with the name of your choice,
-     and _us-east-1_ with the code for the
-     [region](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints)
-     of your EC2 instance. Check, near the top right of the EC2 Console and
-     the S3 Console, that the region is the same.
-
-   _Security Tip:_ Block public access to the bucket, and limit write access.
-
-4. Upload a locally-saved copy of
-   [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true)
-   to your S3 bucket.
-
-   _Security Tip:_ Compare the Entity tag (Etag) shown by S3 with the checksum
-   in
-   [lights_off_aws.py.zip.md5.txt](/lights_off_aws.py.zip.md5.txt?raw=true)
-
-5. Create a
+3. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
    Select Upload a template file, then click Choose file and navigate to a
    locally-saved copy of
@@ -61,16 +42,9 @@ Jump to:
    . On the next page, set:
 
    - Stack name: `LightsOff`
-   - Lambda code S3 bucket: Exclude the region. For example, if your bucket is
-     my-bucket-us-east-1, enter `my-bucket` .
 
-6. After about 20 minutes, check
-   [images (AMIs)](https://console.aws.amazon.com/ec2/v2/home#Images:sort=desc:creationDate).
-
-7. Before deregistering (deleting) the image that was created, note its ID
-   (`ami-`) so that you delete the underlying
-   [EBS snapshots](https://console.aws.amazon.com/ec2/v2/home#Snapshots:visibility=owned-by-me;v=3;tag:Name=:zsched-;sort=desc:startTime).
-   Remember to delete the `sched-backup` tag from your EC2 instance.
+4. After about 20 minutes, check whether the EC2 instance is in the stopped
+   state. Restart it and delete the `sched-stop` tag.
 
 ## Tag Keys (Operations)
 
@@ -124,8 +98,7 @@ Jump to:
 - Scheduling multiple operations on the same resource at the same time
   produces an error
 
-Trivia: I chose a space as the separator and an underscore as the wildcard
-because
+Space was chosen as the separator and underscore, as the wildcard, because
 [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
 
 ## Backups
@@ -178,106 +151,45 @@ scroll to the Permissions section and set IAM role - optional to
 might need permission to pass the deployment role to CloudFormation. See the
 `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
 
-### Multi-Region
-
-If you plan to deploy Lights Off in multiple regions,
-
-1. Create S3 buckets with the same name prefix but different region codes in
-   all target
-   [regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints).
-   For example, create `my-bucket-us-east-1` in US East (Northern Virginia)
-   and `my-bucket-us-west-2` in US West (Oregon).
-
-2. Upload
-   [lights_off_aws.py.zip](/lights_off_aws.py.zip)
-   to each bucket. AWS Lambda requires a copy in every region.
-
-### Multi-Account (CloudFormation StackSet)
+### Multi-Account, Multi-Region (CloudFormation StackSet)
 
 <details>
   <summary>View multi-account installation steps</summary>
 
-To deploy Lights Off to multiple AWS accounts (and multiple regions),
+To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 
 1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
    accounts and regions.
 
-2. Follow the [multi-region instructions](#multi-region), above.
+2. Complete the prerequisites for creating a StackSet with
+   [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
-3. Edit the bucket policy of each S3 bucket, allowing read access from all AWS
-   accounts within the target Organizational Unit (OU). Look up your
-   Organization ID (`o-`), Root ID (`r-`), and Organizational Unit IDs (`ou-`)
-   in
-   [AWS Organizations](https://console.aws.amazon.com/organizations/v2/home/accounts).
-
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Sid": "FromAllAwsAccountsWithinOrganizationalUnit",
-         "Effect": "Allow",
-         "Principal": {
-           "AWS": "*"
-         },
-         "Condition": {
-           "ForAnyValue:StringLike": {
-              "aws:PrincipalOrgPaths": [
-                "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID*"
-              ]
-           }
-         },
-         "Action": "s3:GetObject*",
-         "Resource": "arn:aws:s3:::BUCKET_NAME/*"
-       }
-     ]
-   }
-   ```
-
-4. Complete the prerequisites for creating a StackSet with
-   [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html)
-   (_not_ self-managed permissions).
-
-   - In a strict least-privilege environment, you can deploy a StackSet with
+   - Not recommended: In a strict least-privilege environment, you can deploy
+     a StackSet with
      [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
      by creating a customer-managed IAM policy covering the inline policies
      from `DeploymentRole` in
-     [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml),
-     attaching your policy to `AWSCloudFormationStackSetExecutionRole`, and
+     [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml)
+     , attaching your policy to `AWSCloudFormationStackSetExecutionRole`, and
      propagating the policy and the role policy attachment to all target AWS
-     accounts. That is a very advanced configuration.
+     accounts.
 
-5. In the management AWS account (or a delegated administrator account),
+3. In the management AWS account (or a delegated administrator account),
    create a
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
    Select Upload a template file, then click Choose file and upload a
    locally-saved copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   . On the next page, set:
+   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) . On
+   the next page, set:
 
    - StackSet name: `LightsOff`
-   - Lambda code S3 bucket: Exclude regions. For example, if your buckets are
-     my-bucket-us-east-1 and my-bucket-us-west-2, enter `my-bucket` .
 
-6. Two pages later, under Deployment targets, select Deploy to Organizational
+4. Two pages later, under Deployment targets, select Deploy to Organizational
    Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
 
 </details>
-
-## Software Updates
-
-- For CloudFormation template changes, update your CloudFormation stack or
-  StackSet in-place.
-
-- For AWS Lambda function Python source code changes, upload the new
-  [lights_off_aws.py.zip](/lights_off_aws.py.zip?raw=true) bundle to S3 and
-  create a new `LightsOff2` CloudFormation stack or StackSet, but set `Enable`
-  to `false` . After you've deleted the old `LightsOff` stack or StackSet,
-  update the new one, changing `Enable` to `true`. This simple blue/green
-  deployment procedure avoids the problem of making CloudFormation notice that
-  the Lambda bundle has changed.
 
 ## Security
 
@@ -292,13 +204,13 @@ which is open-source._
 ### Security Design Goals
 
 - Least-privilege roles for the AWS Lambda functions that find resources and
-  "do" scheduled operations. The "do" fdnction is authorized to perform a
+  "Do" scheduled operations. The "Do" function is authorized to perform a
   small set of operations, and at that, only when a resource has the correct
   tag key. (The AWS Backup service creates backups, using a role that you
   specify.)
 
 - A least-privilege queue policy. The operation queue can only consume
-  messages from the "find" function and produce messages for the "do" function
+  messages from the "Find" function and produce messages for the "Do" function
   (or a dead-letter queue, if an operation fails). Encryption in transit is
   required.
 
@@ -313,12 +225,9 @@ which is open-source._
   dead letter queue and the logs are configurable. The fixed retention period
   for the operation queue is short.
 
-- Tolerance for clock drift in a distributed system. The "find" function
+- Tolerance for clock drift in a distributed system. The "Find" function
   starts 1 minute into the 10-minute cycle and operation queue entries expire
   9 minutes in.
-
-- A checksum for the AWS Lambda function source code bundle. (The bundle is
-  included for the benefit of new users and those without formal pipelines.)
 
 - An optional, least-privilege CloudFormation service role for deployment.
 
@@ -349,7 +258,7 @@ which is open-source._
 - Automatically copy backups to an AWS Backup vault in an isolated account.
 
 - Separate production workloads. You might choose not to deploy Lights Off to
-  AWS accounts used for production, or you might customize the "do" function's
+  AWS accounts used for production, or you might customize the "Do" function's
   role, removing the authority to reboot and stop production resources (
   `AttachLocalPolicy` ).
 
@@ -425,9 +334,9 @@ format is consistent for all resource types. As long as AWS Backup supports
 the resource type you're interested in, there is no extra work to do.
 
 Adding statements like the one below to the Identity and Access Management
-(IAM) policy for the role used by the "do" AWS Lambda function authorizes
+(IAM) policy for the role used by the "Do" AWS Lambda function authorizes
 operations on a new resource type. You must also authorize the role used by
-the "find" function to describe (list) resources of the new type.
+the "Find" function to describe (list) resources of the new type.
 
 ```yaml
           - Effect: Allow
@@ -461,9 +370,9 @@ What AWS resources and operations would _you_ like to add?
 
 ## Progress
 
-This project was originally called TagSchedOps. I wrote the first version in
-2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
-remains a simple alternative to
+This project was originally called TagSchedOps. Paul wrote the first version
+in 2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed.
+It remains a simple alternative to
 [Systems Manager Automation runbooks for
 stopping](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html)
 and starting EC2 instances and RDS databases. It is now integrated
@@ -478,13 +387,6 @@ Despite adding features, I have cut many lines of code.
 |2018|750|No change|
 |2022|630|800 &check;|
 |2025|530 &check;|830|
-
-## Future Goals
-
-- Automated testing
-- Makefile for AWS Lambda .zip bundle
-- Variable sched-set-_Parameter_-_value_ tag key to set an arbitrary
-  CloudFormation stack parameter to an arbitrary value
 
 ## Dedication
 
