@@ -265,7 +265,7 @@ which is open-source._
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
 <details>
-  <summary>View scheduled stack update setup details</summary>
+  <summary>View scheduled stack update details</summary>
 
 As a bonus, Lights Off can delete and recreate all kinds of expensive AWS
 infrastructure in your own CloudFormation stacks, based on cron-style
@@ -369,15 +369,15 @@ What AWS resources and operations would _you_ like to add?
 ## Progress
 
 This project was originally called TagSchedOps. Paul wrote the first version
-in 2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed.
-It remains a simple alternative to
+before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
+remains a simple alternative to
 [Systems Manager Automation runbooks for
 stopping](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html)
 and starting EC2 instances and RDS databases. It is now integrated
 with AWS Backup, leveraging the security and management benefits (including
 backup retention lifecycle policies) but offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
-Despite new features, the code has gotten shorter over time.
+Despite new features, the code has gotten shorter.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
