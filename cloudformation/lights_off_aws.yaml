@@ -405,8 +405,7 @@ Resources:
   FindLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
-      Tags:
-        - { Key: region, Value: !Ref AWS::Region }
+      Description: !Sub "For ${AWS::Region} region"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -490,8 +489,7 @@ Resources:
   DoLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
-      Tags:
-        - { Key: region, Value: !Ref AWS::Region }
+      Description: !Sub "For ${AWS::Region} region"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

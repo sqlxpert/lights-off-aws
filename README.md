@@ -382,7 +382,7 @@ Despite adding features, I have cut many lines of code.
 |2017| &asymp; 775|&asymp; 2,140|
 |2018|750|No change|
 |2022|630|800 &check;|
-|2025|530 &check;|830|
+|2025|530 &check;|815|
 
 ## Dedication
 
