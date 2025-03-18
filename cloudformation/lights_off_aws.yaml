@@ -389,12 +389,14 @@ Resources:
           - !Ref AWS::NoValue
           - 86400  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: 1200  # seconds (20 minutes)
+      MessageRetentionPeriod: 720  # seconds (12 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
-        maxReceiveCount: 1
+        maxReceiveCount: 1  # Rely on boto3 retry logic instead (retry_mode)
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
+      RedriveAllowPolicy:
+        redrivePermission: denyAll
 
   # In-line policies apply only to their roles, which, in turn, can only be
   # assumed by AWS Lambda functions. Separate, "managed" policies could be
@@ -966,7 +968,9 @@ Resources:
             """Take an AWS service, return a boto3 client, creating it if needed
             """
             if svc_clients.get(svc, None) is None:
-              svc_clients[svc] = boto3.client(svc)
+              svc_clients[svc] = boto3.client(
+                svc, config=botocore.config.Config(retries={"mode": "standard"})
+              )
               # boto3 method references can only be resolved at run-time,
               # against an instance of an AWS service's Client class.
               # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
@@ -1648,7 +1652,9 @@ Resources:
             """Take an AWS service, return a boto3 client, creating it if needed
             """
             if svc_clients.get(svc, None) is None:
-              svc_clients[svc] = boto3.client(svc)
+              svc_clients[svc] = boto3.client(
+                svc, config=botocore.config.Config(retries={"mode": "standard"})
+              )
               # boto3 method references can only be resolved at run-time,
               # against an instance of an AWS service's Client class.
               # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
@@ -2113,6 +2119,9 @@ Resources:
     DependsOn: DoLambdaFnInvokeLambdaPerm
     Properties:
       BatchSize: 1
+      MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
+      ScalingConfig:
+        MaximumConcurrency: !Ref DoLambdaFnReservedConcurrentExecutions
       Enabled: !Ref Enable
       EventSourceArn: !GetAtt OperationQueue.Arn
       FunctionName: !GetAtt DoLambdaFn.Arn

@@ -171,7 +171,9 @@ def svc_client_get(svc):
   """Take an AWS service, return a boto3 client, creating it if needed
   """
   if svc_clients.get(svc, None) is None:
-    svc_clients[svc] = boto3.client(svc)
+    svc_clients[svc] = boto3.client(
+      svc, config=botocore.config.Config(retries={"mode": "standard"})
+    )
     # boto3 method references can only be resolved at run-time,
     # against an instance of an AWS service's Client class.
     # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide

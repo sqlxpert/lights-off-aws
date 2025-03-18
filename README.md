@@ -137,24 +137,7 @@ was _scheduled_ to occur.
 
 ## Advanced Installation
 
-### Least-Privilege
-
-You can use a
-[CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
-to delegate only the privileges needed to create the Lights Off stack. First,
-create the `LightsOffPrereq` stack from
-[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
-. Next, when you create the `LightsOff` stack from
-[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) ,
-scroll to the Permissions section and set IAM role - optional to
-`LightsOffPrereq-DeploymentRole` . If your own privileges are limited, you
-might need permission to pass the deployment role to CloudFormation. See the
-`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
-
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
-
-<details>
-  <summary>View multi-account, multi-region details</summary>
 
 To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 
@@ -163,16 +146,6 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 
 2. Complete the prerequisites for creating a StackSet with
    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
-
-   - Not recommended: In a strict least-privilege environment, you can deploy
-     a StackSet with
-     [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
-     by creating a customer-managed IAM policy covering the inline policies
-     from `DeploymentRole` in
-     [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml)
-     , attaching your policy to `AWSCloudFormationStackSetExecutionRole`, and
-     propagating the policy and the role policy attachment to all target AWS
-     accounts.
 
 3. In the management AWS account (or a delegated administrator account),
    create a
@@ -189,6 +162,31 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
 
+### Least-Privilege
+
+<details>
+  <summary>View least-privilege installation details</summary>
+
+You can use a
+[CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
+to delegate only the privileges needed to create the Lights Off stack. First,
+create the `LightsOffPrereq` stack from
+[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
+. Next, when you create the `LightsOff` stack from
+[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) ,
+scroll to the Permissions section and set IAM role - optional to
+`LightsOffPrereq-DeploymentRole` . If your own privileges are limited, you
+might need permission to pass the deployment role to CloudFormation. See the
+`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
+
+For a multi-account CloudFormation StackSet deployment, you can use
+[self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
+by creating a customer-managed IAM policy covering the inline policies from
+`DeploymentRole` in
+[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml) ,
+attaching your policy to `AWSCloudFormationStackSetExecutionRole`, and
+propagating the policy and the role policy attachment to all target AWS
+accounts.
 </details>
 
 ## Security
@@ -383,7 +381,7 @@ Despite new features, the code has gotten shorter.
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|520 &check;|815|
+|2025|525 &check;|820|
 
 ## Dedication
 
