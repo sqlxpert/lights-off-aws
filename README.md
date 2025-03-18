@@ -173,11 +173,10 @@ create the `LightsOffPrereq` stack from
 [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
 . Next, when you create the `LightsOff` stack from
 [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) ,
-scroll up to the Permissions section and set IAM role -
-optional to `LightsOffPrereq-DeploymentRole` . If your own privileges are
-limited, you might need permission to pass the deployment role to
-CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
-policy for an example.
+scroll to the Permissions section and set IAM role - optional to
+`LightsOffPrereq-DeploymentRole` . If your own privileges are limited, you
+might need permission to pass the deployment role to CloudFormation. See the
+`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
 
 ### Multi-Region
 
@@ -464,11 +463,14 @@ What AWS resources and operations would _you_ like to add?
 
 This project was originally called TagSchedOps. I wrote the first version in
 2017, before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
-remains a simple alternative to Systems Manager Automation runbooks for
-starting and stopping EC2 instances and RDS databases. It is now integrated
+remains a simple alternative to
+[Systems Manager Automation runbooks for
+stopping](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html)
+and starting EC2 instances and RDS databases. It is now integrated
 with AWS Backup, leveraging the security and management benefits (including
 backup retention lifecycle policies) but offering a simple alternative to
-backup plans. Despite adding features, I have cut many lines of code.
+[backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
+Despite adding features, I have cut many lines of code.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|

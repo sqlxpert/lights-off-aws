@@ -432,6 +432,8 @@ Resources:
   FindLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - { Key: region, Value: !Ref AWS::Region }
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -515,6 +517,8 @@ Resources:
   DoLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - { Key: region, Value: !Ref AWS::Region }
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -883,7 +887,6 @@ Resources:
       FunctionName: !Ref DoLambdaFn
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
-
 
   DoLambdaFnSqsMapping:
     Type: AWS::Lambda::EventSourceMapping

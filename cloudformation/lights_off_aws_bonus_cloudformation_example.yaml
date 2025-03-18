@@ -7,6 +7,41 @@ Description: |-
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
+# STEP 1 #####################################################################
+#
+# Define a service role that allows CloudFormation to create, tag, update,
+# untag, and delete ALL of the resources in your template. See
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html
+#
+# For this example template, create an IAM role in the AWS Console. Leave
+# Trusted entity type set to AWS service. From Service or use case, near the
+# bottom, select CloudFormation. On the next page, search for the
+# AmazonEC2FullAccess policy and check the box to the left of that policy.
+# It is not least-privilege, and is only suitable for testing.
+#
+# For a complete, least-privilege example, see DeploymentRole in
+# lights_off_aws_prereq.yaml . Its custom policies authorize creation of a
+# stack from lights_off_aws.yaml .
+#
+# You MUST select your deployment role when you create a CloudFormation stack
+# from your template. Scroll to the Permissions section and set IAM role -
+# optional . Otherwise, stack updates triggered by Lights Off will fail.
+#
+# About resource tagging: CloudFormation needs permission to create, update,
+# and delete arbitrary resource tags, due to the automatic propagation of
+# stack tags. Because CloudFormation is regularly updated to propagate stack
+# tags to more resource types, provide tagging privileges for all of the
+# resource types in your template, even if CloudFormation doesn't yet
+# propagate stack tags to them.
+#
+# For many AWS services, you can achieve a least-privilege design with a
+# policy condition:
+#   "StringLike": { "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*" }
+# where KEYWORD is a string that you will require in the name of all stacks
+# created using your deployment role, and that you will not allow in the
+# names of any other stacks.
+############################################################################
+
 Parameters:
 
   PlaceholderHelp:
@@ -23,7 +58,8 @@ Parameters:
       Identifier of the Virtual Private Cloud in which the sample security
       groups will be created
 
-  ############################################################################
+  # STEP 2 ###################################################################
+  #
   # Add this parameter to your template:
   Enable:  # Do not change the parameter name or the capitalization!
     Type: String  # No Boolean parameter type is available
@@ -37,7 +73,7 @@ Parameters:
       - "false"
       - "true"
     Default: "false"  # Start without the expensive resources
-  ############################################################################
+    ##########################################################################
 
 Metadata:  # Optional section, for AWS Console users
 
@@ -65,51 +101,23 @@ Metadata:  # Optional section, for AWS Console users
 
 Conditions:
 
-  ############################################################################
-  # Add this condition:
+  # STEP 3 ###################################################################
+  #
+  # Review
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
+  # and add this condition to your template:
   EnableTrue:
     !Equals [!Ref Enable, "true"]
-  ############################################################################
+    ##########################################################################
 
 Resources:
 
-  ############################################################################
-  # Separately, you must define a service role that allows CloudFormation to
-  # create, tag, update, untag, and delete ALL of the resources in your
-  # template, and you MUST select that role when you create a stack from your
-  # template. Otherwise, Lights Off will not be able to update your stack.
-  # Test your deployment role by performing a stack update. See
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html
-  #
-  # Before creating a stack from this sample template, create an IAM role.
-  # Leave the Trusted entity type set to AWS service. At the bottom, under
-  # Use cases for other AWS services, select CloudFormation. Select the
-  # CloudFormation radio button. On the next page, add the
-  # AmazonEC2FullAccess policy (not least-privilege, for testing only).
-  #
-  # Least-privilege example: DeploymentRole in lights_off_aws_prereq.yaml
-  # supports creation of a stack from lights_off_aws.yaml
-  #
-  # Permission to create, modify, and delete arbitrary tags for stack
-  # resources is necessary because CloudFormation automatically propagates
-  # stack-level tags (including the sched-set-Enable-true and -false tags that
-  # you will add) to resources that it creates. If your deployment role does
-  # not allow tagging, stack updates will fail. Because CloudFormation is
-  # regularly updated to propagate stack tags to more resource types, it is
-  # best to provide tagging privileges for all of the resource types in your
-  # template. In many cases, you can achieve least-privilege with a condition:
-  #
-  # "StringLike": { "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*" }
-  #
-  # where KEYWORD is some word that you will require in the name of all stacks
-  # created using your deployment role, and that you will not allow in the
-  # names of any other stacks.
-  ############################################################################
-
   ConditionalSecGrp:
     Type: AWS::EC2::SecurityGroup
-    ##########################################################################
-    # Conditionally creates an entire resource
+    # STEP 4 #################################################################
+    #
+    # Add this property to each conditionally-created resource. There is no
+    # need to add it to free or low-cost resources.
     Condition: EnableTrue
     ##########################################################################
     Properties:
@@ -141,12 +149,15 @@ Resources:
           FromPort: 53
           ToPort: 53
           CidrIp: 8.8.8.8/32
-        ######################################################################
-        # Fn::If: [ EnableTrue, PROPERTY_IF_ENABLED, PROPERTY_IF_NOT_ENABLED ]
-        # conditionally sets or adds a resource property, or conditionally
-        # adds or removes a list item. If a resource property key is to be
-        # omitted when Enable is false, specify
-        # !Ref AWS::NoValue (a pseudo-parameter) for PROPERTY_IF_DISABLED.
+        # STEP 5 #############################################################
+        #
+        # If you need to conditionally set a resource property or
+        # conditionally add or remove a list item, use:
+        # Fn::If: [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
+        #
+        # If a resource property is to be omitted entirely when Enable is
+        # false, specify !Ref AWS::NoValue for VALUE_IF_NOT_ENABLED .
+        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
         - Fn::If:
             - EnableTrue
             - Description: Conditional rule
@@ -155,4 +166,18 @@ Resources:
               ToPort: 53
               SourceSecurityGroupId: !Ref ConditionalSecGrp
             - !Ref AWS::NoValue
-        ######################################################################
+# STEP 6 #####################################################################
+#
+# Test your deployment role and your stack. Try a manual stack update in which
+# you change the Enable parameter from false to true, and anoter in which you
+# change it from true to false.
+#
+# STEP 7 #####################################################################
+#
+# Refer to
+# https://github.com/sqlxpert/lights-off-aws#tag-values-schedules
+# and add schedule tags to your stack:
+# - sched-set-Enable-true
+# - sched-set-Enable-false
+# Wait for the scheduled times and check the stack resources.
+##############################################################################
