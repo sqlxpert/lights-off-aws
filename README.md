@@ -2,8 +2,8 @@
 
 Ever forget to turn the lights off? Now you can:
 
-- Stop, restart and back up EC2 instances and RDS/Aurora databases with
-  cron-style schedules in their tags.
+- Stop and restart EC2 instances and RDS/Aurora databases with cron-style
+  schedules in their tags.
 
 - Set and view AWS Backup schedules in resource tags, not central backup
   plans.
@@ -53,12 +53,12 @@ Jump to:
 ||**`sched-start`**|**`sched-start`**||||
 |EC2||||||
 |[Instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||Image (AMI)|
-|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||Volume Snapshot|
+|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||Snapshot|
 |RDS/Aurora||||||
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|Database Snapshot|
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||Cluster Snapshot|
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|Snapshot|
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||Snapshot|
 
-All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
+All backups are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
 
 ## Tag Values (Schedules)
 
