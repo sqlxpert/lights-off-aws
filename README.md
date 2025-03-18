@@ -377,12 +377,11 @@ and starting EC2 instances and RDS databases. It is now integrated
 with AWS Backup, leveraging the security and management benefits (including
 backup retention lifecycle policies) but offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
-Despite adding features, I have cut many lines of code.
+Despite new features, the code has gotten shorter over time.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
-|2018|750|No change|
 |2022|630|800 &check;|
 |2025|520 &check;|815|
 
