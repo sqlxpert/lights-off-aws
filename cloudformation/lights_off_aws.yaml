@@ -1008,7 +1008,6 @@ Resources:
                 self.arn_key = self.rsrc_id_key
               self.tags_key = tags_key
 
-              self.status_filter_pair = status_filter_pair
               if describe_flatten:
                 self.describe_flatten = describe_flatten
               else:
@@ -1020,34 +1019,25 @@ Resources:
               for (op_tag_key_words, op_properties) in ops_dict.items():
                 op = AWSOp.new(self, op_tag_key_words, **op_properties)
                 self.ops[op.tag_key] = op
+
+              self.describe_kwargs = {}
+              if status_filter_pair:
+                self.describe_kwargs["Filters"] = [
+                  {"Name": filter_name, "Values": list(filter_values)}
+                  for (filter_name, filter_values)
+                  in [status_filter_pair, ("tag-key", self.ops_tag_keys)]
+                ]
+
               self.__class__.members[(svc, self.name_in_keys)] = self  # Register me!
 
             def __str__(self):
               return " ".join([self.__class__.__name__, self.svc, self.name_in_keys])
 
-            # pylint: disable=missing-function-docstring
-
             @property
             def ops_tag_keys(self):
+              """Return tag keys for all operations on this resource type
+              """
               return self.ops.keys()
-
-            @property
-            def describe_filters(self):
-              describe_filters_out = []
-              if self.status_filter_pair:
-                describe_filters_out.append(self.status_filter_pair)
-                describe_filters_out.append(("tag-key", self.ops_tag_keys))
-              return describe_filters_out
-
-            @property
-            def describe_kwargs(self):
-              describe_kwargs_out = {}
-              if self.describe_filters:
-                describe_kwargs_out["Filters"] = [
-                  {"Name": filter_name, "Values": list(filter_values)}
-                  for (filter_name, filter_values) in self.describe_filters
-                ]
-              return describe_kwargs_out
 
             def rsrc_id(self, rsrc):
               """Take 1 describe_ result, return the resource ID
@@ -1694,7 +1684,6 @@ Resources:
                 self.arn_key = self.rsrc_id_key
               self.tags_key = tags_key
 
-              self.status_filter_pair = status_filter_pair
               if describe_flatten:
                 self.describe_flatten = describe_flatten
               else:
@@ -1706,34 +1695,25 @@ Resources:
               for (op_tag_key_words, op_properties) in ops_dict.items():
                 op = AWSOp.new(self, op_tag_key_words, **op_properties)
                 self.ops[op.tag_key] = op
+
+              self.describe_kwargs = {}
+              if status_filter_pair:
+                self.describe_kwargs["Filters"] = [
+                  {"Name": filter_name, "Values": list(filter_values)}
+                  for (filter_name, filter_values)
+                  in [status_filter_pair, ("tag-key", self.ops_tag_keys)]
+                ]
+
               self.__class__.members[(svc, self.name_in_keys)] = self  # Register me!
 
             def __str__(self):
               return " ".join([self.__class__.__name__, self.svc, self.name_in_keys])
 
-            # pylint: disable=missing-function-docstring
-
             @property
             def ops_tag_keys(self):
+              """Return tag keys for all operations on this resource type
+              """
               return self.ops.keys()
-
-            @property
-            def describe_filters(self):
-              describe_filters_out = []
-              if self.status_filter_pair:
-                describe_filters_out.append(self.status_filter_pair)
-                describe_filters_out.append(("tag-key", self.ops_tag_keys))
-              return describe_filters_out
-
-            @property
-            def describe_kwargs(self):
-              describe_kwargs_out = {}
-              if self.describe_filters:
-                describe_kwargs_out["Filters"] = [
-                  {"Name": filter_name, "Values": list(filter_values)}
-                  for (filter_name, filter_values) in self.describe_filters
-                ]
-              return describe_kwargs_out
 
             def rsrc_id(self, rsrc):
               """Take 1 describe_ result, return the resource ID
