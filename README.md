@@ -64,16 +64,16 @@ All backups are managed in [AWS Backup](https://console.aws.amazon.com/backup/ho
 
 ### Simple Terms
 
-  |Type|Wildcard|Literals ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|
+  |Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
   |:---|:---:|:---:|
-  |Day of month|`d=_`|`d=01` ... `d=31`|
-  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))||`u=1` (Monday) ... `u=7` (Sunday)|
-  |Hour|`H=_`|`H=00` ... `H=23`|
-  |Minute (multiple of 10)||`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`|
+  |Day of month|`d=01` ... `d=31`|`d=_`|
+  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
+  |Hour|`H=00` ... `H=23`|`H=_`|
+  |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
 
 ### Compound Terms
 
-  |Type|Note|Literals|
+  |Type|Note|Literal Values|
   |:---|:---:|:---:|
   |Once a day|`d=` or `u=` first!|`H:M=00:00` ... `H:M=23:50`|
   |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|

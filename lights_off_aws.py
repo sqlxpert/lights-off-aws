@@ -13,6 +13,8 @@ import botocore
 import boto3
 
 logger = logging.getLogger()
+# Skip "credentials in environment" INFO message, unavoidable in AWS Lambda:
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 
 def environ_int(environ_var_name):
@@ -82,6 +84,45 @@ def log(entry_type, entry_value, log_level=logging.INFO):
   )
 
 
+def boto3_success(resp):
+  """Take a boto3 response, return True if result was success
+
+  Success means an AWS operation has started, not necessarily that it has
+  completed. For example, it may take hours for a backup to become available.
+  Checking completion is left to other tools.
+  """
+  return all([
+    isinstance(resp, dict),
+    isinstance(resp.get("ResponseMetadata", None), dict),
+    resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
+  ])
+
+
+def sqs_send_log(send_kwargs, entry_type, entry_value):
+  """Log SQS send_message content and outcome
+  """
+  if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
+    log_level = logging.INFO
+  else:
+    log_level = logging.ERROR
+  log("SQS_SEND", send_kwargs, log_level=log_level)
+  log(entry_type, entry_value, log_level=log_level)
+
+
+def op_log(event, resp=None, log_level=logging.ERROR):
+  """Log Lambda function event and AWS SDK method call response
+  """
+  log("LAMBDA_EVENT", event, log_level=log_level)
+  if resp is not None:
+    log("AWS_RESPONSE", resp, log_level=log_level)
+
+
+def tag_key_join(tag_key_words):
+  """Take a tuple of strings, add a prefix, join, and return a tag key
+  """
+  return "-".join(("sched", ) + tag_key_words)
+
+
 def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   """Take a datetime, return 10-minute floor and ceiling less 1 minute
   """
@@ -93,12 +134,6 @@ def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
   )
   cycle_cutoff = cycle_start + datetime.timedelta(minutes=cutoff_minutes)
   return (cycle_start, cycle_cutoff)
-
-
-def tag_key_join(tag_key_words):
-  """Take a tuple of strings, add a prefix, join, and return a tag key
-  """
-  return "-".join(("sched", ) + tag_key_words)
 
 
 def msg_attrs_str_encode(attr_pairs):
@@ -129,25 +164,6 @@ def msg_body_encode(msg_in):
   return msg_out
 
 
-def sqs_send_log(send_kwargs, entry_type, entry_value):
-  """Log SQS send_message content and outcome
-  """
-  if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
-    log_level = logging.INFO
-  else:
-    log_level = logging.ERROR
-  log("SQS_SEND", send_kwargs, log_level=log_level)
-  log(entry_type, entry_value, log_level=log_level)
-
-
-def op_log(event, resp=None, log_level=logging.ERROR):
-  """Log Lambda function event and AWS SDK method call response
-  """
-  log("LAMBDA_EVENT", event, log_level=log_level)
-  if resp is not None:
-    log("AWS_RESPONSE", resp, log_level=log_level)
-
-
 svc_clients = {}
 
 
@@ -161,19 +177,6 @@ def svc_client_get(svc):
     # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
   return svc_clients[svc]
 
-
-def boto3_success(resp):
-  """Take a boto3 response, return True if result was success
-
-  Success means an AWS operation has started, not necessarily that it has
-  completed. For example, it may take hours for a backup to become available.
-  Checking completion is left to other tools.
-  """
-  return all([
-    isinstance(resp, dict),
-    isinstance(resp.get("ResponseMetadata", None), dict),
-    resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
-  ])
 
 # 3. Custom Classes ##########################################################
 
@@ -303,12 +306,12 @@ class AWSOp():
   """
 
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
-    self.rsrc_type = rsrc_type
-    self.tag_key_words = tag_key_words
     self.tag_key = tag_key_join(tag_key_words)
     self.svc = rsrc_type.svc
+    self.rsrc_id = rsrc_type.rsrc_id
     verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st word
-    self.method_name = f"{verb}_{self.rsrc_type.name_in_methods}"
+    self.method_name = f"{verb}_{rsrc_type.name_in_methods}"
+    self.kwarg_rsrc_id_key = rsrc_type.rsrc_id_key
     self.kwargs_add = kwargs.get("kwargs_add", {})
 
   @staticmethod
@@ -321,7 +324,7 @@ class AWSOp():
   def kwarg_rsrc_id(self, rsrc):
     """Transfer resource ID from a describe_ result to another method's kwarg
     """
-    return {self.rsrc_type.rsrc_id_key: self.rsrc_type.rsrc_id(rsrc)}
+    return {self.kwarg_rsrc_id_key: self.rsrc_id(rsrc)}
 
   # pylint: disable=unused-argument
   def op_kwargs(self, rsrc, cycle_start_str):
@@ -377,7 +380,7 @@ class AWSOpMultipleRsrcs(AWSOp):
 
     One at a time for consistency and to avoid partial completion risk
     """
-    return {f"{self.rsrc_type.rsrc_id_key}s": [self.rsrc_type.rsrc_id(rsrc)]}
+    return {f"{self.kwarg_rsrc_id_key}s": [self.rsrc_id(rsrc)]}
 
 
 class AWSOpUpdateStack(AWSOp):
@@ -386,44 +389,47 @@ class AWSOpUpdateStack(AWSOp):
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     super().__init__(rsrc_type, tag_key_words, verb="update", **kwargs)
 
+    # Use of final template instead of original makes this incompatible with
+    # CloudFormation "transforms". describe_stacks does not return templates.
+    self.kwargs_add["UsePreviousTemplate"] = True
+
+    # Use previous parameter values, except for:
+    #                          Param  Value
+    #                          Key    Out
+    # tag_key        sched-set-Enable-true
+    # tag_key        sched-set-Enable-false
+    # tag_key_words            [-2]   [-1]
+    self.changing_params_out = {
+      tag_key_words[-2]: tag_key_words[-1],  # Only 1 for now
+    }
+
   def op_kwargs(self, rsrc, cycle_start_str):
     """Take 1 describe_stacks result, return update_stack kwargs
-
-    Preserves previous parameter values except for designated parameter(s):
-                             Param  New
-                             Key    Value
-    tag_key        sched-set-Enable-true
-    tag_key        sched-set-Enable-false
-    tag_key_words            [-2]   [-1]
     """
+    params_out = []
+    for param_in in rsrc.get("Parameters", []):
+      param_in_key = param_in["ParameterKey"]
+      param_out = {"ParameterKey": param_in_key}
+      if param_in_key in self.changing_params_out:
+        param_out["ParameterValue"] = self.changing_params_out[param_in_key]
+      else:
+        param_out["UsePreviousValue"] = True
+      params_out.append(param_out)
+
     op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
-    changing_parameter_key = self.tag_key_words[-2]
-    stack_parameters_out = [{
-      "ParameterKey": changing_parameter_key,
-      "ParameterValue": self.tag_key_words[-1],
-    }]
-    for stack_parameter_in in rsrc.get("Parameters", []):
-      if stack_parameter_in["ParameterKey"] != changing_parameter_key:
-        stack_parameters_out.append({
-          "ParameterKey": stack_parameter_in["ParameterKey"],
-          "UsePreviousValue": True,
-        })
-    op_kwargs_out.update({
-      # Use of final template instead of original makes this incompatible with
-      # CloudFormation transforms. describe_stacks does not return templates.
-      "UsePreviousTemplate": True,
-      "Parameters": stack_parameters_out,
-    })
-    stack_capabilities_in = rsrc.get("Capabilities", [])
-    if stack_capabilities_in:
-      op_kwargs_out["Capabilities"] = stack_capabilities_in
+    op_kwargs_out["Parameters"] = params_out
+    capabilities_in = rsrc.get("Capabilities", [])
+    if capabilities_in:
+      op_kwargs_out["Capabilities"] = capabilities_in
     return op_kwargs_out
+
+  def __str__(self):
+    return super().__str__() + f" {self.changing_params_out}"
 
 
 class AWSOpBackUp(AWSOp):
   """On-demand AWS Backup operation
   """
-
   backup_kwargs_add = {}
 
   @classmethod
@@ -457,20 +463,19 @@ class AWSOpBackUp(AWSOp):
 
   def __init__(self, rsrc_type, tag_key_words, **kwargs):
     super().__init__(rsrc_type, tag_key_words, **kwargs)
+    self.rsrc_id = rsrc_type.arn
     self.svc = "backup"
     self.method_name = "start_backup_job"
-
-  def kwarg_rsrc_id(self, rsrc):
-    """Transfer ARN from a describe_ result to a start_backup_job kwarg
-    """
-    return {"ResourceArn": self.rsrc_type.arn(rsrc)}
+    self.kwarg_rsrc_id_key = "ResourceArn"
+    self.__class__.backup_kwargs_add_init()
+    self.kwargs_add.update(self.__class__.backup_kwargs_add)
 
   def op_kwargs(self, rsrc, cycle_start_str):
     """Take a describe_ result, return start_backup_job kwargs
     """
     op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
-    self.__class__.backup_kwargs_add_init()
-    op_kwargs_out.update(self.__class__.backup_kwargs_add | {
+    op_kwargs_out.update({
+      "IdempotencyToken": cycle_start_str,
       "RecoveryPointTags": {tag_key_join(("time", )): cycle_start_str},
     })
     return op_kwargs_out
@@ -605,8 +610,9 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
     try:
       op_method = getattr(svc_client_get(svc), op_method_name)
       resp = op_method(**op_kwargs)
-    except Exception:
+    except Exception as misc_exception:
       op_log(event)
+      log("EXCEPTION", misc_exception, log_level=logging.ERROR)
       raise
     if boto3_success(resp):
       op_log(event, resp=resp, log_level=logging.INFO)
