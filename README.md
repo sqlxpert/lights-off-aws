@@ -51,10 +51,12 @@ Jump to:
 ||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-reboot-failover`|`sched-backup`|
 |:---|:---:|:---:|:---:|:---:|:---:|
 ||**`sched-start`**|**`sched-start`**||||
-|[EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||image (AMI)|
-|[EBS volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||volume snapshot|
-|[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|database snapshot|
-|[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||cluster snapshot|
+|EC2||||||
+|[Instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||Image (AMI)|
+|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||Volume Snapshot|
+|RDS/Aurora||||||
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|Database Snapshot|
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||Cluster Snapshot|
 
 All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
 
