@@ -36,7 +36,7 @@ Jump to:
 
 3. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Select Upload a template file, then click Choose file and navigate to a
+   Select Upload a template file, then select Choose file and navigate to a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    . On the next page, set:
@@ -56,9 +56,7 @@ Jump to:
 |[RDS database instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|database snapshot|
 |[RDS/Aurora database cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||cluster snapshot|
 
-- All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
-- Not all EC2 instances support hibernation.
-- Not all RDS database clusters support cluster-level reboot.
+All backups, regardless of underlying type, are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
 
 ## Tag Values (Schedules)
 
@@ -90,7 +88,7 @@ Jump to:
 
 ### Rules
 
-- Universal Coordinated Time
+- [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
 - 24-hour clock
 - Days before times, hours before minutes
 - The day, the hour and the minute must all be specified in some way
@@ -177,7 +175,7 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 3. In the management AWS account (or a delegated administrator account),
    create a
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
-   Select Upload a template file, then click Choose file and upload a
+   Select Upload a template file, then select Choose file and upload a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) . On
    the next page, set:
@@ -262,7 +260,7 @@ which is open-source._
 
 </details>
 
-## Bonus: Deleting and Recreating Expensive Resources on a Schedule
+## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
 <details>
   <summary>View scheduled stack update setup details</summary>

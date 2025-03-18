@@ -46,7 +46,7 @@ Parameters:
 
   PlaceholderHelp:
     Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#bonus-deleting-and-recreating-expensive-resources-on-a-schedule"
+    Default: "https://github.com/sqlxpert/lights-off-aws#bonus-delete-and-recreate-expensive-resources-on-a-schedule"
 
   PlaceholderSuggestedStackName:
     Type: String
