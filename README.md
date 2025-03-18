@@ -154,7 +154,7 @@ might need permission to pass the deployment role to CloudFormation. See the
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
 <details>
-  <summary>View multi-account installation steps</summary>
+  <summary>View multi-account, multi-region steps</summary>
 
 To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 
@@ -204,10 +204,9 @@ which is open-source._
 ### Security Design Goals
 
 - Least-privilege roles for the AWS Lambda functions that find resources and
-  "Do" scheduled operations. The "Do" function is authorized to perform a
-  small set of operations, and at that, only when a resource has the correct
-  tag key. (The AWS Backup service creates backups, using a role that you
-  specify.)
+  do scheduled operations. The "Do" function is authorized to perform a small
+  set of operations, and at that, only when a resource has the correct tag key
+  (The AWS Backup service creates backups, using a role that you can specify.)
 
 - A least-privilege queue policy. The operation queue can only consume
   messages from the "Find" function and produce messages for the "Do" function
@@ -241,17 +240,16 @@ which is open-source._
 - Never authorize a role that can create backups (or, in this case, set tags
   to schedule backups) delete backups as well.
 
-- Prevent people from modifying components of Lights Off, most of which can be
-  identified by `LightsOff` in ARNs and in the automatic
-  `aws:cloudformation:stack-name` tag. Limiting people's permissions so that
-  the deployment role is _necessary_ for stack modifications is ideal. Short
-  of that, you could copy the deployment role's in-line policy, delete the
-  statements with `"Resource": "*"`, change the `"Effect"` of the remaining,
-  resource-specific statements to `"Deny"`, and include the inverted policy in
+- Prevent people from modifying components, most of which can be identified by
+  `LightsOff` in ARNs and in the automatic `aws:cloudformation:stack-name`
+  tag. Limiting permissions so that the deployment role is _necessary_ for
+  stack modifications is ideal. Short of that, you could copy the deployment
+  role policies, delete statements with `"Resource": "*"` , change `"Effect"`
+  to `"Deny"` in the remaining statements, and make this inverted version into
   a permission boundary.
 
-- Add policies to prevent people from directly invoking Lights Off AWS Lambda
-  functions and from passing the associated roles to any other functions.
+- Add policies to prevent people from directly invoking the AWS Lambda
+  functions and from passing their roles to other functions.
 
 - Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
