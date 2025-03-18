@@ -152,7 +152,7 @@ might need permission to pass the deployment role to CloudFormation. See the
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
 <details>
-  <summary>View multi-account, multi-region steps</summary>
+  <summary>View multi-account, multi-region details</summary>
 
 To deploy Lights Off to multiple AWS accounts and/or multiple regions,
 
@@ -266,12 +266,12 @@ which is open-source._
   <summary>View scheduled stack update setup details</summary>
 
 As a bonus, Lights Off can delete and recreate all kinds of expensive AWS
-infrastructure resources defined in your own CloudFormation stacks, based on
-cron-style schedules in stack tags.
+infrastructure in your own CloudFormation stacks, based on cron-style
+schedules in stack tags.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
-[10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn?tab=readme-ov-file#automatic-scheduling)
+[10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling)
 for potential savings of $600 per year.
 
 To make your own CloudFormation template compatible, see
