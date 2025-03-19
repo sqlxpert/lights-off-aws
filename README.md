@@ -75,7 +75,7 @@ All backups are handled by AWS Backup.
 
   |Type|Note|Literal Values|
   |:---|:---:|:---:|
-  |Once a day|`d=` or `u=` first!|`H:M=00:00` ... `H:M=23:50`|
+  |Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
   |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
   |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
@@ -112,20 +112,20 @@ few steps may be necessary.
 
    AWS Backup creates the `Default` vault the first time you use the AWS
    Console to access the
-   [list of Backup Vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+   [list of Vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
    in a given AWS account and region. Otherwise, see
    [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html),
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
    , or
-   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault).
+   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)
+   .
 
    Update the `BackupVaultName` CloudFormation stack parameter if necessary.
 
 2. Backup role
 
-   AWS Backup creates `service-role/AWSBackupDefaultServiceRole` the first
-   time you use the AWS Console to make a backup in a given AWS account.
-   Otherwise, see
+   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you use the
+   AWS Console to make a backup in a given AWS account. Otherwise, see
    [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
 
    Update `BackupRoleName` in CloudFormation if necessary.
@@ -139,17 +139,16 @@ few steps may be necessary.
 
    No action is necessary if your EBS volumes and RDS/Aurora databases are
    unencrypted, or if they are encrypted with the default `aws/ebs` and
-   `aws/rds` keys and you use `service-role/AWSBackupDefaultServiceRole` .
+   `aws/rds` keys and you are using `AWSBackupDefaultServiceRole` .
 
-   If you use custom keys, you must (a) modify the key policies _or_ (b)
-   attach custom policies to a custom backup role. If your keys are in a
-   different AWS account than your disks and databases, you must do _both_
-   (a) and (b). See
+   For custom keys, you must (a) modify the key policies _or_ (b) attach
+   custom policies to a custom backup role. If your keys are in a different
+   AWS account than your disks and databases, you must do _both_ (a) and (b).
+   See
    [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
    [How EBS uses AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
    and
-   [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview)
-   .
+   [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview).
 
 If Lights Off can't submit a backup job (the "Do" function [log](#logging)
 shows that `start_backup_job` failed with a `403` error), or if AWS Backup
@@ -166,11 +165,10 @@ policies (SCPs and RCPs), permission boundaries, or session policies apply.
 
 ### Backup Tags
 
-AWS Backup copies resource tags to backups on a best effort basis. For
-convenience, Lights Off adds an
+AWS Backup copies resource tags to backups. Lights Off adds `sched-time` to
+indicate when the backup was _scheduled_ to occur, in
 [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations)
-`sched-time` tag (example: `2024-12-31T14:00Z`) to indicate when the backup
-was _scheduled_ to occur.
+form (example: `2024-12-31T14:00Z`).
 
 ## On/Off Switch
 
