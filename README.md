@@ -177,8 +177,8 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-- Log entries are JSON objects. Application log entries include `"type"` and
-  `"value"` keys. System log entries include other keys.
+- Log entries are JSON objects. Entries from Lights Off include `"type"` and
+  `"value"` keys.
 - For more or less data, change the `LogLevel` in CloudFormation.
 
 ## Advanced Installation
