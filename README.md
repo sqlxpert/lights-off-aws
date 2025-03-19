@@ -77,7 +77,7 @@ All backups are handled by AWS Backup.
   |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
   |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
-### Examples
+### Schedule Examples
 
   |Tag Value|Scenario|Meaning|
   |:---:|:---:|:---:|
@@ -86,7 +86,7 @@ All backups are handled by AWS Backup.
   |`uTH:M=2T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|2 extra weekly operations|Tuesdays at 03:00, Fridays at 19:00, _plus_ every day at 11:15|
   |`dTH:M=01T03:00 u=3 H=19 M=15`|Extra monthly operation|1st day of the month at 03:00, _plus_ Wednesdays at 19:15|
 
-### Rules
+### Schedule Rules
 
 - [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
 - 24-hour clock
@@ -177,8 +177,8 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-- Log entries are JSON objects. Entries from Lights Off include `"type"` and
-  `"value"` keys.
+- Log entries are JSON objects. Entries from Lights Off include `"level"`,
+  `"type"` and `"value"` keys.
 - For more or less data, change the `LogLevel` in CloudFormation.
 
 ## Advanced Installation
@@ -208,7 +208,7 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
 
-### Least-Privilege
+### Least-Privilege Installation
 
 <details>
   <summary>View least-privilege installation details</summary>
@@ -424,7 +424,7 @@ Despite new features, the code has gotten shorter.
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|525 &check;|820|
+|2025|540 &check;|820|
 
 ## Dedication
 

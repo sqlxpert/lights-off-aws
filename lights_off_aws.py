@@ -60,7 +60,7 @@ ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
 
 
 class SQSMessageTooLong(ValueError):
-  """JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
+  """String of JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
   """
 
 # 2. Helpers #################################################################
@@ -98,23 +98,28 @@ def boto3_success(resp):
   ])
 
 
-def sqs_send_log(send_kwargs, entry_type, entry_value):
-  """Log SQS send_message content and outcome
+def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
+  """Log scheduled start time (on error), SQS send_message content, outcome
   """
   if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
     log_level = logging.INFO
   else:
     log_level = logging.ERROR
+    log("START", cycle_start_str, log_level=log_level)
   log("SQS_SEND", send_kwargs, log_level=log_level)
   log(entry_type, entry_value, log_level=log_level)
 
 
-def op_log(event, resp=None, log_level=logging.ERROR):
-  """Log Lambda function event and AWS SDK method call response
+def op_log(
+  event, entry_type="", entry_value="", resp=None, log_level=logging.ERROR
+):
+  """Log Lambda function event, optional error, optional boto3 response
   """
   log("LAMBDA_EVENT", event, log_level=log_level)
   if resp is not None:
     log("AWS_RESPONSE", resp, log_level=log_level)
+  if entry_type:
+    log(entry_type, entry_value, log_level=log_level)
 
 
 def tag_key_join(tag_key_words):
@@ -157,10 +162,8 @@ def msg_body_encode(msg_in):
   msg_out = json.dumps(msg_in)
   msg_out_len = len(bytes(msg_out, "utf-8"))
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
-    raise SQSMessageTooLong(
-      f"JSON string too long: {msg_out_len} > {QUEUE_MSG_BYTES_MAX} bytes; "
-      "increase QueueMessageBytesMax in CloudFormation"
-    )
+    log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+    raise SQSMessageTooLong()
   return msg_out
 
 
@@ -290,15 +293,10 @@ class AWSRsrcType():
           op = self.ops[op_tags_matched[0]]
           op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
         elif op_tags_matched_count > 1:
+          log("START", cycle_start_str, log_level=logging.ERROR)
           log(
             "MULTIPLE_OPS",
-            {
-              "svc": self.svc,
-              "rsrc_type": self.name_in_keys,
-              "rsrc_id": self.rsrc_id(rsrc),
-              "op_tags_matched": op_tags_matched,
-              "cycle_start_str": cycle_start_str,
-            },
+            {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
             log_level=logging.ERROR
           )
 
@@ -337,32 +335,34 @@ class AWSOp():
     return op_kwargs_out
 
   def queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
-    """Send an operation message to the SQS queue
+    """Send 1 operation message to the SQS queue
     """
-    op_msg_attrs = msg_attrs_str_encode((
-      ("version", QUEUE_MSG_FMT_VERSION),
-      ("expires", cycle_cutoff_epoch_str),
-      ("svc", self.svc),
-      ("op_method_name", self.method_name),
-    ))
     send_kwargs = {
       "QueueUrl": QUEUE_URL,
-      "MessageAttributes": op_msg_attrs,
-      "MessageBody": msg_body_encode(self.op_kwargs(rsrc, cycle_start_str)),
+      "MessageAttributes": msg_attrs_str_encode((
+        ("version", QUEUE_MSG_FMT_VERSION),
+        ("expires", cycle_cutoff_epoch_str),
+        ("svc", self.svc),
+        ("op_method_name", self.method_name),
+      )),
     }
     try:
+      send_kwargs.update({
+        "MessageBody": msg_body_encode(self.op_kwargs(rsrc, cycle_start_str))
+      })
       sqs_resp = svc_client_get("sqs").send_message(**send_kwargs)
-    except (
-      botocore.exceptions.ClientError,
-      SQSMessageTooLong,
-    ) as sqs_exception:
-      sqs_send_log(send_kwargs, "EXCEPTION", sqs_exception)
-      # Usually recoverable, try to queue next operation
+    except SQSMessageTooLong:
+      sqs_send_log(
+        cycle_start_str,
+        send_kwargs,
+        "QUEUE_MSG_TOO_LONG",
+        "Increase QueueMessageBytesMax in CloudFormation",
+      )
     except Exception as misc_exception:
-      sqs_send_log(send_kwargs, "EXCEPTION", misc_exception)
-      raise  # Unrecoverable, stop queueing operations
+      sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_exception)
+      raise  # In error cases other than this, log 1 failed send but move on
     else:
-      sqs_send_log(send_kwargs, "AWS_RESPONSE", sqs_resp)
+      sqs_send_log(cycle_start_str, send_kwargs, "AWS_RESPONSE", sqs_resp)
 
   def __str__(self):
     return " ".join([
@@ -594,30 +594,35 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """
   for msg in event.get("Records", []):  # 0 or 1 messages expected
     if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
-      op_log(event)
-      raise RuntimeError("Unrecognized queue message format")
+      op_log(
+        event,
+        entry_type="WRONG_QUEUE_MSG_FMT",
+        entry_value="Unrecognized operation queue message format"
+      )
+      raise RuntimeError()
     if (
       int(msg_attr_str_decode(msg, "expires"))
       < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
     ):
-      op_log(event)
-      raise RuntimeError(
-        "Late; schedule fewer operations per 10-minute cycle, or increase "
-        "DoLambdaFnReservedConcurrentExecutions CloudFormation parameter"
+      op_log(
+        event,
+        entry_type="EXPIRED_OP",
+        entry_value="Schedule fewer operations per 10-minute cycle or "
+        "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
       )
+      raise RuntimeError()
 
     svc = msg_attr_str_decode(msg, "svc")
     op_method_name = msg_attr_str_decode(msg, "op_method_name")
-    op_kwargs = json.loads(msg["body"])
     try:
+      op_kwargs = json.loads(msg["body"])
       op_method = getattr(svc_client_get(svc), op_method_name)
       resp = op_method(**op_kwargs)
     except Exception as misc_exception:
-      op_log(event)
-      log("EXCEPTION", misc_exception, log_level=logging.ERROR)
+      op_log(event, entry_type="EXCEPTION", entry_value=misc_exception)
       raise
     if boto3_success(resp):
       op_log(event, resp=resp, log_level=logging.INFO)
     else:
       op_log(event, resp=resp)
-      raise RuntimeError("Miscellaneous AWS erorr")
+      raise RuntimeError()
