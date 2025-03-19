@@ -37,7 +37,7 @@ Jump to:
    Select Upload a template file, then select Choose file and navigate to a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   (right-click to save). On the next page, set:
+   (right-click to save as...). On the next page, set:
 
    - Stack name: `LightsOff`
 
@@ -199,7 +199,7 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
    Select Upload a template file, then select Choose file and upload a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   (right-click to save). On the next page, set:
+   (right-click to save as...). On the next page, set:
 
    - StackSet name: `LightsOff`
 
