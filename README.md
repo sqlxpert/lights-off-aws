@@ -58,7 +58,7 @@ Jump to:
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|Snapshot|
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||Snapshot|
 
-All backups are managed in [AWS Backup](https://console.aws.amazon.com/backup/home#/backupvaults).
+All backups are handled by AWS Backup.
 
 ## Tag Values (Schedules)
 
@@ -103,14 +103,68 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ## Backups
 
-### Services
+### AWS Backup Configuration
+
+Before you can schedule resources for backup with the `sched-backup` tag, a
+few steps may be necessary.
+
+1. Backup vault
+
+   AWS Backup creates the `Default` vault the first time you use the AWS
+   Console to access the
+   [list of Backup Vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+   in a given AWS account and region. Otherwise, see
+   [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html),
+   [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
+   , or
+   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault).
+
+   Update the `BackupVaultName` CloudFormation stack parameter if necessary.
+
+2. Backup role
+
+   AWS Backup creates `service-role/AWSBackupDefaultServiceRole` the first
+   time you use the AWS Console to make a backup in a given AWS account.
+   Otherwise, see
+   [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
+
+   Update `BackupRoleName` in CloudFormation if necessary.
+
+3. Backup vault policy
+
+   If you've added `"Deny"` statements, be sure that `FindLambdaFnRole` still
+   has access.
+
+4. KMS key policies
+
+   No action is necessary if your EBS volumes and RDS/Aurora databases are
+   unencrypted, or if they are encrypted with the default `aws/ebs` and
+   `aws/rds` keys and you use `service-role/AWSBackupDefaultServiceRole` .
+
+   If you use custom keys, you must (a) modify the key policies _or_ (b)
+   attach custom policies to a custom backup role. If your keys are in a
+   different AWS account than your disks and databases, you must do _both_
+   (a) and (b). See
+   [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
+   [How EBS uses AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
+   and
+   [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview)
+   .
+
+If Lights Off can't submit a backup job (the "Do" function [log](#logging)
+shows that `start_backup_job` failed with a `403` error), or if AWS Backup
+can't start a successfully submitted job, a permission problem is likely.
+Check with your AWS administrator in case service and resource control
+policies (SCPs and RCPs), permission boundaries, or session policies apply.
+
+### Accessing Backups
 
 - Use AWS Backup to list and delete backups.
 - Use EC2 and RDS to view the underlying images and snapshots.
 - Use AWS Backup, or EC2 and RDS, to restore (create new resources from)
   backups.
 
-### Tags
+### Backup Tags
 
 AWS Backup copies resource tags to backups on a best effort basis. For
 convenience, Lights Off adds an
@@ -184,7 +238,7 @@ For a multi-account CloudFormation StackSet deployment, you can use
 by creating a customer-managed IAM policy covering the inline policies from
 `DeploymentRole` in
 [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml) ,
-attaching your policy to `AWSCloudFormationStackSetExecutionRole`, and
+attaching your policy to `AWSCloudFormationStackSetExecutionRole` , and
 propagating the policy and the role policy attachment to all target AWS
 accounts.
 </details>
