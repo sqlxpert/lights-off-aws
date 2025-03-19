@@ -31,8 +31,7 @@ Jump to:
 
    - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
-     \+ 20 minutes, rounded **up** to `:00` , `:10` , `:20` , `:30` , `:40` ,
-     or `:50` .
+     \+ 20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
 3. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
@@ -43,8 +42,8 @@ Jump to:
 
    - Stack name: `LightsOff`
 
-4. After about 20 minutes, check whether the EC2 instance is in the stopped
-   state. Restart it and delete the `sched-stop` tag.
+4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
+   it and delete the `sched-stop` tag.
 
 ## Tag Keys (Operations)
 
@@ -112,7 +111,7 @@ few steps may be necessary.
 
    AWS Backup creates the `Default` vault the first time you use the AWS
    Console to access the
-   [list of Vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+   [list of vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
    in a given AWS account and region. Otherwise, see
    [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html),
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
@@ -143,7 +142,7 @@ few steps may be necessary.
 
    For custom keys, you must (a) modify the key policies _or_ (b) attach
    custom policies to a custom backup role. If your keys are in a different
-   AWS account than your disks and databases, you must do _both_ (a) and (b).
+   AWS account than your disks and databases, you must do (a) _and_ (b).
    See
    [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
    [How EBS uses AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),

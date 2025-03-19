@@ -67,7 +67,7 @@ Parameters:
       that has not started. This does not extend BackupCompleteWindowMinutes .
     MinValue: 60
     Default: 60
-    MaxValue: 52560000 # 100 years
+    MaxValue: 52560000  # 100 years
 
   BackupCompleteWindowMinutes:
     Type: Number
@@ -77,7 +77,7 @@ Parameters:
       Schedule backups for the same resource at least this many minutes apart.
     MinValue: 60
     Default: 360
-    MaxValue: 52560000 # 100 years
+    MaxValue: 52560000  # 100 years
 
   BackupColdStorageAfterDays:
     Type: Number
@@ -98,7 +98,7 @@ Parameters:
       backups indefinitely, specify -1 . If you request both cold storage and
       deletion (BackupColdStorageAfterDays and BackupDeleteAfterDays are both
       other than -1), specify at least BackupColdStorageAfterDays + 90 days.
-    Default: 7
+    Default: -1
 
   FindLambdaFnMemoryMB:
     Type: Number
