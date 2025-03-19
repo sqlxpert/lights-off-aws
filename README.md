@@ -2,10 +2,10 @@
 
 Ever forget to turn the lights off? Now you can:
 
-- Stop and restart EC2 instances and RDS/Aurora databases with cron-style
-  schedules in their tags.
+- Stop EC2 instances and RDS/Aurora databases overnight, by tagging them with
+  cron schedules.
 
-- Set and view AWS Backup schedules in resource tags, not central backup
+- Set, and see, AWS Backup schedules in resource tags, not central backup
   plans.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
@@ -311,8 +311,7 @@ software at your own risk. You are encouraged to evaluate the source code._
   <summary>View scheduled stack update details</summary>
 
 Lights Off can delete and recreate all kinds of expensive AWS infrastructure
-in your own CloudFormation stacks, based on cron-style schedules in stack
-tags.
+in your own CloudFormation stacks, based on cron schedules in stack tags.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
