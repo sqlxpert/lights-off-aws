@@ -273,7 +273,7 @@ software at your own risk. You are encouraged to evaluate the source code._
   starts 1 minute into the 10-minute cycle and operation queue entries expire
   9 minutes in.
 
-- An optional, least-privilege CloudFormation service role for deployment.
+- An optional CloudFormation service role for least-privilege deployment.
 
 ### Security Steps You Can Take
 
@@ -312,9 +312,9 @@ software at your own risk. You are encouraged to evaluate the source code._
 <details>
   <summary>View scheduled stack update details</summary>
 
-As a bonus, Lights Off can delete and recreate all kinds of expensive AWS
-infrastructure in your own CloudFormation stacks, based on cron-style
-schedules in stack tags.
+Lights Off can delete and recreate all kinds of expensive AWS infrastructure
+in your own CloudFormation stacks, based on cron-style schedules in stack
+tags.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
