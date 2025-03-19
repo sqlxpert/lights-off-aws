@@ -47,15 +47,15 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-reboot-failover`|`sched-backup`|
-|:---|:---:|:---:|:---:|:---:|:---:|
-||**`sched-start`**|**`sched-start`**||||
-|EC2||||||
-|[Instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;||Image (AMI)|
-|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)|||||Snapshot|
-|RDS/Aurora||||||
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&check;|Snapshot|
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;||Snapshot|
+||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-backup`|
+|:---|:---:|:---:|:---:|:---:|
+||**`sched-start`**|**`sched-start`**|||
+|EC2|||||
+|[Instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;|Image (AMI)|
+|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||||Snapshot|
+|RDS/Aurora|||||
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|Snapshot|
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|Snapshot|
 
 All backups are handled by AWS Backup.
 
@@ -104,8 +104,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### AWS Backup Configuration
 
-Before you can schedule resources for backup with the `sched-backup` tag, a
-few steps may be necessary.
+Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 1. Backup vault
 
