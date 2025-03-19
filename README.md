@@ -179,11 +179,9 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-- Log entries are JSON objects. For application log entries, reference the
-  `type` key for a consistent classification and the `value` key for the data.
-  System log entries use other keys.
-- For more or fewer log entries, change the `LogLevel` parameter in
-  CloudFormation.
+- Log entries are JSON objects. Application log entries include `"type"` and
+  `"value"` keys. System log entries include other keys.
+- For more or less data, change the `LogLevel` in CloudFormation.
 
 ## Advanced Installation
 
@@ -243,8 +241,7 @@ accounts.
 
 _In accordance with the software license, nothing in this section creates a
 warranty, an indemnification, an assumption of liability, etc. Use this
-software entirely at your own risk. You are encouraged to evaluate the code,
-which is open-source._
+software at your own risk. You are encouraged to evaluate the source code._
 
 <details>
   <summary>View security details</summary>
