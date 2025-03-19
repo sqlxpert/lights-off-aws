@@ -25,7 +25,7 @@ Jump to:
 1. Log in to the AWS Console as an administrator.
 
 2. Tag a running, non-essential
-   [EC2 instance](https://console.aws.amazon.com/ec2/v2/home#Instances)
+   [EC2 instance](https://console.aws.amazon.com/ec2/home#Instances)
    with:
 
    - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
@@ -50,11 +50,11 @@ Jump to:
 |:---|:---:|:---:|:---:|:---:|
 ||**`sched-start`**|**`sched-start`**|||
 |EC2|||||
-|[Instance](https://console.aws.amazon.com/ec2/v2/home#Instances)|&check;|&check;|&check;|Image (AMI)|
-|[EBS Volume](https://console.aws.amazon.com/ec2/v2/home#Volumes)||||Snapshot|
+|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&check;|&rarr; Image (AMI)|
+|[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)||||&rarr; Snapshot|
 |RDS/Aurora|||||
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|Snapshot|
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|Snapshot|
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
 
 All backups are handled by AWS Backup.
 
