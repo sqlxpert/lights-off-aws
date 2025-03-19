@@ -2,11 +2,10 @@
 
 Ever forget to turn the lights off? Now you can:
 
-- Stop EC2 instances and RDS/Aurora databases overnight, by tagging them with
-  cron schedules.
+- Stop EC2 instances and RDS/Aurora databases overnight by tagging them with
+  cron schedules, to cut AWS costs.
 
-- Set, and see, AWS Backup schedules in resource tags, not central backup
-  plans.
+- Set, and see, AWS Backup times in resource tags, not central backup plans.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
 
