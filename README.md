@@ -428,10 +428,10 @@ Despite new features, the code has gotten shorter.
 
 ## Dedication
 
-This project is dedicated to ej, Marianne and R&eacute;gis, and also to the
-wonderful colleagues I've worked with over the years. Thank you to Corey for
-sharing the original version with the AWS user community, and to Lee for
-suggesting the new name.
+This project is dedicated to ej, Marianne and R&eacute;gis, and to the
+wonderful colleagues whom Paul has worked with over the years. Thank you to
+Corey for sharing the original version with the AWS user community, and to Lee
+for suggesting the new name.
 
 ## Licenses
 
