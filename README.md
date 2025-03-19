@@ -417,10 +417,10 @@ This project was originally called TagSchedOps. Paul wrote the first version
 before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
 remains a simple alternative to
 [Systems Manager Automation runbooks for
-stopping](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html)
-and starting EC2 instances and RDS databases. It is now integrated
-with AWS Backup, leveraging the security and management benefits (including
-backup retention lifecycle policies) but offering a simple alternative to
+stopping EC2 instances](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html),
+etc. It is now integrated with AWS Backup, leveraging the security and
+management benefits (including backup retention lifecycle policies) but
+offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 Despite new features, the code has gotten shorter.
 
