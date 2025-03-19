@@ -61,7 +61,7 @@ All backups are handled by AWS Backup.
 
 ## Tag Values (Schedules)
 
-### Simple Terms
+### Single Terms
 
   |Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
   |:---|:---:|:---:|
@@ -82,10 +82,10 @@ All backups are handled by AWS Backup.
 
   |Tag Value|Scenario|Meaning|
   |:---:|:---:|:---:|
-  |`d=01 d=15 H=03 H=19 M=00`|cron|03:00 and 19:00 the 1st and 15th days of the month|
-  |`d=_ H:M=08:50 H=_ M=10 M=40`|Extra daily operation|10 and 40 minutes after the hour, every hour, _plus_ 08:50 every day|
-  |`uTH:M=2T03:30 uTH:M=5T07:20 d=_ H=11 M=00`|2 extra weekly operations|11:00 every day, _plus_  03:30 every Tuesday and 07:20 every Friday|
-  |`dTH:M=01T05:20 u=3 H=22 M=10`|Extra monthly operation|22:10 every Wednesday, _plus_ 05:20 the 1st day of the month|
+  |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
+  |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, once a day at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
+  |`uTH:M=2T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|2 extra weekly operations|Tuesdays at 03:00, Fridays at 19:00, _plus_ every day at 11:15|
+  |`dTH:M=01T03:00 u=3 H=19 M=15`|Extra monthly operation|1st day of the month at 03:00, _plus_ Wednesdays at 19:15|
 
 ### Rules
 
@@ -93,9 +93,8 @@ All backups are handled by AWS Backup.
 - 24-hour clock
 - Days before times, hours before minutes
 - The day, the hour and the minute must all be specified in some way
-- Instead of end-of-month, use start-of-month ( `dTH:M=01T00:00` )
-- Scheduling multiple operations on the same resource at the same time
-  produces an error
+- Instead of the end of the month, specify the start, `dTH:M=01T00:00`
+- Multiple operations on the same resource at the same time are _all_ canceled
 
 Space was chosen as the separator and underscore, as the wildcard, because
 [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
@@ -250,24 +249,23 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 - Least-privilege roles for the AWS Lambda functions that find resources and
   do scheduled operations. The "Do" function is authorized to perform a small
-  set of operations, and at that, only when a resource has the correct tag key
-  (The AWS Backup service creates backups, using a role that you can specify.)
+  set of operations, and at that, only when a resource has the correct tag
+  key. (AWS Backup creates backups, using a role that you can configure.)
 
 - A least-privilege queue policy. The operation queue can only consume
   messages from the "Find" function and produce messages for the "Do" function
   (or a dead-letter queue, if an operation fails). Encryption in transit is
   required.
 
-- Readable IAM policies, formatted as CloudFormation YAML rather than as JSON
+- Readable IAM policies, formatted as CloudFormation YAML rather than JSON,
   and broken down into discrete statements by service, resource or principal.
 
-- Optional encryption at rest with custom AWS Key Management System (KMS)
-  keys, for queue message bodies (which contain resource identifiers) and for
-  log entries (which may contain resource metadata).
+- Optional encryption at rest with the AWS Key Management System (KMS), for
+  queue message bodies (which contain resource identifiers) and for logs (may
+  contain resource metadata).
 
-- No data storage other than in queues and logs. Retention periods for the
-  dead letter queue and the logs are configurable. The fixed retention period
-  for the operation queue is short.
+- No data storage other than in queues and logs, with short or configurable
+  retention periods.
 
 - Tolerance for clock drift in a distributed system. The "Find" function
   starts 1 minute into the 10-minute cycle and operation queue entries expire
@@ -290,8 +288,8 @@ software at your own risk. You are encouraged to evaluate the source code._
   tag. Limiting permissions so that the deployment role is _necessary_ for
   stack modifications is ideal. Short of that, you could copy the deployment
   role policies, delete statements with `"Resource": "*"` , change `"Effect"`
-  to `"Deny"` in the remaining statements, and make this inverted version into
-  a permission boundary.
+  to `"Deny"` in the remaining statements, and use this inverted policy as a
+  permission boundary.
 
 - Add policies to prevent people from directly invoking the AWS Lambda
   functions and from passing their roles to other functions.
@@ -301,9 +299,9 @@ software at your own risk. You are encouraged to evaluate the source code._
 - Automatically copy backups to an AWS Backup vault in an isolated account.
 
 - Separate production workloads. You might choose not to deploy Lights Off to
-  AWS accounts used for production, or you might customize the "Do" function's
-  role, removing the authority to reboot and stop production resources (
-  `AttachLocalPolicy` ).
+  AWS accounts used for production, or you might add a custom policy to the
+  "Do" function's role, denying authority to reboot and stop production
+  resources ( `AttachLocalPolicy` in CloudFormation).
 
 </details>
 
@@ -395,16 +393,16 @@ What AWS resources and operations would _you_ like to add?
 ## Advice
 
 - Test your backups often! Are they finishing on-schedule? Can they be
-  restored? The
-  [AWS Backup restore testing feature](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
+  restored?
+  [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
   can help.
 
 - Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
   KMS, backup storage, and early deletion of cold storage backups; of the
-  minimum billing period when you stop an RDS database or an EC2 instance with
+  minimum billable period when you stop an EC2 instance or RDS database with
   a commercial license; of ongoing storage charges for stopped EC2 instances
-  and RDS databases; and of resumption of charges when RDS restarts a stopped
-  database after the 7-day limit. Other charges may apply!
+  and RDS databases; and of the resumption of charges when RDS restarts a
+  stopped database after the 7-day limit. Other charges may apply!
 
 - Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
@@ -413,9 +411,9 @@ What AWS resources and operations would _you_ like to add?
 
 ## Progress
 
-This project was originally called TagSchedOps. Paul wrote the first version
-before Systems Manager, Data Lifecycle Manager or AWS Backup existed. It
-remains a simple alternative to
+Paul wrote TagSchedOps, the first version of this project, before Systems
+Manager, Data Lifecycle Manager or AWS Backup existed. The project remains a
+simple alternative to
 [Systems Manager Automation runbooks for
 stopping EC2 instances](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html),
 etc. It is now integrated with AWS Backup, leveraging the security and
@@ -432,10 +430,10 @@ Despite new features, the code has gotten shorter.
 
 ## Dedication
 
-This work is dedicated to ej, Marianne and R&eacute;gis, and also to the
-wonderful colleagues I've worked with over the years. Thank you to Lee for
-suggesting the name and to Corey for sharing the original version with the AWS
-user community.
+This project is dedicated to ej, Marianne and R&eacute;gis, and also to the
+wonderful colleagues I've worked with over the years. Thank you to Corey for
+sharing the original version with the AWS user community, and to Lee for
+suggesting the new name.
 
 ## Licenses
 
