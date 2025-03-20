@@ -5,7 +5,10 @@ Ever forget to turn the lights off? Now you can:
 - Stop EC2 instances and RDS/Aurora databases overnight by tagging them with
   cron schedules, to cut AWS costs.
 
-- Set, and see, AWS Backup times in resource tags, not just central backup plans.
+- Trigger AWS Backup with cron schedules in resource tags.
+
+- Delete expensive infrastructure overnight by tagging your own CloudFormation
+  stacks with cron schedules.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
 
@@ -55,8 +58,6 @@ Jump to:
 |RDS/Aurora|||||
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
-
-All backups are handled by AWS Backup.
 
 ## Tag Values (Schedules)
 
