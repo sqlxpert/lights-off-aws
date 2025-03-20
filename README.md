@@ -110,6 +110,16 @@ For custom KMS keys, you must add a statement to the key policies.
 <details>
   <summary>View sample KMS key policy statement for custom EBS encryption</summary>
 
+- For a single account, delete the `"ForAnyValue:StringLike"` section and
+  replace _ACCOUNT_ with your AWS account number.
+
+- For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ ,
+  _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your
+  organization, your organization root, and the organizational unit (OU) in
+  which you have installed Lights Off. `/*` at the end of this organization
+  path stands for child OUs, if any. Do not use a path less specific than
+  `"o-ORG_ID/*"` .
+
 ```json
     {
       "Sid": "LightsOffEc2StartInstancesWithEncryptedEbsVolumes",
@@ -134,14 +144,6 @@ For custom KMS keys, you must add a statement to the key policies.
     }
 ```
 
-For a single account, delete the `"ForAnyValue:StringLike"` section and
-replace _ACCOUNT_ with your AWS account number.
-
-For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_
-, and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
-organization root, and the organizational unit (OU) in which you have
-installed Lights Off. `/*` at the end of this organization path stands for
-child OUs, if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 </details>
 
 ### Making Backups
@@ -190,11 +192,14 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
    and
    [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview).
 
-If Lights Off cannot submit a backup job (the "Do" function [log](#logging)
-shows that `start_backup_job` failed with a `403` error), or if AWS Backup
-can't start a successfully submitted job, a permission problem is likely.
-Check with your AWS administrator in case service and resource control
-policies (SCPs and RCPs), permission boundaries, or session policies apply.
+If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
+problem is likely.
+
+### Hidden Policies
+
+Service and resource control policies (SCPs and RCPs), permission boundaries,
+and session policies can interfere with Lights Off. Ask your AWS
+administrator!
 
 ## Accessing Backups
 
@@ -348,6 +353,22 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 </details>
 
+## Advice
+
+- Test Lights Off in your AWS environment. Please submit
+  [bug reports](https://github.com/sqlxpert/lights-off-aws/issues).
+
+- Test your backups! Are they finishing on-schedule? Can they be restored?
+  [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
+  can help.
+
+- Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
+  KMS, backup storage, and early deletion from cold storage; of the minimum
+  charge when you stop an EC2 instance or RDS database with a commercial
+  license; of the resumption of charges when RDS or Aurora restarts a stopped
+  database after 7 days; and of ongoing storage charges while EC2 instances
+  and RDS/Aurora databases are stopped. Have we missed anything?
+
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
 <details>
@@ -432,22 +453,6 @@ What capabilities would you like to add? Submit a
 [pull request](https://github.com/sqlxpert/lights-off-aws/pulls) today!
 </details>
 
-## Advice
-
-- Test Lights Off in your AWS environment. Please submit
-  [bug reports](https://github.com/sqlxpert/lights-off-aws/issues).
-
-- Test your backups! Are they finishing on-schedule? Can they be restored?
-  [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
-  can help.
-
-- Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
-  KMS, backup storage, and early deletion from cold storage; of the minimum
-  charge when you stop an EC2 instance or RDS database with a commercial
-  license; of the resumption of charges when RDS or Aurora restarts a stopped
-  database after 7 days; and of ongoing storage charges while EC2 instances
-  and RDS/Aurora databases are stopped. Have we missed anything?
-
 ## Progress
 
 Paul wrote TagSchedOps, the first version of this project, before Systems
@@ -465,7 +470,7 @@ Despite new features, the code has gotten shorter.
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|540 &check;|820|
+|2025|530 &check;|820|
 
 ## Dedication
 
