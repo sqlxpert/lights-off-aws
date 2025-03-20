@@ -198,7 +198,7 @@ policies (SCPs and RCPs), permission boundaries, or session policies apply.
 
 ## Accessing Backups
 
-|Goal|Services|
+|Goal|Service(s)|
 |:---|:---:|
 |List backups|AWS Backup|
 |View underlying images and/or snapshots|EC2 and RDS|
@@ -229,7 +229,7 @@ form (example: `2024-12-31T14:00Z`).
 
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
-To deploy Lights Off to multiple AWS accounts and/or multiple regions,
+To deploy Lights Off to multiple AWS accounts and/or regions,
 
 1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
    accounts and regions.
@@ -434,21 +434,19 @@ What capabilities would you like to add? Submit a
 
 ## Advice
 
-- Test your backups often! Are they finishing on-schedule? Can they be
-  restored?
+- Test Lights Off in your AWS environment. Please submit
+  [bug reports](https://github.com/sqlxpert/lights-off-aws/issues).
+
+- Test your backups! Are they finishing on-schedule? Can they be restored?
   [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
   can help.
 
 - Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
-  KMS, backup storage, and early deletion of cold storage backups; of the
-  minimum billable period when you stop an EC2 instance or RDS database with
-  a commercial license; of ongoing storage charges for stopped EC2 instances
-  and RDS databases; and of the resumption of charges when RDS restarts a
-  stopped database after the 7-day limit. Other charges may apply!
-
-- Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
-  environment. To help improve Lights Off, please submit
-  [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues).
+  KMS, backup storage, and early deletion from cold storage; of the minimum
+  charge when you stop an EC2 instance or RDS database with a commercial
+  license; of the resumption of charges when RDS or Aurora restarts a stopped
+  database after 7 days; and of ongoing storage charges while EC2 instances
+  and RDS/Aurora databases are stopped. Have we missed anything?
 
 ## Progress
 
