@@ -102,11 +102,10 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
-No action is necessary if your EBS volumes are unencrypted, or if they are
-encrypted with the default `aws/ebs` key.
+The `sched-start` tag works for EC2 instances with unencrypted EBS volumes or
+volumes encrypted with the default `aws/ebs` key.
 
-For custom KMS keys, you must add a statement to the key policies, or **your
-EC2 instances will not start as scheduled**.
+For custom KMS keys, you must add a statement to the key policies.
 
 <details>
   <summary>View sample KMS key policy statement for custom EBS encryption</summary>
@@ -119,11 +118,11 @@ EC2 instances will not start as scheduled**.
       "Action": "kms:CreateGrant",
       "Resource": "*",
       "Condition": {
-        "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT:role/LightsOff-DoLambdaFnRole-*"
-        },
         "ForAnyValue:StringLike": {
           "aws:PrincipalOrgPaths": "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID/*"
+        },
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT:role/LightsOff-DoLambdaFnRole-*"
         },
         "StringLike": {
           "kms:ViaService": "ec2.*.amazonaws.com"
@@ -135,14 +134,14 @@ EC2 instances will not start as scheduled**.
     }
 ```
 
-For a single account, replace _ACCOUNT_ with your AWS account number and
-delete the `"ForAnyValue:StringLike"` section.
+For a single account, delete the `"ForAnyValue:StringLike"` section and
+replace _ACCOUNT_ with your AWS account number.
 
 For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_
 , and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
 organization root, and the organizational unit (OU) in which you have
-installed Lights Off. `/*` at the end of the organization path stands for
-child OUs (if any). Do not use a path less specific than `"o-ORG_ID/*"` .
+installed Lights Off. `/*` at the end of this organization path stands for
+child OUs, if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 </details>
 
 ### Making Backups
