@@ -105,9 +105,8 @@ Space was chosen as the separator and underscore, as the wildcard, because
 No action is necessary if your EBS volumes are unencrypted, or if they are
 encrypted with the default `aws/ebs` key.
 
-For custom KMS keys, you must add a statement to the key policies, or your
-**EC2 instances will not start**, even though the `start_instances` request
-succeeds.
+For custom KMS keys, you must add a statement to the key policies, or **your
+EC2 instances will not start as scheduled**.
 
 <details>
   <summary>View sample KMS key policy statement for custom EBS encryption</summary>
