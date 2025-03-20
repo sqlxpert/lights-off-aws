@@ -111,6 +111,7 @@ succeeds.
 
 <details>
   <summary>View sample KMS key policy statement for custom EBS encryption</summary>
+
 ```json
     {
       "Sid": "LightsOffEc2StartInstancesWithEncryptedEbsVolumes",
