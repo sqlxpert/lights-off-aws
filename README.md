@@ -10,7 +10,7 @@ Ever forget to turn the lights off? Now you can:
 - Delete expensive infrastructure overnight by tagging your own CloudFormation
   stacks with cron schedules.
 
-- Easily deploy this in multiple AWS accounts and regions.
+- Easily deploy this to multiple AWS accounts and regions.
 
 Jump to:
 [Quick Start](#quick-start)
@@ -281,6 +281,18 @@ attaching your policy to `AWSCloudFormationStackSetExecutionRole` , and
 propagating the policy and the role policy attachment to all target AWS
 accounts.
 </details>
+
+## Installation with Terraform
+
+Terraform users often wrap a CloudFormation stack in Terraform, because AWS
+and other vendors supply software in CloudFormation templates. See
+[https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack](aws_cloudformation_stack)
+.
+
+Wrapping a CloudFormation StackSet in Terraform is a relatively easy way to
+deploy software to multiple AWS accounts and/or regions. See
+[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)
+.
 
 ## Security
 
