@@ -355,8 +355,8 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 ## Advice
 
-- Test Lights Off in your AWS environment. Please submit
-  [bug reports](https://github.com/sqlxpert/lights-off-aws/issues).
+- Test Lights Off in your AWS environment. Please
+  [report bugs](https://github.com/sqlxpert/lights-off-aws/issues).
 
 - Test your backups! Are they finishing on-schedule? Can they be restored?
   [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
@@ -374,29 +374,28 @@ software at your own risk. You are encouraged to evaluate the source code._
 <details>
   <summary>View scheduled stack update details</summary>
 
-Lights Off can delete and recreate all kinds of expensive AWS infrastructure
+Lights Off can delete and recreate many types of expensive AWS infrastructure
 in your own CloudFormation stacks, based on cron schedules in stack tags.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
-[10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling)
-for potential savings of $600 per year.
+[10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
-To make your own CloudFormation template compatible, see
+To make your CloudFormation template compatible, see
 [lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
-. CloudFormation "transforms" are not currently supported.
+.
 
 Not every resource needs to be deleted and recreated; condition the creation
 of _expensive_ resources on the `Enable` parameter. In the AWS Client VPN
 stack, the server and client certificates, endpoints and network security
-groups are never deleted, because they do not cost anything. The expensive VPN
-attachments can be deleted and recreated with no need to reconfigure clients.
+groups are not deleted, because they do not cost anything. The expensive VPN
+attachments can be deleted and recreated with no need to reconfigure VPN
+clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack. At the scheduled times, Lights Off will perform
 a stack update, toggling the value of the `Enable` parameter to `true` or
-`false` while leaving other parameters, and template itself, unchanged.
-(Capitalize **E**nable in the tag keys, just as in the parameter name.)
+`false`. (Capitalize **E**nable in the tag keys, to match the parameter name.)
 </details>
 
 ## Extensibility

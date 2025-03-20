@@ -2,7 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
-  Deployment role for
+  CloudFormation service role to deploy
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
@@ -10,7 +10,7 @@ Parameters:
 
   PlaceholderHelp:
     Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege"
+    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege-installation"
 
   PlaceholderSuggestedStackName:
     Type: String

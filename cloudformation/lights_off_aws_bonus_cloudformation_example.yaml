@@ -3,10 +3,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
   Demonstrates deleting and recreating AWS resources in your own
-  CloudFormation stack, based on cron-style schedules in stack tags.
+  CloudFormation stack, based on cron schedules in stack tags.
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
+# STEP 0 #####################################################################
+#
+# Note that CloudFormation "transforms" are not currently compatible. Search
+# for "transforms" in lights_off_aws.py .
+#
 # STEP 1 #####################################################################
 #
 # Define a service role that allows CloudFormation to create, tag, update,
