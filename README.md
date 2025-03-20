@@ -37,7 +37,7 @@ Jump to:
    Select Upload a template file, then select Choose file and navigate to a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   (right-click to save as...). On the next page, set:
+   [right-click to save as...]. On the next page, set:
 
    - Stack name: `LightsOff`
 
@@ -98,9 +98,57 @@ All backups are handled by AWS Backup.
 Space was chosen as the separator and underscore, as the wildcard, because
 [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
 
-## Backups
+## Extra Setup
 
-### AWS Backup Configuration
+### Starting EC2 Instances with Encrypted EBS Volumes
+
+No action is necessary if your EBS volumes are unencrypted, or if they are
+encrypted with the default `aws/ebs` key.
+
+For custom KMS keys, you must add a statement to the key policies, or your
+**EC2 instances will not start**, even though the `start_instances` request
+succeeds.
+
+<details>
+  <summary>View sample KMS key policy statement for custom EBS encryption</summary>
+
+If you have installed Lights Off in a single account, replace _ACCOUNT_ with
+your AWS account number and delete the `"ForAnyValue:StringLike"` section.
+
+If you are using AWS Organizations, replace _ACCOUNT_ with `*` and
+_o-ORG_ID_ , _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the
+identifiers of your organization, your organization root, and the
+organizational unit (OU) in which you have installed Lights Off. `/*` at the
+end of the organization path stands for child OUs (if any). Do not use a path
+less specific than `"o-ORG_ID/*"` .
+
+```json
+    {
+      "Sid": "LightsOffEc2StartInstancesWithEncryptedEbsVolumes",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "kms:CreateGrant",
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT:role/LightsOff-DoLambdaFnRole-*"
+        },
+        "ForAnyValue:StringLike": {
+          "aws:PrincipalOrgPaths": "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID/*"
+        },
+        "StringLike": {
+          "kms:ViaService": "ec2.*.amazonaws.com"
+        },
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        }
+      }
+    }
+```
+
+</details>
+
+### Making Backups
 
 Before you can use the `sched-backup` tag, a few steps may be necessary.
 
@@ -128,7 +176,7 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 3. Backup vault policy
 
-   If you've added `"Deny"` statements, be sure that `FindLambdaFnRole` still
+   If you have added `"Deny"` statements, be sure that `DoLambdaFnRole` still
    has access.
 
 4. KMS key policies
@@ -146,20 +194,20 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
    and
    [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview).
 
-If Lights Off can't submit a backup job (the "Do" function [log](#logging)
+If Lights Off cannot submit a backup job (the "Do" function [log](#logging)
 shows that `start_backup_job` failed with a `403` error), or if AWS Backup
 can't start a successfully submitted job, a permission problem is likely.
 Check with your AWS administrator in case service and resource control
 policies (SCPs and RCPs), permission boundaries, or session policies apply.
 
-### Accessing Backups
+## Accessing Backups
 
-- Use AWS Backup to list and delete backups.
-- Use EC2 and RDS to view the underlying images and snapshots.
-- Use AWS Backup, or EC2 and RDS, to restore (create new resources from)
-  backups.
-
-### Backup Tags
+|Goal|Services|
+|:---|:---:|
+|List backups|AWS Backup|
+|View underlying images and/or snapshots|EC2 and RDS|
+|Restore (create new resources from) backups|EC2 and RDS, or AWS Backup|
+|Delete backups|AWS Backup|
 
 AWS Backup copies resource tags to backups. Lights Off adds `sched-time` to
 indicate when the backup was _scheduled_ to occur, in
@@ -199,7 +247,7 @@ To deploy Lights Off to multiple AWS accounts and/or multiple regions,
    Select Upload a template file, then select Choose file and upload a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   (right-click to save as...). On the next page, set:
+   [right-click to save as...]. On the next page, set:
 
    - StackSet name: `LightsOff`
 
@@ -324,7 +372,7 @@ To make your own CloudFormation template compatible, see
 Not every resource needs to be deleted and recreated; condition the creation
 of _expensive_ resources on the `Enable` parameter. In the AWS Client VPN
 stack, the server and client certificates, endpoints and network security
-groups are never deleted, because they don't cost anything. The expensive VPN
+groups are never deleted, because they do not cost anything. The expensive VPN
 attachments can be deleted and recreated with no need to reconfigure clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
@@ -340,10 +388,9 @@ a stack update, toggling the value of the `Enable` parameter to `true` or
   <summary>View extensibility details</summary>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
-kit (SDK) for Python, and in the underlying AWS API. Adding more AWS services,
-resource types, and operations is easy. For example, supporting RDS _database
-clusters_ (individual _database instances_ were always supported) required
-adding:
+kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
+resource types, and operations is easy. For example, supporting RDS database
+_clusters_ (RDS database _instances_ were already supported) required adding:
 
 ```python
     AWSRsrcType(
@@ -360,22 +407,22 @@ adding:
     )
 ```
 
-Most method names can be derived mechanically if you use the verb from the
-method name in the tag key and divide the resource type name into words. Given
-the tag key `sched-start` and the words `DB` and `Cluster` , the method name
-`start_db_cluster` follows.
+Given the words `DB` and `Cluster` in the resource type name, plus the
+operation verb `start`, the `sched-start` tag key and the `start_db_cluster`
+method name are derived mechanically.
 
-Optionally, you can add a dictionary of static keyword arguments. You can also
-sub-class the `AWSOp` class if a method requires complex arguments.
+If an operation method takes more than just the resource identifier, add a
+dictionary of static keyword arguments. For complex arguments, sub-class the
+`AWSOp` class and override `op_kwargs` .
 
 The `start_backup_job` method takes an Amazon Resource Name (ARN), whose
 format is consistent for all resource types. As long as AWS Backup supports
-the resource type you're interested in, there is no extra work to do.
+the resource type, there is no extra work to do.
 
-Adding statements like the one below to the Identity and Access Management
-(IAM) policy for the role used by the "Do" AWS Lambda function authorizes
-operations on a new resource type. You must also authorize the role used by
-the "Find" function to describe (list) resources of the new type.
+Add statements like the one below to the Identity and Access Management (IAM)
+policy for the role used by the "Do" AWS Lambda function, to authorize
+operations. You must of course authorize the role used by the "Find" function
+to describe (list) resources.
 
 ```yaml
           - Effect: Allow
@@ -385,7 +432,8 @@ the "Find" function to describe (list) resources of the new type.
               StringLike: { "aws:ResourceTag/sched-start": "*" }
 ```
 
-What AWS resources and operations would _you_ like to add?
+What capabilities would you like to add? Submit a
+[pull request](https://github.com/sqlxpert/lights-off-aws/pulls) today!
 </details>
 
 ## Advice
@@ -404,8 +452,7 @@ What AWS resources and operations would _you_ like to add?
 
 - Test the AWS Lambda functions, SQS queues, and IAM policies in your own AWS
   environment. To help improve Lights Off, please submit
-  [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues),
-  as well as [proposed changes](https://github.com/sqlxpert/lights-off-aws/pulls).
+  [bug reports and feature requests](https://github.com/sqlxpert/lights-off-aws/issues).
 
 ## Progress
 
