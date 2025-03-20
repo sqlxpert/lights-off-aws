@@ -10,7 +10,7 @@ Ever forget to turn the lights off? Now you can:
 - Delete expensive infrastructure overnight by tagging your own CloudFormation
   stacks with cron schedules.
 
-- Easily deploy this solution across multiple AWS accounts and regions.
+- Easily deploy this in multiple AWS accounts and regions.
 
 Jump to:
 [Quick Start](#quick-start)
@@ -151,7 +151,7 @@ For custom KMS keys, you must add a statement to the key policies.
 
 Before you can use the `sched-backup` tag, a few steps may be necessary.
 
-1. Backup vault
+1. Vault
 
    AWS Backup creates the `Default` vault the first time you use the AWS
    Console to access the
@@ -161,28 +161,25 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
    , or
    [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)
-   .
+   . Update the `BackupVaultName` CloudFormation stack parameter if necessary.
 
-   Update the `BackupVaultName` CloudFormation stack parameter if necessary.
-
-2. Backup role
-
-   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you use the
-   AWS Console to make a backup in a given AWS account. Otherwise, see
-   [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
-
-   Update `BackupRoleName` in CloudFormation if necessary.
-
-3. Backup vault policy
+2. Vault policy
 
    If you have added `"Deny"` statements, be sure that `DoLambdaFnRole` still
    has access.
 
+3. Backup role
+
+   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you use the
+   AWS Console to make a backup in a given AWS account. Otherwise, see
+   [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
+   Update `BackupRoleName` in CloudFormation if necessary.
+
 4. KMS key policies
 
-   No action is necessary if your EBS volumes and RDS/Aurora databases are
-   unencrypted, or if they are encrypted with the default `aws/ebs` and
-   `aws/rds` keys and you are using `AWSBackupDefaultServiceRole` .
+   `AWSBackupDefaultServiceRole` works if your EBS volumes and RDS/Aurora
+   databases are unencrypted, or if they are encrypted with the default
+   `aws/ebs` and `aws/rds` keys.
 
    For custom keys, you must (a) modify the key policies _or_ (b) attach
    custom policies to a custom backup role. If your keys are in a different
