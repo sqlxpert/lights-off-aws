@@ -5,7 +5,7 @@ Ever forget to turn the lights off? Now you can:
 - Stop EC2 instances and RDS/Aurora databases overnight by tagging them with
   cron schedules, to cut AWS costs.
 
-- Set, and see, AWS Backup times in resource tags, not central backup plans.
+- Set, and see, AWS Backup times in resource tags, not just central backup plans.
 
 - Easily deploy this solution across multiple AWS accounts and regions.
 
@@ -111,17 +111,6 @@ succeeds.
 
 <details>
   <summary>View sample KMS key policy statement for custom EBS encryption</summary>
-
-If you have installed Lights Off in a single account, replace _ACCOUNT_ with
-your AWS account number and delete the `"ForAnyValue:StringLike"` section.
-
-If you are using AWS Organizations, replace _ACCOUNT_ with `*` and
-_o-ORG_ID_ , _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the
-identifiers of your organization, your organization root, and the
-organizational unit (OU) in which you have installed Lights Off. `/*` at the
-end of the organization path stands for child OUs (if any). Do not use a path
-less specific than `"o-ORG_ID/*"` .
-
 ```json
     {
       "Sid": "LightsOffEc2StartInstancesWithEncryptedEbsVolumes",
@@ -146,6 +135,14 @@ less specific than `"o-ORG_ID/*"` .
     }
 ```
 
+For a single account, replace _ACCOUNT_ with your AWS account number and
+delete the `"ForAnyValue:StringLike"` section.
+
+For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_
+, and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
+organization root, and the organizational unit (OU) in which you have
+installed Lights Off. `/*` at the end of the organization path stands for
+child OUs (if any). Do not use a path less specific than `"o-ORG_ID/*"` .
 </details>
 
 ### Making Backups
