@@ -282,11 +282,11 @@ propagating the policy and the role policy attachment to all target AWS
 accounts.
 </details>
 
-## Installation with Terraform
+### Installation with Terraform
 
 Terraform users often wrap a CloudFormation stack in Terraform, because AWS
 and other vendors supply software in CloudFormation templates. See
-[https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack](aws_cloudformation_stack)
+[aws_cloudformation_stack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack)
 .
 
 Wrapping a CloudFormation StackSet in Terraform is a relatively easy way to
