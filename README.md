@@ -82,7 +82,7 @@ All backups are handled by AWS Backup.
   |Tag Value|Scenario|Meaning|
   |:---:|:---:|:---:|
   |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
-  |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, once a day at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
+  |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
   |`uTH:M=2T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|2 extra weekly operations|Tuesdays at 03:00, Fridays at 19:00, _plus_ every day at 11:15|
   |`dTH:M=01T03:00 u=3 H=19 M=15`|Extra monthly operation|1st day of the month at 03:00, _plus_ Wednesdays at 19:15|
 
