@@ -10,12 +10,12 @@ Ever forget to turn the lights off? Now you can:
 - Delete expensive infrastructure overnight by tagging your own CloudFormation
   stacks with cron schedules.
 
-- Easily deploy this to multiple AWS accounts and regions.
+- Easily deploy this solution to multiple AWS accounts and regions.
 
-_Most of all, this software is_ **lightweight**_.With fewer than 600 lines of
+_Most of all, this software is_ **lightweight.** _With fewer than 600 lines of
 Python plus fewer than 900 lines of CloudFormation YAML [GitHub lines of code],
 it is easy to understand, maintain and extend. The official AWS solution,
-[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
+[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 _has over 100 non-test Python files comprising over 10,000 lines [not-blank,
 non-comment lines]!_
 

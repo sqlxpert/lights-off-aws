@@ -16,17 +16,17 @@ Parameters:
     Type: String
     Default: "LightsOffPrereq"
 
-  StackNameBase:
+  StackNameLike:
     Type: String
     Description: >-
-      String that must be in the name of any CloudFormation stack or StackSet
-      created using the deployment role. For security, do not include this
-      string in the name of any unrelated stack or StackSet. You may add
-      prefixes or suffixes when naming a stack or StackSet to be created with
-      the deployment role. For example, if you specify "LightsOff", you can
-      alternate between "LightsOff1" and "LightsOff2" stacks for blue/green
-      updates, and you can create a "TestLightsOff" stack for testing.
-    Default: "LightsOff"
+      When a stack is created using the deployment role, its name must match
+      this StringLike/ArnLike pattern. Examples: "LightsOff" only allows a
+      stack of that name; "LightsOff*" also allows stacks with names such as
+      "LightsOff2" and "CVpnTest"; and "StackSet-LightsOff-*" allows a
+      StackSet named "LightsOff", whose StackSet instances receive names
+      beginning "LightsOff-CVpn-". See
+      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
+    Default: "LightsOff*"
 
 Metadata:
 
@@ -38,15 +38,22 @@ Metadata:
           - PlaceholderHelp
           - PlaceholderSuggestedStackName
       - Label:
-          default: Essential
+          default: Advanced Options
         Parameters:
-          - StackNameBase
+          - PlaceholderAdvancedParameters
+      - Label:
+          default: For stacks created with the deployment role...
+        Parameters:
+          - StackNameLike
     ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
-      StackNameBase:
-        default: >-
-          Name of future stack or StackSet
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
+      PlaceholderAdvancedParameters:
+        default: Do not change parameters below, unless necessary!
+      StackNameLike:
+        default: Allowed stack name pattern
 
 Resources:
 
@@ -87,8 +94,7 @@ Resources:
                   - lambda:TagResource
                   - lambda:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - lambda:CreateEventSourceMapping
@@ -99,8 +105,17 @@ Resources:
                 Condition:
                   ArnLikeIfExists:
                     "lambda:FunctionArn":
-                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
+              - Effect: Allow
+                Action:
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:event-source-mapping:*"
+              - Effect: Allow
+                Action:
+                  - lambda:ListTags
+                Resource: "*"
 
               - Effect: Allow
                 Action:
@@ -108,14 +123,18 @@ Resources:
                   - logs:DeleteLogGroup
                   - logs:PutRetentionPolicy
                   - logs:DeleteRetentionPolicy
+                  - logs:AssociateKmsKey
+                  - logs:DisassociateKmsKey
                   - logs:TagLogGroup
+                  - logs:TagResource
                   - logs:UntagLogGroup
+                  - logs:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - logs:DescribeLogGroups
+                  - logs:ListTagsForResource
                 Resource: "*"
 
               - Effect: Allow
@@ -131,8 +150,11 @@ Resources:
                   - events:TagResource
                   - events:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}*"
+              - Effect: Allow
+                Action:
+                  - events:ListTagsForResource
+                Resource: "*"
 
               - Effect: Allow
                 Action:
@@ -147,18 +169,17 @@ Resources:
                   - sqs:TagQueue
                   - sqs:UntagQueue
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - sqs:ListQueues
+                  - sqs:ListQueueTags
                 Resource: "*"
 
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - iam:CreateRole
@@ -173,18 +194,14 @@ Resources:
                   - iam:PutRolePolicy
                   - iam:DeleteRolePolicy
                   - iam:ListEntitiesForPolicy
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-              - Effect: Allow
-                Action:
                   - iam:TagRole
                   - iam:UntagRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
               - Effect: Allow
                 Action:
+                  - iam:ListRoles
+                  - iam:ListRoleTags
                   - iam:ListAttachedRolePolicies
                 Resource: "*"
 
@@ -192,6 +209,7 @@ Resources:
                 Action:
                   - kms:ListKeys
                   - kms:ListAliases
+                  - kms:ListResourceTags
                   - kms:DescribeKey
                 Resource: "*"
 
