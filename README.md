@@ -12,12 +12,12 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this solution to multiple AWS accounts and regions.
 
-_Most of all, this software is_ **lightweight.** _With fewer than 600 lines of
-Python plus fewer than 900 lines of CloudFormation YAML [GitHub lines of code],
-it is easy to understand, maintain and extend. The official AWS solution,_
+_Most of all, Lights Off is_ **lightweight.** _At under 600 lines of Python
+and under 900 lines of CloudFormation YAML [GitHub LOC], the code is easy to
+understand, maintain and extend. The equivalent AWS solution,_
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-_has over 100 non-test Python files comprising over 10,000 [non-blank,
-non-comment] lines!_
+_has over 100 Python files comprising 10,000 [non-blank, non-comment] lines,
+not counting test files._
 
 Jump to:
 [Quick Start](#quick-start)
@@ -39,8 +39,8 @@ Jump to:
    with:
 
    - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
-     [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc)
-     \+ 20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
+     [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
+     20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
 3. Create a
    [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
@@ -245,12 +245,13 @@ form (example: `2024-12-31T14:00Z`).
 
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
-To deploy Lights Off to multiple AWS accounts and/or regions,
+For reliability, Lights Off works completely independently in each AWS
+account+region combination. To deploy to multiple regions and or AWS accounts,
 
-1. Delete any standalone Lights Off CloudFormation stacks in the target AWS
+1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
    accounts and regions.
 
-2. Complete the prerequisites for creating a StackSet with
+2. Complete the prerequisites for creating a _StackSet_ with
    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
 3. In the management AWS account (or a delegated administrator account),
