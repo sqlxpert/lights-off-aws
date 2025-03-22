@@ -12,6 +12,13 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this to multiple AWS accounts and regions.
 
+_Most of all, this software is_ **lightweight**_.With fewer than 600 lines of
+Python plus fewer than 900 lines of CloudFormation YAML [GitHub lines of code],
+it is easy to understand, maintain and extend. The official AWS solution,
+[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
+_has over 100 non-test Python files comprising over 10,000 lines [not-blank,
+non-comment lines]!_
+
 Jump to:
 [Quick Start](#quick-start)
 &bull;
@@ -266,20 +273,18 @@ to delegate only the privileges needed to create the Lights Off stack. First,
 create the `LightsOffPrereq` stack from
 [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
 . Next, when you create the `LightsOff` stack from
-[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) ,
-scroll to the Permissions section and set IAM role - optional to
-`LightsOffPrereq-DeploymentRole` . If your own privileges are limited, you
-might need permission to pass the deployment role to CloudFormation. See the
-`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
+[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) , set IAM
+role - optional to `LightsOffPrereq-DeploymentRole` . If your own privileges
+are limited, you might need permission to pass the deployment role to
+CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
+policy for an example.
 
-For a multi-account CloudFormation StackSet deployment, you can use
+For a multi-account CloudFormation StackSet, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
-by creating a customer-managed IAM policy covering the inline policies from
-`DeploymentRole` in
-[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml) ,
-attaching your policy to `AWSCloudFormationStackSetExecutionRole` , and
-propagating the policy and the role policy attachment to all target AWS
-accounts.
+by copying the inline IAM policy of `LightsOffPrereq-DeploymentRole` to a
+customer-managed IAM policy, attaching your policy to
+`AWSCloudFormationStackSetExecutionRole` and propagating the policy and the
+role policy attachment to all target AWS accounts.
 </details>
 
 ### Installation with Terraform

@@ -32,10 +32,10 @@ Description: |-
 # from your template. Scroll to the Permissions section and set IAM role -
 # optional . Otherwise, stack updates triggered by Lights Off will fail.
 #
-# About resource tagging: CloudFormation needs permission to create, update,
-# and delete arbitrary resource tags, due to the automatic propagation of
-# stack tags. Because CloudFormation is regularly updated to propagate stack
-# tags to more resource types, provide tagging privileges for all of the
+# About resource tagging: CloudFormation needs permission to get/list, create,
+# update, and delete arbitrary resource tags, due to the automatic propagation
+# of stack tags. Because CloudFormation is regularly updated to propagate
+# stack tags to more resource types, provide tagging privileges for all of the
 # resource types in your template, even if CloudFormation doesn't yet
 # propagate stack tags to them.
 #
