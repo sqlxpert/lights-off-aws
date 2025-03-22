@@ -16,7 +16,7 @@ _Most of all, Lights Off is lightweight. At under 600 lines of Python and
 under 900 lines of CloudFormation YAML [GitHub LOC], the code is easy to
 understand, maintain and extend. An equivalent solution from AWS,
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-_has over 100 Python files comprising 10,000 [non-blank, non-comment] lines,
+has over 100 Python files comprising 10,000 [non-blank, non-comment] lines,
 not counting numerous test files._
 
 Jump to:
