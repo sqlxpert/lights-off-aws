@@ -16,8 +16,8 @@ _Most of all, this software is_ **lightweight.** _With fewer than 600 lines of
 Python plus fewer than 900 lines of CloudFormation YAML [GitHub lines of code],
 it is easy to understand, maintain and extend. The official AWS solution,_
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-_has over 100 non-test Python files comprising over 10,000 lines [not-blank,
-non-comment lines]!_
+_has over 100 non-test Python files comprising over 10,000 [non-blank,
+non-comment] lines!_
 
 Jump to:
 [Quick Start](#quick-start)
