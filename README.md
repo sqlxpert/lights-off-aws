@@ -289,13 +289,14 @@ role policy attachment to all target AWS accounts.
 
 ### Installation with Terraform
 
-Terraform users often wrap a CloudFormation stack in Terraform, because AWS
-and other vendors supply software in CloudFormation templates. See
+Terraform users often wrap a CloudFormation stack in HashiCorp Configuration
+Language, because AWS and other vendors supply software as CloudFormation
+templates. See
 [aws_cloudformation_stack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack)
 .
 
-Wrapping a CloudFormation StackSet in Terraform is a relatively easy way to
-deploy software to multiple AWS accounts and/or regions. See
+Wrapping a CloudFormation StackSet in HCL is a relatively easy way to deploy
+software to multiple AWS accounts and/or regions. See
 [aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)
 .
 
