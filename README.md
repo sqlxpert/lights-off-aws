@@ -59,12 +59,18 @@ Jump to:
 ||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-backup`|
 |:---|:---:|:---:|:---:|:---:|
 ||**`sched-start`**|**`sched-start`**|||
-|EC2|||||
+|EC2:|||||
 |[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&check;|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)||||&rarr; Snapshot|
-|RDS/Aurora|||||
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+|RDS and Aurora:|||||
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+
+- [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
+- Database clusters and the instances inside them each have their own tags.
+  Whether an operation is at the cluster level or the instance level depends
+  on your choice of Aurora or RDS, and for RDS, also on your choice of
+  configuration.
 
 ## Tag Values (Schedules)
 
@@ -160,10 +166,9 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 1. Vault
 
-   AWS Backup creates the `Default` vault the first time you use the AWS
-   Console to access the
+   AWS Backup creates the `Default` vault the first time you open the
    [list of vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
-   in a given AWS account and region. Otherwise, see
+   in a given AWS account and region, using the AWS Console. Otherwise, see
    [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html),
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
    , or
@@ -177,8 +182,9 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 3. Backup role
 
-   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you use the
-   AWS Console to make a backup in a given AWS account. Otherwise, see
+   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you make a
+   backup in a given AWS account using the AWS Console (AWS Backup &rarr;
+   My account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
    [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
    Update `BackupRoleName` in CloudFormation if necessary.
 
