@@ -248,7 +248,7 @@ form (example: `2024-12-31T14:00Z`).
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
 For reliability, Lights Off works completely independently in each AWS
-account+region combination. To deploy to multiple regions and or AWS accounts,
+account+region combination. To deploy to multiple regions and/or AWS accounts,
 
 1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
    accounts and regions.
