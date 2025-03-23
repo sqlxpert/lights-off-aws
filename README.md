@@ -191,11 +191,11 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 4. KMS key policies
 
    `AWSBackupDefaultServiceRole` works if:
-   - your EBS volumes and RDS/Aurora databases are unencrypted, or
-   - you use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys, or
-   - you use custom keys in the same AWS account as each disk and database,
-     the key policies have the default "Enable IAM User Permissions"
-     statement, and they do not have `"Deny"` statements.
+   - Your EBS volumes and RDS/Aurora databases are unencrypted, or
+   - You use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys, or
+   - You use custom keys in the same AWS account as each disk and database,
+     the key policies contain the default `"Enable IAM User Permissions"`
+     statement, and they do not contain `"Deny"` statements.
 
    If your custom keys are in a different AWS account than your disks and
    databases, you must modify the key policies. See
