@@ -22,7 +22,7 @@ Parameters:
       When a stack is created using the deployment role, its name must match
       this StringLike/ArnLike pattern. Examples: "LightsOff" only allows a
       stack of that name; "LightsOff*" also allows stacks with names such as
-      "LightsOff2" and "CVpnTest"; and "StackSet-LightsOff-*" allows a
+      "LightsOff2" and "LightsOffTest"; and "StackSet-LightsOff-*" allows a
       StackSet named "LightsOff", whose StackSet instances receive names
       beginning "LightsOff-CVpn-". See
       https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
