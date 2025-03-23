@@ -14,10 +14,10 @@ Ever forget to turn the lights off? Now you can:
 
 _Most of all, Lights Off is lightweight. At under 600 lines of Python and
 under 900 lines of CloudFormation YAML [GitHub LOC], the code is easy to
-understand, maintain and extend. An equivalent solution from AWS,
+understand, maintain and extend. AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-has over 100 Python files comprising 10,000 [non-blank, non-comment] lines,
-not counting numerous test files._
+has over 100 Python files comprising over 9,500 lines [excluding blanks,
+comments, and test files]!_
 
 Jump to:
 [Quick Start](#quick-start)
@@ -117,7 +117,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
 The `sched-start` tag works for EC2 instances with unencrypted EBS volumes or
-volumes encrypted with the default `aws/ebs` key.
+volumes encrypted with the default, AWS-managed `aws/ebs` key.
 
 For custom KMS keys, you must add a statement to the key policies.
 
@@ -146,7 +146,7 @@ For custom KMS keys, you must add a statement to the key policies.
           "aws:PrincipalOrgPaths": "o-ORG_ID/r-ROOT_ID/ou-PARENT_ORG_UNIT_ID/*"
         },
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT:role/LightsOff-DoLambdaFnRole-*"
+          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT:role/*LightsOff*-DoLambdaFnRole-*"
         },
         "StringLike": {
           "kms:ViaService": "ec2.*.amazonaws.com"
@@ -190,18 +190,20 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 4. KMS key policies
 
-   `AWSBackupDefaultServiceRole` works if your EBS volumes and RDS/Aurora
-   databases are unencrypted, or if they are encrypted with the default
-   `aws/ebs` and `aws/rds` keys.
+   `AWSBackupDefaultServiceRole` works if:
+   - your EBS volumes and RDS/Aurora databases are unencrypted, or
+   - you use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys, or
+   - you use custom keys in the same AWS account as each disk and database,
+     the key policies have the default "Enable IAM User Permissions"
+     statement, and they do not have `"Deny"` statements.
 
-   For custom keys, you must (a) modify the key policies _or_ (b) attach
-   custom policies to a custom backup role. If your keys are in a different
-   AWS account than your disks and databases, you must do (a) _and_ (b).
-   See
+   If your custom keys are in a different AWS account than your disks and
+   databases, you must modify the key policies. See
    [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
-   [How EBS uses AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
+   [How EBS uses KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
+   [Overview of encrypting RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview),
    and
-   [Overview of encrypting Amazon RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview).
+   [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
 
 If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
 problem is likely.
