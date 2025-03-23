@@ -14,10 +14,10 @@ Ever forget to turn the lights off? Now you can:
 
 _Most of all, this solution is lightweight. Not counting blanks, comments, or
 test files, AWS's
-[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-has over 9,500 Python lines across over 100 files! At under 600 Python lines
-and under 900 CloudFormation YAML lines, Lights Off is easy to understand,
-maintain, and extend._
+[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
+has over 9,500 Python lines! At under 600 Python lines and under 900
+CloudFormation YAML lines, Lights Off is easy to understand, maintain, and
+extend._
 
 Jump to:
 [Quick Start](#quick-start)
@@ -488,7 +488,7 @@ etc. It is now integrated with AWS Backup, leveraging the security and
 management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
-Despite new features, the code has gotten shorter.
+Despite new features, the code has gotten shorter, based on GitHub LOC.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
