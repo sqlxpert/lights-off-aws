@@ -2,7 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
-  Start, reboot, stop and back up AWS resources using schedules in tags
+  Start, reboot, stop and back up AWS resources tagged with cron schedules.
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
@@ -12,35 +12,15 @@ Parameters:
     Type: String
     Default: "https://github.com/sqlxpert/lights-off-aws#quick-start"
 
-  LambdaSourceS3BucketNamePrefix:
+  PlaceholderSuggestedStackName:
     Type: String
-    Description: >-
-      Exclude the region suffix, even though this stack REQUIRES a region
-      suffix in the S3 bucket name. For example, if you are creating this
-      stack in the US East (Northern Virginia) region and you set this to
-      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
-      must have been created in the US East (Northern Virginia) region, and
-      must contain lights_off_aws.py.zip . These requirements apply in EVERY
-      region where you create a Lights Off CloudFormation stack. If you are
-      are creating a CloudFormation StackSet, then the file must also be
-      readable by every target AWS account, which generally requires that each
-      bucket have a bucket policy.
+    Default: "LightsOff"
 
   Enable:
     Type: String
     Description: >-
-      Whether the "Find" AWS Lambda function will run automatically, checking
-      every 10 minutes for AWS resources with scheduled operations, and whether
-      the "Do" function will run automatically, executing queued operations.
-    Default: "true"
-    AllowedValues:
-      - "false"
-      - "true"
-
-  CopyTags:
-    Type: String
-    Description: >-
-      Whether to copy tags to backups
+      Whether the "Find" AWS Lambda function will run, checking every 10
+      minutes for AWS resources with scheduled operations
     Default: "true"
     AllowedValues:
       - "false"
@@ -52,11 +32,79 @@ Parameters:
     AllowedValues:
       - ""
 
+  BackupRoleName:
+    Type: String
+    Description: >-
+      The IAM role that the AWS Backup service will assume when creating
+      backups. Specify only the name, not the ARN. For a StackSet, the role
+      must exist, and have the same name, in every target AWS account. Roles
+      are account-wide, not regional. AWS Backup creates
+      "service-role/AWSBackupDefaultServiceRole" the first time you start a
+      backup job in the AWS Console. Otherwise, if you want to use this role,
+      you must create it explicitly. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles
+      . Security warning: The AWS Lambda execution role for the "Do" function
+      receives permission to iam:PassRole the backup role to AWS Backup.
+    Default: "service-role/AWSBackupDefaultServiceRole"
+
+  BackupVaultName:
+    Type: String
+    Description: >-
+      The vault where backups will be stored. Specify only the name, not the
+      ARN. The vault must have been created in the same AWS account and region
+      where you are creating this stack. For a StackSet, the vault must exist,
+      and have the same name, in every target AWS account and region. AWS
+      Backup creates the "Default" vault the first time you access the Backup
+      Vaults page in the AWS Console. Otherwise, you must explicitly create a
+      vault. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html
+    Default: "Default"
+
+  BackupStartWindowMinutes:
+    Type: Number
+    Description: >-
+      How many minutes AWS Backup should wait before canceling a backup job
+      that has not started. This does not extend BackupCompleteWindowMinutes .
+    MinValue: 60
+    Default: 60
+    MaxValue: 52560000  # 100 years
+
+  BackupCompleteWindowMinutes:
+    Type: Number
+    Description: >-
+      How many minutes AWS Backup should wait before canceling a backup job
+      that has not finished. This must be at least BackupStartWindowMinutes .
+      Schedule backups for the same resource at least this many minutes apart.
+    MinValue: 60
+    Default: 360
+    MaxValue: 52560000  # 100 years
+
+  BackupColdStorageAfterDays:
+    Type: Number
+    Description: >-
+      How many days AWS Backup should wait before moving a backup to storage
+      that is less expensive per byte but has a minimum billable retention
+      period. To avoid cold storage, specify -1 . For some resource types,
+      requesting cold storage has no effect. If you specify a value other than
+      -1 , OptInToArchiveForSupportedResources will be set to true in backup
+      lifecycle policies. See
+      https://docs.aws.amazon.com/aws-backup/latest/devguide/backup-feature-availability.html#features-by-resource
+    Default: -1
+
+  BackupDeleteAfterDays:
+    Type: Number
+    Description: >-
+      How many days AWS Backup should wait before deleting a backup. To retain
+      backups indefinitely, specify -1 . If you request both cold storage and
+      deletion (BackupColdStorageAfterDays and BackupDeleteAfterDays are both
+      other than -1), specify at least BackupColdStorageAfterDays + 90 days.
+    Default: -1
+
   FindLambdaFnMemoryMB:
     Type: Number
     Description: >-
       How many megabytes of memory to allocate to the "Find" AWS Lambda
-      function. Increase only in case of out-of-memory errors. See
+      function. Increase this only in case of out-of-memory errors. See
       https://docs.aws.amazon.com/lambda/latest/operatorguide/computing-power.html
     Default: 128
 
@@ -64,22 +112,20 @@ Parameters:
     Type: Number
     Description: >-
       How many seconds before execution of the "Find" AWS Lambda function
-      is canceled. Increase only in case of time-out errors. See
+      is canceled. Increase this only in case of time-out errors. See
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
 
   DoLambdaFnRoleAttachLocalPolicyName:
     Type: String
     Description: >-
-      The name of a locally-written "managed" IAM policy to be attached the
+      The name of a customer-managed IAM policy to be attached to the "Do"
       function's role. By including "Effect": "Deny" statements, you could,
-      for example, prevent the function from rebooting or stopping production
-      resources. Specify only the policy name, not the ARN. If you are
-      creating a CloudFormation StackSet, then the policy MUST (a) exist in,
-      and (b) have exactly the same name in, EVERY target AWS account.
-      Policies are not per-region; there can be only one policy with this
-      name in each account. See
-      https://github.com/sqlxpert/lights-off-aws/blob/main/README.md#security-steps-you-can-take
+      for example, prevent the rebooting or stopping of production resources.
+      Specify only the name, not the ARN. For a StackSet, the policy must
+      exist, and have exactly the same name, in every target AWS account.
+      Policies are account-wide, not regional. See
+      https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
 
   DoLambdaFnReservedConcurrentExecutions:
@@ -94,38 +140,45 @@ Parameters:
     Type: Number
     Description: >-
       How many megabytes of memory to allocate to the "Do" AWS Lambda
-      function. Increase only in case of out-of-memory errors.
+      function. Increase this only in case of out-of-memory errors.
     Default: 128
 
   DoLambdaFnTimeoutSecs:
     Type: Number
     Description: >-
       How many seconds before execution of the "Do" AWS Lambda function is
-      canceled. Increase only in case of time-out errors.
+      canceled. Increase this only in case of time-out errors.
     Default: 30
 
   OperationQueueVisibilityTimeoutSecs:
     Type: Number
     Description: >-
       How many seconds SQS waits for the "Do" AWS Lambda function to accept
-      and process a message representing one scheduled operation. Must be at
-      least as large as DoLambdaFnTimeoutSecs . In case of problems, see
+      and process a message representing one scheduled operation. This must be
+      at least DoLambdaFnTimeoutSecs . In case of problems, see
       https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
     Default: 90
 
   SqsKmsKey:
     Type: String
     Description: >-
-      If blank, queue messages will not be encrypted. Specify "alias/aws/sqs"
-      for the AWS-managed SQS service KMS key, which allows for encryption but
-      not for any key access restrictions or cross-account access. To use a
-      custom KMS key, specify an ARN with the key ID, not an alias.
+      If this is blank, queue messages will not be encrypted. To use the
+      AWS-managed key (which does not support key policy restrictions, or
+      cross-region or cross-account usage), specify "alias/aws/sqs". To use a
+      custom key, specify "ACCOUNT:key/KEY_ID". Whether the custom key is a
+      single-region key, a multi-region key primary, or a multi-region key
+      replica, it must be in the same region where you are creating this
+      stack. If the custom key is in a different AWS account than this stack,
+      you must update the key policy to allow cross-account usage. For a
+      StackSet, if you wish to use a custom key, it must be multi-region
+      ("mrk-" prefix in the KEY_ID), and a replica (or the primary key itself)
+      must exist in every target region.
     Default: ""
 
   QueueMessageBytesMax:
     Type: Number
     Description: >-
-      Maximum number of bytes in an operation queue message
+      The maximum number of bytes in an operation queue message
     MinValue: 1024
     Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
@@ -165,38 +218,49 @@ Parameters:
   CloudWatchLogsKmsKey:
     Type: String
     Description: >-
-      If blank, logs will receive default non-KMS CloudWatch Logs encryption.
-      To use a KMS key, which must be a custom key, specify an ARN with the
-      key ID, not an alias. You MUST first give CloudWatch Logs access to the
-      key by editing the key's key policy. See
+      If this is blank, default non-KMS CloudWatch Logs encryption applies. To
+      use a KMS key, which must be a custom key, specify "ACCOUNT:key/KEY_ID".
+      Whether the custom key is a single-region key, a multi-region key
+      primary, or a multi-region key replica, it must be in the same region
+      where you are creating this stack. Even if the custom key is in the same
+      AWS account as this stack, you must update the key policy to allow usage
+      by CloudWatch Logs. See
       https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html#cmk-permissions
+      . For a StackSet, the custom key must be multi-region ("mrk-" prefix in
+      the KEY_ID), and a replica (or the primary key itself) must exist in
+      every target region.
     Default: ""
-
-  LambdaFnFileName:
-    Type: String
-    Description: >-
-      Exclude the .py.zip suffixes.
-    Default: "lights_off_aws"
 
 Metadata:
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Essentials
+          default: For Reference
         Parameters:
           - PlaceholderHelp
-          - LambdaSourceS3BucketNamePrefix
+          - PlaceholderSuggestedStackName
+      - Label:
+          default: Essential
+        Parameters:
           - Enable
-          - CopyTags
       - Label:
           default: >-
-            Advanced Parameters...
+            Advanced...
         Parameters:
           - PlaceholderAdvancedParameters
       - Label:
           default: >-
-            AWS Lambda function to find resources with scheduled operations
+            Backups
+        Parameters:
+          - BackupRoleName
+          - BackupVaultName
+          - BackupStartWindowMinutes
+          - BackupCompleteWindowMinutes
+          - BackupColdStorageAfterDays
+          - BackupDeleteAfterDays
+      - Label:
+          default: AWS Lambda function to find resources with schedule tags
         Parameters:
           - FindLambdaFnMemoryMB
           - FindLambdaFnTimeoutSecs
@@ -220,49 +284,53 @@ Metadata:
           - LogsRetainDays
           - LogLevel
           - CloudWatchLogsKmsKey
-      - Label:
-          default: Miscellaneous
-        Parameters:
-          - LambdaFnFileName
     ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
-      LambdaSourceS3BucketNamePrefix:
-        default: S3 bucket for AWS Lambda function source code
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
       Enable:
         default: Enabled?
-      CopyTags:
-        default: Copy tags to backups?
       PlaceholderAdvancedParameters:
-        default: Do not change parameters below this line unless necessary!
+        default: Do not change the parameters below, unless necessary!
+      BackupRoleName:
+        default: IAM role name
+      BackupVaultName:
+        default: Vault name
+      BackupStartWindowMinutes:
+        default: Minutes before canceling, if not started
+      BackupCompleteWindowMinutes:
+        default: Minutes before canceling, if not finished
+      BackupColdStorageAfterDays:
+        default: Days before moving to lower-cost storage
+      BackupDeleteAfterDays:
+        default: Days before deleting
       FindLambdaFnMemoryMB:
-        default: Memory
+        default: Megabytes of memory
       FindLambdaFnTimeoutSecs:
-        default: Timeout
+        default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
-        default: Parallel operations
+        default: Number of parallel operations
       DoLambdaFnRoleAttachLocalPolicyName:
-        default: Attach local policy
+        default: Name of local policy to attach
       DoLambdaFnMemoryMB:
-        default: Memory
+        default: Megabytes of memory
       DoLambdaFnTimeoutSecs:
-        default: Timeout
+        default: Seconds before timeout
       OperationQueueVisibilityTimeoutSecs:
-        default: Operation queue message visibility timeout
+        default: Seconds before message visibility timeout
       QueueMessageBytesMax:
-        default: Operation queue message size limit
+        default: Maximum bytes in a message
       SqsKmsKey:
         default: KMS encryption key
       OperationFailedQueueMessageRetentionPeriodSecs:
-        default: Failed operation queue message retention period
+        default: Seconds before deleting a message for a failed operation
       LogsRetainDays:
-        default: Log retention period
+        default: Days before deleting
       LogLevel:
-        default: Log level
+        default: Message level
       CloudWatchLogsKmsKey:
         default: KMS encryption key
-      LambdaFnFileName:
-        default: AWS Lambda function source code file name
 
 Conditions:
 
@@ -290,7 +358,10 @@ Resources:
         Fn::If:
           - SqsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref SqsKmsKey
+          - Fn::If:
+              - SqsKmsKeyCustom
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+              - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         Fn::If:
           - SqsKmsKeyBlank
@@ -308,33 +379,24 @@ Resources:
         Fn::If:
           - SqsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref SqsKmsKey
+          - Fn::If:
+              - SqsKmsKeyCustom
+              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+              - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         Fn::If:
           - SqsKmsKeyBlank
           - !Ref AWS::NoValue
           - 86400  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: 1200  # seconds (20 minutes)
+      MessageRetentionPeriod: 720  # seconds (12 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
-        maxReceiveCount: 1
+        maxReceiveCount: 1  # Rely on boto3 retry logic instead (retry_mode)
         deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
-
-  LambdaFnLogGrpCreatePol:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: >-
-        Log group: create; run-time fallback in case a Lambda function's
-        original log group has been deleted; see AWSLambdaBasicExecutionRole
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-            Resource: "*"
+      RedriveAllowPolicy:
+        redrivePermission: denyAll
 
   # In-line policies apply only to their roles, which, in turn, can only be
   # assumed by AWS Lambda functions. Separate, "managed" policies could be
@@ -345,15 +407,35 @@ Resources:
   FindLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: !Sub "For ${AWS::Region} region"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
       Policies:
+
+        - PolicyName: CloudWatchLogsCreateLogGroupIfDeleted
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: !GetAtt FindLambdaFnLogGrp.Arn
+
+        - PolicyName: CloudWatchLogsWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
+                # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
+                # append :log-stream:* to make a log stream ARN
 
         - PolicyName: Ec2Read
           PolicyDocument:
@@ -401,7 +483,7 @@ Resources:
                     Action:
                       # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
                       - kms:GenerateDataKey
-                    Resource: !Ref SqsKmsKey
+                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                     Condition:
                       StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
             - !Ref AWS::NoValue
@@ -409,6 +491,7 @@ Resources:
   DoLambdaFnRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: !Sub "For ${AWS::Region} region"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -416,12 +499,32 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref LambdaFnLogGrpCreatePol  # Safe; not in-line to avoid repeating
         - Fn::If:
             - DoLambdaFnRoleAttachLocalPolicyNameBlank
             - !Ref AWS::NoValue
             - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${DoLambdaFnRoleAttachLocalPolicyName}"
       Policies:
+
+        - PolicyName: CloudWatchLogsCreateLogGroupIfDeleted
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: !GetAtt DoLambdaFnLogGrp.Arn
+
+        - PolicyName: CloudWatchLogsWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
+                # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
+                # append :log-stream:* to make a log stream ARN
 
         - PolicyName: Ec2Write
           PolicyDocument:
@@ -447,48 +550,6 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-hibernate": "*" }
-              - Sid: DangerCanForceReboot
-                Effect: Allow
-                Action: ec2:CreateImage
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateImage
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-reboot-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateImage
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-              - Effect: Allow
-                Action: ec2:CreateSnapshot
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: ec2:CreateSnapshot
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-              - Effect: Allow
-                Action: ec2:CreateTags
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-                Condition:
-                  StringEquals:
-                    ec2:CreateAction:
-                      - CreateImage
-                      - CreateSnapshot
-              - Sid: BackupCreatorCannotTagBackupForDeletion
-                Effect: Deny
-                Action: ec2:CreateTags
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
-                Condition:
-                  ForAnyValue:StringEquals: { "aws:TagKeys": "sched-delete" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -538,37 +599,6 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-stop": "*" }
-              - Effect: Allow
-                Action:
-                  - rds:CreateDBSnapshot
-                  - rds:CreateDBClusterSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-backup": "*" }
-              - Effect: Allow
-                Action: rds:CreateDBSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Effect: Allow
-                Action: rds:CreateDBClusterSnapshot
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Effect: Allow
-                Action: rds:AddTagsToResource
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-              - Sid: BackupCreatorCannotTagBackupForDeletion
-                Effect: Deny
-                Action: rds:AddTagsToResource
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
-                Condition:
-                  ForAnyValue:StringLike: { "aws:RequestTag/sched-delete": "*" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -593,6 +623,20 @@ Resources:
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
 
+        - PolicyName: BackupWrite
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: backup:StartBackupJob
+                Resource: !Sub "arn:${AWS::Partition}:backup:${AWS::Region}:${AWS::AccountId}:backup-vault:${BackupVaultName}"
+              - Sid: Changed
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
+                Condition:
+                  StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
+
         - Fn::If:
             - SqsKmsKeyCustom
             - PolicyName: SqsKmsDecrypt
@@ -603,7 +647,7 @@ Resources:
                     Action:
                       # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
                       - kms:Decrypt
-                    Resource: !Ref SqsKmsKey
+                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                     Condition:
                       StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
             - !Ref AWS::NoValue
@@ -708,60 +752,678 @@ Resources:
                 aws:SourceArn:
                   - !GetAtt OperationFailedQueue.Arn
 
-  FindLambdaFn:
-    Type: AWS::Lambda::Function
-    Properties:
-      Role: !GetAtt FindLambdaFnRole.Arn
-      Code:
-        S3Bucket: !Sub "${LambdaSourceS3BucketNamePrefix}-${AWS::Region}"
-        S3Key: !Sub "${LambdaFnFileName}.py.zip"
-      Architectures:
-        - arm64
-      Runtime: python3.13
-      Environment:
-        Variables:
-          "QUEUE_URL": !Ref OperationQueue
-          "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
-          "LOG_LEVEL": !Ref LogLevel
-          "COPY_TAGS": !Ref CopyTags
-      Handler: !Sub "${LambdaFnFileName}.lambda_handler_find"
-      ReservedConcurrentExecutions: 1  # Only one Find process at a time!
-      Timeout: !Ref FindLambdaFnTimeoutSecs
-      MemorySize: !Ref FindLambdaFnMemoryMB
-
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      # Lambda names the log group after the function, so a CloudWatch-assigned
-      # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${FindLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref CloudWatchLogsKmsKey
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
-  FindLambdaFnLogWritePol:
-    Type: AWS::IAM::ManagedPolicy
+  FindLambdaFn:
+    Type: AWS::Lambda::Function
     Properties:
-      Description: >-
-        Find Lambda function log streams: create, and put events; based on
-        AWSLambdaBasicExecutionRole
-      Roles: [ !Ref FindLambdaFnRole ]
-      # Policy cannot be in-line, because it depends on an AWS Lambda function
-      # log group, which in turn depends on the [final name of the] function,
-      # and function creation depends on a role.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
-            # log stream ARN.
+      Role: !GetAtt FindLambdaFnRole.Arn
+      ReservedConcurrentExecutions: 1  # Only one Find process at a time!
+      Timeout: !Ref FindLambdaFnTimeoutSecs
+      MemorySize: !Ref FindLambdaFnMemoryMB
+      LoggingConfig:
+        LogGroup: !Ref FindLambdaFnLogGrp
+        LogFormat: JSON
+        SystemLogLevel: WARN
+        ApplicationLogLevel: !Ref LogLevel
+      Architectures:
+        - arm64
+      Runtime: python3.13
+      # To avoid making users build a source bundle and distribute it to a
+      # bucket in every target region (an AWS Lambda requirement when using
+      # S3), use common, inline source code for both functions...
+      Environment:
+        Variables:
+          # Referenced before handler for either Lambda function is invoked:
+          "QUEUE_URL": !Ref OperationQueue
+          "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
+          "BACKUP_ROLE_ARN": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
+          # Referenced only after "Find" Lambda function handler is invoked:
+          "BACKUP_VAULT_NAME": !Ref BackupVaultName
+          "BACKUP_START_WINDOW_MINUTES": !Ref BackupStartWindowMinutes
+          "BACKUP_COMPLETE_WINDOW_MINUTES": !Ref BackupCompleteWindowMinutes
+          "BACKUP_COLD_STORAGE_AFTER_DAYS": !Ref BackupColdStorageAfterDays
+          "BACKUP_DELETE_AFTER_DAYS": !Ref BackupDeleteAfterDays
+      Handler: index.lambda_handler_find
+      Code:
+        ZipFile: |
+          #!/usr/bin/env python3
+          """Start, reboot, stop and back up AWS resources tagged with cron schedules
+
+          github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
+          """
+
+          import os
+          import logging
+          import datetime
+          import re
+          import json
+          import botocore
+          import boto3
+
+          logger = logging.getLogger()
+          # Skip "credentials in environment" INFO message, unavoidable in AWS Lambda:
+          logging.getLogger("botocore").setLevel(logging.WARNING)
+
+
+          def environ_int(environ_var_name):
+            """Take name of an environment variable, return its integer value
+            """
+            return int(os.environ[environ_var_name])
+
+
+          SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
+          SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside char class
+          SCHED_REGEXP_STRFTIME_FMT = rf"""
+            (^|{SCHED_DELIMS})
+            (
+              # Specific monthly or weekly day and time, or...
+              (dTH:M=%d|uTH:M=%u)T%H:%M
+            |
+              # Day wildcard, specific day, or specific weekday, any other terms, and...
+              (d=(_|%d)|u=%u){SCHED_DELIMS}{SCHED_TERMS}
+              (
+                # Specific daily time, or...
+                H:M=%H:%M
+              |
+                # Hour wildcard or specific hour, any other terms, and specific minute.
+                H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M
+              )
+            )
+            ({SCHED_DELIMS}|$)
+          """
+
+          QUEUE_URL = os.environ["QUEUE_URL"]
+          QUEUE_MSG_BYTES_MAX = environ_int("QUEUE_MSG_BYTES_MAX")
+          QUEUE_MSG_FMT_VERSION = "01"
+
+          ARN_DELIM = ":"
+          BACKUP_ROLE_ARN = os.environ["BACKUP_ROLE_ARN"]
+          ARN_PARTS = BACKUP_ROLE_ARN.split(ARN_DELIM)
+          # arn:partition:service:region:account-id:resource-type/resource-id
+          # [0] [1]       [2]     [3]    [4]        [5]
+          # https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
+          ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
+
+          # 1. Custom Exceptions #######################################################
+
+
+          class SQSMessageTooLong(ValueError):
+            """String of JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
+            """
+
+          # 2. Helpers #################################################################
+
+
+          def log(entry_type, entry_value, log_level=logging.INFO):
+            """Emit a JSON-format log entry
+            """
+            entry_value_out = json.loads(json.dumps(entry_value, default=str))
+            # Avoids "Object of type datetime is not JSON serializable" in
+            # https://github.com/aws/aws-lambda-python-runtime-interface-client/blob/9efb462/awslambdaric/lambda_runtime_log_utils.py#L109-L135
+            #
+            # The JSON encoder in the AWS Lambda Python runtime isn't configured to
+            # serialize datatime values in responses returned by AWS's own Python SDK!
+            #
+            # Powertools for Lambda is too heavy for a simple deployment.
+            # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
+
+            logger.log(
+              log_level, "", extra={"type": entry_type, "value": entry_value_out}
+            )
+
+
+          def boto3_success(resp):
+            """Take a boto3 response, return True if result was success
+
+            Success means an AWS operation has started, not necessarily that it has
+            completed. For example, it may take hours for a backup to become available.
+            Checking completion is left to other tools.
+            """
+            return all([
+              isinstance(resp, dict),
+              isinstance(resp.get("ResponseMetadata", None), dict),
+              resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
+            ])
+
+
+          def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
+            """Log scheduled start time (on error), SQS send_message content, outcome
+            """
+            if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
+              log_level = logging.INFO
+            else:
+              log_level = logging.ERROR
+              log("START", cycle_start_str, log_level=log_level)
+            log("SQS_SEND", send_kwargs, log_level=log_level)
+            log(entry_type, entry_value, log_level=log_level)
+
+
+          def op_log(
+            event, entry_type="", entry_value="", resp=None, log_level=logging.ERROR
+          ):
+            """Log Lambda function event, optional error, optional boto3 response
+            """
+            log("LAMBDA_EVENT", event, log_level=log_level)
+            if resp is not None:
+              log("AWS_RESPONSE", resp, log_level=log_level)
+            if entry_type:
+              log(entry_type, entry_value, log_level=log_level)
+
+
+          def tag_key_join(tag_key_words):
+            """Take a tuple of strings, add a prefix, join, and return a tag key
+            """
+            return "-".join(("sched", ) + tag_key_words)
+
+
+          def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
+            """Take a datetime, return 10-minute floor and ceiling less 1 minute
+            """
+            cycle_minutes_int = int(cycle_minutes)
+            cycle_start = datetime_in.replace(
+              minute=(datetime_in.minute // cycle_minutes_int) * cycle_minutes_int,
+              second=0,
+              microsecond=0,
+            )
+            cycle_cutoff = cycle_start + datetime.timedelta(minutes=cutoff_minutes)
+            return (cycle_start, cycle_cutoff)
+
+
+          def msg_attrs_str_encode(attr_pairs):
+            """Take list of string name, value pairs, return SQS MessageAttributes dict
+            """
+            return {
+              attr_name: {"DataType": "String", "StringValue": attr_value}
+              for (attr_name, attr_value) in attr_pairs
+            }
+
+
+          def msg_attr_str_decode(msg, attr_name):
+            """Take an SQS message, return value of a string attribute (must be present)
+            """
+            return msg["messageAttributes"][attr_name]["stringValue"]
+
+
+          def msg_body_encode(msg_in):
+            """Take an SQS queue message body dict, convert to JSON and check length
+            """
+            msg_out = json.dumps(msg_in)
+            msg_out_len = len(bytes(msg_out, "utf-8"))
+            if msg_out_len > QUEUE_MSG_BYTES_MAX:
+              log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+              raise SQSMessageTooLong()
+            return msg_out
+
+
+          svc_clients = {}
+
+
+          def svc_client_get(svc):
+            """Take an AWS service, return a boto3 client, creating it if needed
+            """
+            if svc_clients.get(svc, None) is None:
+              svc_clients[svc] = boto3.client(
+                svc, config=botocore.config.Config(retries={"mode": "standard"})
+              )
+              # boto3 method references can only be resolved at run-time,
+              # against an instance of an AWS service's Client class.
+              # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
+            return svc_clients[svc]
+
+
+          # 3. Custom Classes ##########################################################
+
+          # See rsrc_types_init() for usage examples.
+
+
+          # pylint: disable=too-many-instance-attributes
+          class AWSRsrcType():
+            """AWS resource type, with identification properties and various operations
+            """
+            members = {}
+
+            # pylint: disable=too-many-arguments,too-many-positional-arguments
+            def __init__(
+              self,
+              svc,
+              rsrc_type_words,
+              ops_dict,
+              rsrc_id_key_suffix="Id",
+              arn_key_suffix="Arn",
+              tags_key="Tags",
+              status_filter_pair=(),
+              describe_flatten=None,
+            ):
+              self.svc = svc
+              self.name_in_methods = "_".join(rsrc_type_words).lower()
+
+              self.name_in_keys = "".join(rsrc_type_words)
+              self.rsrc_id_key = f"{self.name_in_keys}{rsrc_id_key_suffix}"
+              if arn_key_suffix:
+                self.arn_prefix = ""
+                self.arn_key = f"{self.name_in_keys}{arn_key_suffix}"
+              else:
+                self.arn_prefix = ARN_DELIM.join(
+                  ARN_PARTS[0:2] + [svc] + ARN_PARTS[3:5] + [f"{self.name_in_methods}/"]
+                )
+                self.arn_key = self.rsrc_id_key
+              self.tags_key = tags_key
+
+              if describe_flatten:
+                self.describe_flatten = describe_flatten
+              else:
+                self.describe_flatten = lambda resp: resp.get(
+                  f"{self.name_in_keys}s", []
+                )
+
+              self.ops = {}
+              for (op_tag_key_words, op_properties) in ops_dict.items():
+                op = AWSOp.new(self, op_tag_key_words, **op_properties)
+                self.ops[op.tag_key] = op
+
+              self.describe_kwargs = {}
+              if status_filter_pair:
+                self.describe_kwargs["Filters"] = [
+                  {"Name": filter_name, "Values": list(filter_values)}
+                  for (filter_name, filter_values)
+                  in [status_filter_pair, ("tag-key", self.ops_tag_keys)]
+                ]
+
+              self.__class__.members[(svc, self.name_in_keys)] = self  # Register me!
+
+            def __str__(self):
+              return " ".join([self.__class__.__name__, self.svc, self.name_in_keys])
+
+            @property
+            def ops_tag_keys(self):
+              """Return tag keys for all operations on this resource type
+              """
+              return self.ops.keys()
+
+            def rsrc_id(self, rsrc):
+              """Take 1 describe_ result, return the resource ID
+              """
+              return rsrc[self.rsrc_id_key]
+
+            def arn(self, rsrc):
+              """Take 1 describe_ result, return the ARN
+              """
+              return f"{self.arn_prefix}{rsrc[self.arn_key]}"
+
+            def rsrc_tags_list(self, rsrc):  # pylint: disable=no-self-use
+              """Take 1 describe_ result, return raw resource tags
+              """
+              return rsrc.get(self.tags_key, [])  # Key may be missing if no tags
+
+            def op_tags_match(self, rsrc, sched_regexp):
+              """Scan 1 resource's tags to find operations scheduled for current cycle
+              """
+              ops_tag_keys = self.ops_tag_keys
+              op_tags_matched = []
+              for tag_dict in self.rsrc_tags_list(rsrc):
+                tag_key = tag_dict["Key"]
+                if tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
+                  op_tags_matched.append(tag_key)
+              return op_tags_matched
+
+            def rsrcs_find(self, sched_regexp, cycle_start_str, cycle_cutoff_epoch_str):
+              """Find resources to operate on, and send details to queue
+              """
+              paginator = svc_client_get(self.svc).get_paginator(
+                f"describe_{self.name_in_methods}s"
+              )
+              for resp in paginator.paginate(**self.describe_kwargs):
+                for rsrc in self.describe_flatten(resp):
+                  op_tags_matched = self.op_tags_match(rsrc, sched_regexp)
+                  op_tags_matched_count = len(op_tags_matched)
+
+                  if op_tags_matched_count == 1:
+                    op = self.ops[op_tags_matched[0]]
+                    op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
+                  elif op_tags_matched_count > 1:
+                    log("START", cycle_start_str, log_level=logging.ERROR)
+                    log(
+                      "MULTIPLE_OPS",
+                      {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
+                      log_level=logging.ERROR
+                    )
+
+
+          class AWSOp():
+            """Operation on 1 AWS resource
+            """
+
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              self.tag_key = tag_key_join(tag_key_words)
+              self.svc = rsrc_type.svc
+              self.rsrc_id = rsrc_type.rsrc_id
+              verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st word
+              self.method_name = f"{verb}_{rsrc_type.name_in_methods}"
+              self.kwarg_rsrc_id_key = rsrc_type.rsrc_id_key
+              self.kwargs_add = kwargs.get("kwargs_add", {})
+
+            @staticmethod
+            def new(rsrc_type, tag_key_words, **kwargs):
+              """Create an op of the requested, appropriate, or default (sub)class
+              """
+              op_class = kwargs.get("class", AWSOp)
+              return op_class(rsrc_type, tag_key_words, **kwargs)
+
+            def kwarg_rsrc_id(self, rsrc):
+              """Transfer resource ID from a describe_ result to another method's kwarg
+              """
+              return {self.kwarg_rsrc_id_key: self.rsrc_id(rsrc)}
+
+            # pylint: disable=unused-argument
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take a describe_ result, return another method's kwargs
+              """
+              op_kwargs_out = self.kwarg_rsrc_id(rsrc)
+              op_kwargs_out.update(self.kwargs_add)
+              return op_kwargs_out
+
+            def queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
+              """Send 1 operation message to the SQS queue
+              """
+              send_kwargs = {
+                "QueueUrl": QUEUE_URL,
+                "MessageAttributes": msg_attrs_str_encode((
+                  ("version", QUEUE_MSG_FMT_VERSION),
+                  ("expires", cycle_cutoff_epoch_str),
+                  ("svc", self.svc),
+                  ("op_method_name", self.method_name),
+                )),
+              }
+              try:
+                send_kwargs.update({
+                  "MessageBody": msg_body_encode(self.op_kwargs(rsrc, cycle_start_str))
+                })
+                sqs_resp = svc_client_get("sqs").send_message(**send_kwargs)
+              except SQSMessageTooLong:
+                sqs_send_log(
+                  cycle_start_str,
+                  send_kwargs,
+                  "QUEUE_MSG_TOO_LONG",
+                  "Increase QueueMessageBytesMax in CloudFormation",
+                )
+              except Exception as misc_exception:
+                sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_exception)
+                raise  # In error cases other than this, log 1 failed send but move on
+              else:
+                sqs_send_log(cycle_start_str, send_kwargs, "AWS_RESPONSE", sqs_resp)
+
+            def __str__(self):
+              return " ".join([
+                self.__class__.__name__, self.tag_key, self.svc, self.method_name
+              ])
+
+
+          class AWSOpMultipleRsrcs(AWSOp):
+            """Operation on multiple AWS resources of the same type
+            """
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, **kwargs)
+              self.method_name = self.method_name + "s"
+
+            def kwarg_rsrc_id(self, rsrc):
+              """Transfer resource ID from a describe_ result to a singleton list kwarg
+
+              One at a time for consistency and to avoid partial completion risk
+              """
+              return {f"{self.kwarg_rsrc_id_key}s": [self.rsrc_id(rsrc)]}
+
+
+          class AWSOpUpdateStack(AWSOp):
+            """CloudFormation stack update operation
+            """
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, verb="update", **kwargs)
+
+              # Use of final template instead of original makes this incompatible with
+              # CloudFormation "transforms". describe_stacks does not return templates.
+              self.kwargs_add["UsePreviousTemplate"] = True
+
+              # Use previous parameter values, except for:
+              #                          Param  Value
+              #                          Key    Out
+              # tag_key        sched-set-Enable-true
+              # tag_key        sched-set-Enable-false
+              # tag_key_words            [-2]   [-1]
+              self.changing_params_out = {
+                tag_key_words[-2]: tag_key_words[-1],  # Only 1 for now
+              }
+
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take 1 describe_stacks result, return update_stack kwargs
+              """
+              params_out = []
+              for param_in in rsrc.get("Parameters", []):
+                param_in_key = param_in["ParameterKey"]
+                param_out = {"ParameterKey": param_in_key}
+                if param_in_key in self.changing_params_out:
+                  param_out["ParameterValue"] = self.changing_params_out[param_in_key]
+                else:
+                  param_out["UsePreviousValue"] = True
+                params_out.append(param_out)
+
+              op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+              op_kwargs_out["Parameters"] = params_out
+              capabilities_in = rsrc.get("Capabilities", [])
+              if capabilities_in:
+                op_kwargs_out["Capabilities"] = capabilities_in
+              return op_kwargs_out
+
+            def __str__(self):
+              return super().__str__() + f" {self.changing_params_out}"
+
+
+          class AWSOpBackUp(AWSOp):
+            """On-demand AWS Backup operation
+            """
+            backup_kwargs_add = {}
+
+            @classmethod
+            def backup_kwargs_add_init(cls):
+              """Populate start_backup_job static kwargs, if not yet done
+              """
+              if not cls.backup_kwargs_add:
+                lifecycle = {}
+
+                cold_storage_after_days = environ_int("BACKUP_COLD_STORAGE_AFTER_DAYS")
+                if cold_storage_after_days > 0:
+                  lifecycle.update({
+                    "OptInToArchiveForSupportedResources": True,
+                    "MoveToColdStorageAfterDays": cold_storage_after_days,
+                  })
+
+                delete_after_days = environ_int("BACKUP_DELETE_AFTER_DAYS")
+                if delete_after_days > 0:
+                  lifecycle["DeleteAfterDays"] = delete_after_days
+
+                cls.backup_kwargs_add.update({
+                  "IamRoleArn": BACKUP_ROLE_ARN,
+                  "BackupVaultName": os.environ["BACKUP_VAULT_NAME"],
+                  "StartWindowMinutes": environ_int("BACKUP_START_WINDOW_MINUTES"),
+                  "CompleteWindowMinutes": environ_int(
+                    "BACKUP_COMPLETE_WINDOW_MINUTES"
+                  ),
+                })
+                if lifecycle:
+                  cls.backup_kwargs_add["Lifecycle"] = lifecycle
+
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, **kwargs)
+              self.rsrc_id = rsrc_type.arn
+              self.svc = "backup"
+              self.method_name = "start_backup_job"
+              self.kwarg_rsrc_id_key = "ResourceArn"
+              self.__class__.backup_kwargs_add_init()
+              self.kwargs_add.update(self.__class__.backup_kwargs_add)
+
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take a describe_ result, return start_backup_job kwargs
+              """
+              op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+              op_kwargs_out.update({
+                "IdempotencyToken": cycle_start_str,
+                "RecoveryPointTags": {tag_key_join(("time", )): cycle_start_str},
+              })
+              return op_kwargs_out
+
+
+          # 4. Data-Driven Specifications ##############################################
+
+
+          def rsrc_types_init():
+            """Create AWS resource type objects when needed, if not already done
+            """
+
+            if not AWSRsrcType.members:
+              AWSRsrcType(
+                "ec2",
+                ("Instance", ),
+                {
+                  ("start", ): {"class": AWSOpMultipleRsrcs},
+                  ("reboot", ): {"class": AWSOpMultipleRsrcs},
+                  ("stop", ): {"class": AWSOpMultipleRsrcs},
+                  ("hibernate", ): {
+                    "class": AWSOpMultipleRsrcs,
+                    "verb": "stop",
+                    "kwargs_add": {"Hibernate": True},
+                  },
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                arn_key_suffix=None,
+                status_filter_pair=(
+                  "instance-state-name", ("running", "stopping", "stopped")
+                ),
+                describe_flatten=lambda resp: (
+                  instance
+                  for reservation in resp.get("Reservations", [])
+                  for instance in reservation.get("Instances", [])
+                ),
+              )
+
+              AWSRsrcType(
+                "ec2",
+                ("Volume", ),
+                {("backup", ): {"class": AWSOpBackUp}},
+                arn_key_suffix=None,
+                status_filter_pair=("status", ("available", "in-use")),
+              )
+
+              AWSRsrcType(
+                "rds",
+                ("DB", "Instance"),
+                {
+                  ("start", ): {},
+                  ("stop", ): {},
+                  ("reboot", ): {},
+                  ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                rsrc_id_key_suffix="Identifier",
+                tags_key="TagList",
+              )
+
+              AWSRsrcType(
+                "rds",
+                ("DB", "Cluster"),
+                {
+                  ("start", ): {},
+                  ("stop", ): {},
+                  ("reboot", ): {},
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                rsrc_id_key_suffix="Identifier",
+                tags_key="TagList",
+              )
+
+              AWSRsrcType(
+                "cloudformation",
+                ("Stack", ),
+                {
+                  ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
+                  ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
+                },
+                rsrc_id_key_suffix="Name",
+                arn_key_suffix="Id",
+              )
+
+
+          # 5. Find Resources Lambda Function Handler ##################################
+
+
+          def lambda_handler_find(event, context):  # pylint: disable=unused-argument
+            """Find and queue AWS resources for scheduled operations, based on tags
+            """
+            log("LAMBDA_EVENT", event)
+            (cycle_start, cycle_cutoff) = cycle_start_end(
+              datetime.datetime.now(datetime.timezone.utc)
+            )
+            cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%MZ")
+            cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
+            sched_regexp = re.compile(
+              cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
+            )
+            log("START", cycle_start_str)
+            log("SCHED_REGEXP_VERBOSE", sched_regexp.pattern)
+            rsrc_types_init()
+            for rsrc_type in AWSRsrcType.members.values():
+              rsrc_type.rsrcs_find(
+                sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
+              )
+
+          # 6. "Do" Operations Lambda Function Handler #################################
+
+
+          def lambda_handler_do(event, context):  # pylint: disable=unused-argument
+            """Perform a queued operation on an AWS resource
+            """
+            for msg in event.get("Records", []):  # 0 or 1 messages expected
+              if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
+                op_log(
+                  event,
+                  entry_type="WRONG_QUEUE_MSG_FMT",
+                  entry_value="Unrecognized operation queue message format"
+                )
+                raise RuntimeError()
+              if (
+                int(msg_attr_str_decode(msg, "expires"))
+                < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+              ):
+                op_log(
+                  event,
+                  entry_type="EXPIRED_OP",
+                  entry_value="Schedule fewer operations per 10-minute cycle or "
+                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                )
+                raise RuntimeError()
+
+              svc = msg_attr_str_decode(msg, "svc")
+              op_method_name = msg_attr_str_decode(msg, "op_method_name")
+              try:
+                op_kwargs = json.loads(msg["body"])
+                op_method = getattr(svc_client_get(svc), op_method_name)
+                resp = op_method(**op_kwargs)
+              except Exception as misc_exception:
+                op_log(event, entry_type="EXCEPTION", entry_value=misc_exception)
+                raise
+              if boto3_success(resp):
+                op_log(event, resp=resp, log_level=logging.INFO)
+              else:
+                op_log(event, resp=resp)
+                raise RuntimeError()
+        # ZIPFILE_END
 
   FindLambdaFnSched:
     Type: AWS::Events::Rule
@@ -776,6 +1438,7 @@ Resources:
           - DISABLED
       Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
 
+  # Administrator should block other invocation of this AWS Lambda function
   FindLambdaFnPerm:
     Type: AWS::Lambda::Permission
     Properties:
@@ -784,60 +1447,674 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt FindLambdaFnSched.Arn
 
-  # Administrator should restrict other invocation of this AWS Lambda function
-
-  DoLambdaFn:
-    Type: AWS::Lambda::Function
-    Properties:
-      Role: !GetAtt DoLambdaFnRole.Arn
-      Code:
-        S3Bucket: !Sub "${LambdaSourceS3BucketNamePrefix}-${AWS::Region}"
-        S3Key: !Sub "${LambdaFnFileName}.py.zip"
-      Architectures:
-        - arm64
-      Runtime: python3.13
-      Environment:
-        Variables:
-          "LOG_LEVEL": !Ref LogLevel
-      Handler: !Sub "${LambdaFnFileName}.lambda_handler_do"
-      ReservedConcurrentExecutions: !Ref DoLambdaFnReservedConcurrentExecutions
-      Timeout: !Ref DoLambdaFnTimeoutSecs
-      MemorySize: !Ref DoLambdaFnMemoryMB
-
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      # Lambda names the log group after the function, so a CloudWatch-assigned
-      # name won't work. A custom name will, however, interfere with changes.
-      LogGroupName: !Sub "/aws/lambda/${DoLambdaFn}"
       RetentionInDays: !Ref LogsRetainDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
           - !Ref AWS::NoValue
-          - !Ref CloudWatchLogsKmsKey
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
-  DoLambdaFnLogWritePol:
-    Type: AWS::IAM::ManagedPolicy
+  DoLambdaFn:
+    Type: AWS::Lambda::Function
     Properties:
-      Description: >-
-        Do Lambda function log streams: create, and put events; based on
-        AWSLambdaBasicExecutionRole
-      Roles: [ !Ref DoLambdaFnRole ]
-      # Policy cannot be in-line, because it depends on an AWS Lambda function
-      # log group, which in turn depends on the [final name of the] function,
-      # and unction creation depends on a role.
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
-            # !GetAtt LogGroup.Arn ends with :* , complicating conversion to
-            # log stream ARN.
+      Role: !GetAtt DoLambdaFnRole.Arn
+      ReservedConcurrentExecutions: !Ref DoLambdaFnReservedConcurrentExecutions
+      Timeout: !Ref DoLambdaFnTimeoutSecs
+      MemorySize: !Ref DoLambdaFnMemoryMB
+      LoggingConfig:
+        LogGroup: !Ref DoLambdaFnLogGrp
+        LogFormat: JSON
+        SystemLogLevel: WARN
+        ApplicationLogLevel: !Ref LogLevel
+      Architectures:
+        - arm64
+      Runtime: python3.13
+      # To avoid making users build a source bundle and distribute it to a
+      # bucket in every target region (an AWS Lambda requirement when using
+      # S3), use common, inline source code for both functions...
+      Environment:
+        Variables:
+          # Referenced before handler for either Lambda function is invoked:
+          "QUEUE_URL": !Ref OperationQueue
+          "QUEUE_MSG_BYTES_MAX": !Ref QueueMessageBytesMax
+          "BACKUP_ROLE_ARN": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
+      Handler: index.lambda_handler_do
+      Code:
+        ZipFile: |
+          #!/usr/bin/env python3
+          """Start, reboot, stop and back up AWS resources tagged with cron schedules
 
+          github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
+          """
+
+          import os
+          import logging
+          import datetime
+          import re
+          import json
+          import botocore
+          import boto3
+
+          logger = logging.getLogger()
+          # Skip "credentials in environment" INFO message, unavoidable in AWS Lambda:
+          logging.getLogger("botocore").setLevel(logging.WARNING)
+
+
+          def environ_int(environ_var_name):
+            """Take name of an environment variable, return its integer value
+            """
+            return int(os.environ[environ_var_name])
+
+
+          SCHED_DELIMS = r"\ +"  # Exposed space must be escaped for re.VERBOSE
+          SCHED_TERMS = rf"([^ ]+{SCHED_DELIMS})*"  # Unescaped space inside char class
+          SCHED_REGEXP_STRFTIME_FMT = rf"""
+            (^|{SCHED_DELIMS})
+            (
+              # Specific monthly or weekly day and time, or...
+              (dTH:M=%d|uTH:M=%u)T%H:%M
+            |
+              # Day wildcard, specific day, or specific weekday, any other terms, and...
+              (d=(_|%d)|u=%u){SCHED_DELIMS}{SCHED_TERMS}
+              (
+                # Specific daily time, or...
+                H:M=%H:%M
+              |
+                # Hour wildcard or specific hour, any other terms, and specific minute.
+                H=(_|%H){SCHED_DELIMS}{SCHED_TERMS}M=%M
+              )
+            )
+            ({SCHED_DELIMS}|$)
+          """
+
+          QUEUE_URL = os.environ["QUEUE_URL"]
+          QUEUE_MSG_BYTES_MAX = environ_int("QUEUE_MSG_BYTES_MAX")
+          QUEUE_MSG_FMT_VERSION = "01"
+
+          ARN_DELIM = ":"
+          BACKUP_ROLE_ARN = os.environ["BACKUP_ROLE_ARN"]
+          ARN_PARTS = BACKUP_ROLE_ARN.split(ARN_DELIM)
+          # arn:partition:service:region:account-id:resource-type/resource-id
+          # [0] [1]       [2]     [3]    [4]        [5]
+          # https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
+          ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
+
+          # 1. Custom Exceptions #######################################################
+
+
+          class SQSMessageTooLong(ValueError):
+            """String of JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
+            """
+
+          # 2. Helpers #################################################################
+
+
+          def log(entry_type, entry_value, log_level=logging.INFO):
+            """Emit a JSON-format log entry
+            """
+            entry_value_out = json.loads(json.dumps(entry_value, default=str))
+            # Avoids "Object of type datetime is not JSON serializable" in
+            # https://github.com/aws/aws-lambda-python-runtime-interface-client/blob/9efb462/awslambdaric/lambda_runtime_log_utils.py#L109-L135
+            #
+            # The JSON encoder in the AWS Lambda Python runtime isn't configured to
+            # serialize datatime values in responses returned by AWS's own Python SDK!
+            #
+            # Powertools for Lambda is too heavy for a simple deployment.
+            # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
+
+            logger.log(
+              log_level, "", extra={"type": entry_type, "value": entry_value_out}
+            )
+
+
+          def boto3_success(resp):
+            """Take a boto3 response, return True if result was success
+
+            Success means an AWS operation has started, not necessarily that it has
+            completed. For example, it may take hours for a backup to become available.
+            Checking completion is left to other tools.
+            """
+            return all([
+              isinstance(resp, dict),
+              isinstance(resp.get("ResponseMetadata", None), dict),
+              resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
+            ])
+
+
+          def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
+            """Log scheduled start time (on error), SQS send_message content, outcome
+            """
+            if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
+              log_level = logging.INFO
+            else:
+              log_level = logging.ERROR
+              log("START", cycle_start_str, log_level=log_level)
+            log("SQS_SEND", send_kwargs, log_level=log_level)
+            log(entry_type, entry_value, log_level=log_level)
+
+
+          def op_log(
+            event, entry_type="", entry_value="", resp=None, log_level=logging.ERROR
+          ):
+            """Log Lambda function event, optional error, optional boto3 response
+            """
+            log("LAMBDA_EVENT", event, log_level=log_level)
+            if resp is not None:
+              log("AWS_RESPONSE", resp, log_level=log_level)
+            if entry_type:
+              log(entry_type, entry_value, log_level=log_level)
+
+
+          def tag_key_join(tag_key_words):
+            """Take a tuple of strings, add a prefix, join, and return a tag key
+            """
+            return "-".join(("sched", ) + tag_key_words)
+
+
+          def cycle_start_end(datetime_in, cycle_minutes=10, cutoff_minutes=9):
+            """Take a datetime, return 10-minute floor and ceiling less 1 minute
+            """
+            cycle_minutes_int = int(cycle_minutes)
+            cycle_start = datetime_in.replace(
+              minute=(datetime_in.minute // cycle_minutes_int) * cycle_minutes_int,
+              second=0,
+              microsecond=0,
+            )
+            cycle_cutoff = cycle_start + datetime.timedelta(minutes=cutoff_minutes)
+            return (cycle_start, cycle_cutoff)
+
+
+          def msg_attrs_str_encode(attr_pairs):
+            """Take list of string name, value pairs, return SQS MessageAttributes dict
+            """
+            return {
+              attr_name: {"DataType": "String", "StringValue": attr_value}
+              for (attr_name, attr_value) in attr_pairs
+            }
+
+
+          def msg_attr_str_decode(msg, attr_name):
+            """Take an SQS message, return value of a string attribute (must be present)
+            """
+            return msg["messageAttributes"][attr_name]["stringValue"]
+
+
+          def msg_body_encode(msg_in):
+            """Take an SQS queue message body dict, convert to JSON and check length
+            """
+            msg_out = json.dumps(msg_in)
+            msg_out_len = len(bytes(msg_out, "utf-8"))
+            if msg_out_len > QUEUE_MSG_BYTES_MAX:
+              log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+              raise SQSMessageTooLong()
+            return msg_out
+
+
+          svc_clients = {}
+
+
+          def svc_client_get(svc):
+            """Take an AWS service, return a boto3 client, creating it if needed
+            """
+            if svc_clients.get(svc, None) is None:
+              svc_clients[svc] = boto3.client(
+                svc, config=botocore.config.Config(retries={"mode": "standard"})
+              )
+              # boto3 method references can only be resolved at run-time,
+              # against an instance of an AWS service's Client class.
+              # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
+            return svc_clients[svc]
+
+
+          # 3. Custom Classes ##########################################################
+
+          # See rsrc_types_init() for usage examples.
+
+
+          # pylint: disable=too-many-instance-attributes
+          class AWSRsrcType():
+            """AWS resource type, with identification properties and various operations
+            """
+            members = {}
+
+            # pylint: disable=too-many-arguments,too-many-positional-arguments
+            def __init__(
+              self,
+              svc,
+              rsrc_type_words,
+              ops_dict,
+              rsrc_id_key_suffix="Id",
+              arn_key_suffix="Arn",
+              tags_key="Tags",
+              status_filter_pair=(),
+              describe_flatten=None,
+            ):
+              self.svc = svc
+              self.name_in_methods = "_".join(rsrc_type_words).lower()
+
+              self.name_in_keys = "".join(rsrc_type_words)
+              self.rsrc_id_key = f"{self.name_in_keys}{rsrc_id_key_suffix}"
+              if arn_key_suffix:
+                self.arn_prefix = ""
+                self.arn_key = f"{self.name_in_keys}{arn_key_suffix}"
+              else:
+                self.arn_prefix = ARN_DELIM.join(
+                  ARN_PARTS[0:2] + [svc] + ARN_PARTS[3:5] + [f"{self.name_in_methods}/"]
+                )
+                self.arn_key = self.rsrc_id_key
+              self.tags_key = tags_key
+
+              if describe_flatten:
+                self.describe_flatten = describe_flatten
+              else:
+                self.describe_flatten = lambda resp: resp.get(
+                  f"{self.name_in_keys}s", []
+                )
+
+              self.ops = {}
+              for (op_tag_key_words, op_properties) in ops_dict.items():
+                op = AWSOp.new(self, op_tag_key_words, **op_properties)
+                self.ops[op.tag_key] = op
+
+              self.describe_kwargs = {}
+              if status_filter_pair:
+                self.describe_kwargs["Filters"] = [
+                  {"Name": filter_name, "Values": list(filter_values)}
+                  for (filter_name, filter_values)
+                  in [status_filter_pair, ("tag-key", self.ops_tag_keys)]
+                ]
+
+              self.__class__.members[(svc, self.name_in_keys)] = self  # Register me!
+
+            def __str__(self):
+              return " ".join([self.__class__.__name__, self.svc, self.name_in_keys])
+
+            @property
+            def ops_tag_keys(self):
+              """Return tag keys for all operations on this resource type
+              """
+              return self.ops.keys()
+
+            def rsrc_id(self, rsrc):
+              """Take 1 describe_ result, return the resource ID
+              """
+              return rsrc[self.rsrc_id_key]
+
+            def arn(self, rsrc):
+              """Take 1 describe_ result, return the ARN
+              """
+              return f"{self.arn_prefix}{rsrc[self.arn_key]}"
+
+            def rsrc_tags_list(self, rsrc):  # pylint: disable=no-self-use
+              """Take 1 describe_ result, return raw resource tags
+              """
+              return rsrc.get(self.tags_key, [])  # Key may be missing if no tags
+
+            def op_tags_match(self, rsrc, sched_regexp):
+              """Scan 1 resource's tags to find operations scheduled for current cycle
+              """
+              ops_tag_keys = self.ops_tag_keys
+              op_tags_matched = []
+              for tag_dict in self.rsrc_tags_list(rsrc):
+                tag_key = tag_dict["Key"]
+                if tag_key in ops_tag_keys and sched_regexp.search(tag_dict["Value"]):
+                  op_tags_matched.append(tag_key)
+              return op_tags_matched
+
+            def rsrcs_find(self, sched_regexp, cycle_start_str, cycle_cutoff_epoch_str):
+              """Find resources to operate on, and send details to queue
+              """
+              paginator = svc_client_get(self.svc).get_paginator(
+                f"describe_{self.name_in_methods}s"
+              )
+              for resp in paginator.paginate(**self.describe_kwargs):
+                for rsrc in self.describe_flatten(resp):
+                  op_tags_matched = self.op_tags_match(rsrc, sched_regexp)
+                  op_tags_matched_count = len(op_tags_matched)
+
+                  if op_tags_matched_count == 1:
+                    op = self.ops[op_tags_matched[0]]
+                    op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
+                  elif op_tags_matched_count > 1:
+                    log("START", cycle_start_str, log_level=logging.ERROR)
+                    log(
+                      "MULTIPLE_OPS",
+                      {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
+                      log_level=logging.ERROR
+                    )
+
+
+          class AWSOp():
+            """Operation on 1 AWS resource
+            """
+
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              self.tag_key = tag_key_join(tag_key_words)
+              self.svc = rsrc_type.svc
+              self.rsrc_id = rsrc_type.rsrc_id
+              verb = kwargs.get("verb", tag_key_words[0])  # Default: 1st word
+              self.method_name = f"{verb}_{rsrc_type.name_in_methods}"
+              self.kwarg_rsrc_id_key = rsrc_type.rsrc_id_key
+              self.kwargs_add = kwargs.get("kwargs_add", {})
+
+            @staticmethod
+            def new(rsrc_type, tag_key_words, **kwargs):
+              """Create an op of the requested, appropriate, or default (sub)class
+              """
+              op_class = kwargs.get("class", AWSOp)
+              return op_class(rsrc_type, tag_key_words, **kwargs)
+
+            def kwarg_rsrc_id(self, rsrc):
+              """Transfer resource ID from a describe_ result to another method's kwarg
+              """
+              return {self.kwarg_rsrc_id_key: self.rsrc_id(rsrc)}
+
+            # pylint: disable=unused-argument
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take a describe_ result, return another method's kwargs
+              """
+              op_kwargs_out = self.kwarg_rsrc_id(rsrc)
+              op_kwargs_out.update(self.kwargs_add)
+              return op_kwargs_out
+
+            def queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
+              """Send 1 operation message to the SQS queue
+              """
+              send_kwargs = {
+                "QueueUrl": QUEUE_URL,
+                "MessageAttributes": msg_attrs_str_encode((
+                  ("version", QUEUE_MSG_FMT_VERSION),
+                  ("expires", cycle_cutoff_epoch_str),
+                  ("svc", self.svc),
+                  ("op_method_name", self.method_name),
+                )),
+              }
+              try:
+                send_kwargs.update({
+                  "MessageBody": msg_body_encode(self.op_kwargs(rsrc, cycle_start_str))
+                })
+                sqs_resp = svc_client_get("sqs").send_message(**send_kwargs)
+              except SQSMessageTooLong:
+                sqs_send_log(
+                  cycle_start_str,
+                  send_kwargs,
+                  "QUEUE_MSG_TOO_LONG",
+                  "Increase QueueMessageBytesMax in CloudFormation",
+                )
+              except Exception as misc_exception:
+                sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_exception)
+                raise  # In error cases other than this, log 1 failed send but move on
+              else:
+                sqs_send_log(cycle_start_str, send_kwargs, "AWS_RESPONSE", sqs_resp)
+
+            def __str__(self):
+              return " ".join([
+                self.__class__.__name__, self.tag_key, self.svc, self.method_name
+              ])
+
+
+          class AWSOpMultipleRsrcs(AWSOp):
+            """Operation on multiple AWS resources of the same type
+            """
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, **kwargs)
+              self.method_name = self.method_name + "s"
+
+            def kwarg_rsrc_id(self, rsrc):
+              """Transfer resource ID from a describe_ result to a singleton list kwarg
+
+              One at a time for consistency and to avoid partial completion risk
+              """
+              return {f"{self.kwarg_rsrc_id_key}s": [self.rsrc_id(rsrc)]}
+
+
+          class AWSOpUpdateStack(AWSOp):
+            """CloudFormation stack update operation
+            """
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, verb="update", **kwargs)
+
+              # Use of final template instead of original makes this incompatible with
+              # CloudFormation "transforms". describe_stacks does not return templates.
+              self.kwargs_add["UsePreviousTemplate"] = True
+
+              # Use previous parameter values, except for:
+              #                          Param  Value
+              #                          Key    Out
+              # tag_key        sched-set-Enable-true
+              # tag_key        sched-set-Enable-false
+              # tag_key_words            [-2]   [-1]
+              self.changing_params_out = {
+                tag_key_words[-2]: tag_key_words[-1],  # Only 1 for now
+              }
+
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take 1 describe_stacks result, return update_stack kwargs
+              """
+              params_out = []
+              for param_in in rsrc.get("Parameters", []):
+                param_in_key = param_in["ParameterKey"]
+                param_out = {"ParameterKey": param_in_key}
+                if param_in_key in self.changing_params_out:
+                  param_out["ParameterValue"] = self.changing_params_out[param_in_key]
+                else:
+                  param_out["UsePreviousValue"] = True
+                params_out.append(param_out)
+
+              op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+              op_kwargs_out["Parameters"] = params_out
+              capabilities_in = rsrc.get("Capabilities", [])
+              if capabilities_in:
+                op_kwargs_out["Capabilities"] = capabilities_in
+              return op_kwargs_out
+
+            def __str__(self):
+              return super().__str__() + f" {self.changing_params_out}"
+
+
+          class AWSOpBackUp(AWSOp):
+            """On-demand AWS Backup operation
+            """
+            backup_kwargs_add = {}
+
+            @classmethod
+            def backup_kwargs_add_init(cls):
+              """Populate start_backup_job static kwargs, if not yet done
+              """
+              if not cls.backup_kwargs_add:
+                lifecycle = {}
+
+                cold_storage_after_days = environ_int("BACKUP_COLD_STORAGE_AFTER_DAYS")
+                if cold_storage_after_days > 0:
+                  lifecycle.update({
+                    "OptInToArchiveForSupportedResources": True,
+                    "MoveToColdStorageAfterDays": cold_storage_after_days,
+                  })
+
+                delete_after_days = environ_int("BACKUP_DELETE_AFTER_DAYS")
+                if delete_after_days > 0:
+                  lifecycle["DeleteAfterDays"] = delete_after_days
+
+                cls.backup_kwargs_add.update({
+                  "IamRoleArn": BACKUP_ROLE_ARN,
+                  "BackupVaultName": os.environ["BACKUP_VAULT_NAME"],
+                  "StartWindowMinutes": environ_int("BACKUP_START_WINDOW_MINUTES"),
+                  "CompleteWindowMinutes": environ_int(
+                    "BACKUP_COMPLETE_WINDOW_MINUTES"
+                  ),
+                })
+                if lifecycle:
+                  cls.backup_kwargs_add["Lifecycle"] = lifecycle
+
+            def __init__(self, rsrc_type, tag_key_words, **kwargs):
+              super().__init__(rsrc_type, tag_key_words, **kwargs)
+              self.rsrc_id = rsrc_type.arn
+              self.svc = "backup"
+              self.method_name = "start_backup_job"
+              self.kwarg_rsrc_id_key = "ResourceArn"
+              self.__class__.backup_kwargs_add_init()
+              self.kwargs_add.update(self.__class__.backup_kwargs_add)
+
+            def op_kwargs(self, rsrc, cycle_start_str):
+              """Take a describe_ result, return start_backup_job kwargs
+              """
+              op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+              op_kwargs_out.update({
+                "IdempotencyToken": cycle_start_str,
+                "RecoveryPointTags": {tag_key_join(("time", )): cycle_start_str},
+              })
+              return op_kwargs_out
+
+
+          # 4. Data-Driven Specifications ##############################################
+
+
+          def rsrc_types_init():
+            """Create AWS resource type objects when needed, if not already done
+            """
+
+            if not AWSRsrcType.members:
+              AWSRsrcType(
+                "ec2",
+                ("Instance", ),
+                {
+                  ("start", ): {"class": AWSOpMultipleRsrcs},
+                  ("reboot", ): {"class": AWSOpMultipleRsrcs},
+                  ("stop", ): {"class": AWSOpMultipleRsrcs},
+                  ("hibernate", ): {
+                    "class": AWSOpMultipleRsrcs,
+                    "verb": "stop",
+                    "kwargs_add": {"Hibernate": True},
+                  },
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                arn_key_suffix=None,
+                status_filter_pair=(
+                  "instance-state-name", ("running", "stopping", "stopped")
+                ),
+                describe_flatten=lambda resp: (
+                  instance
+                  for reservation in resp.get("Reservations", [])
+                  for instance in reservation.get("Instances", [])
+                ),
+              )
+
+              AWSRsrcType(
+                "ec2",
+                ("Volume", ),
+                {("backup", ): {"class": AWSOpBackUp}},
+                arn_key_suffix=None,
+                status_filter_pair=("status", ("available", "in-use")),
+              )
+
+              AWSRsrcType(
+                "rds",
+                ("DB", "Instance"),
+                {
+                  ("start", ): {},
+                  ("stop", ): {},
+                  ("reboot", ): {},
+                  ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                rsrc_id_key_suffix="Identifier",
+                tags_key="TagList",
+              )
+
+              AWSRsrcType(
+                "rds",
+                ("DB", "Cluster"),
+                {
+                  ("start", ): {},
+                  ("stop", ): {},
+                  ("reboot", ): {},
+                  ("backup", ): {"class": AWSOpBackUp},
+                },
+                rsrc_id_key_suffix="Identifier",
+                tags_key="TagList",
+              )
+
+              AWSRsrcType(
+                "cloudformation",
+                ("Stack", ),
+                {
+                  ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
+                  ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
+                },
+                rsrc_id_key_suffix="Name",
+                arn_key_suffix="Id",
+              )
+
+
+          # 5. Find Resources Lambda Function Handler ##################################
+
+
+          def lambda_handler_find(event, context):  # pylint: disable=unused-argument
+            """Find and queue AWS resources for scheduled operations, based on tags
+            """
+            log("LAMBDA_EVENT", event)
+            (cycle_start, cycle_cutoff) = cycle_start_end(
+              datetime.datetime.now(datetime.timezone.utc)
+            )
+            cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%MZ")
+            cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
+            sched_regexp = re.compile(
+              cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
+            )
+            log("START", cycle_start_str)
+            log("SCHED_REGEXP_VERBOSE", sched_regexp.pattern)
+            rsrc_types_init()
+            for rsrc_type in AWSRsrcType.members.values():
+              rsrc_type.rsrcs_find(
+                sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
+              )
+
+          # 6. "Do" Operations Lambda Function Handler #################################
+
+
+          def lambda_handler_do(event, context):  # pylint: disable=unused-argument
+            """Perform a queued operation on an AWS resource
+            """
+            for msg in event.get("Records", []):  # 0 or 1 messages expected
+              if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
+                op_log(
+                  event,
+                  entry_type="WRONG_QUEUE_MSG_FMT",
+                  entry_value="Unrecognized operation queue message format"
+                )
+                raise RuntimeError()
+              if (
+                int(msg_attr_str_decode(msg, "expires"))
+                < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+              ):
+                op_log(
+                  event,
+                  entry_type="EXPIRED_OP",
+                  entry_value="Schedule fewer operations per 10-minute cycle or "
+                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                )
+                raise RuntimeError()
+
+              svc = msg_attr_str_decode(msg, "svc")
+              op_method_name = msg_attr_str_decode(msg, "op_method_name")
+              try:
+                op_kwargs = json.loads(msg["body"])
+                op_method = getattr(svc_client_get(svc), op_method_name)
+                resp = op_method(**op_kwargs)
+              except Exception as misc_exception:
+                op_log(event, entry_type="EXCEPTION", entry_value=misc_exception)
+                raise
+              if boto3_success(resp):
+                op_log(event, resp=resp, log_level=logging.INFO)
+              else:
+                op_log(event, resp=resp)
+                raise RuntimeError()
+        # ZIPFILE_END
+
+  # Administrator should block other invocation of this AWS Lambda function
   DoLambdaFnInvokeLambdaPerm:
     Type: AWS::Lambda::Permission
     DependsOn: OperationQueuePol
@@ -847,13 +2124,14 @@ Resources:
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt OperationQueue.Arn
 
-  # Administrator should restrict other invocation of this AWS Lambda function
-
   DoLambdaFnSqsMapping:
     Type: AWS::Lambda::EventSourceMapping
     DependsOn: DoLambdaFnInvokeLambdaPerm
     Properties:
       BatchSize: 1
+      MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
+      ScalingConfig:
+        MaximumConcurrency: !Ref DoLambdaFnReservedConcurrentExecutions
       Enabled: !Ref Enable
       EventSourceArn: !GetAtt OperationQueue.Arn
       FunctionName: !GetAtt DoLambdaFn.Arn

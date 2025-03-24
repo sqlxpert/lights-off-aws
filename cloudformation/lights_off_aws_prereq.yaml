@@ -2,7 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
-  Deployment role for
+  CloudFormation service role to deploy
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
@@ -10,53 +10,50 @@ Parameters:
 
   PlaceholderHelp:
     Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege"
+    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege-installation"
 
-  LambdaSourceS3BucketNamePrefix:
+  PlaceholderSuggestedStackName:
+    Type: String
+    Default: "LightsOffPrereq"
+
+  StackNameLike:
     Type: String
     Description: >-
-      Exclude the region suffix, even though Lights Off REQUIRES a region
-      suffix in the S3 bucket name. For example, if you are creating this
-      stack in the US East (Northern Virginia) region and you set this to
-      "my-bucket", then the bucket named "my-bucket-us-east-1" must exist,
-      must have been created in the US East (Northern Virginia) region, and
-      must contain lights_off_aws.py.zip . These requirements apply in EVERY
-      region where you create a Lights Off CloudFormation stack. If you are
-      are creating a CloudFormation StackSet, then the file must also be
-      readable by every target AWS account, which generally requires that each
-      bucket have a bucket policy.
-
-  StackNameBase:
-    Type: String
-    Description: >-
-      When using the DeploymentRole provided by this stack, you MUST include
-      this string in the name of any Lights Off CloudFormation stack or
-      StackSet that you create. For security, no other stack or StackSet's
-      name should include this string. You may add prefixes and suffixes to
-      your future stack or StackSet's name. For example, if you set this to
-      "LightsOff", you can alternate between a "LightsOff1" stack and a
-      "LightsOff2" stack for blue/green deployment of updates, or you can
-      create a "TestLightsOff" stack marked for testing.
-    Default: "LightsOff"
+      When a stack is created using the deployment role, its name must match
+      this StringLike/ArnLike pattern. Examples: "LightsOff" only allows a
+      stack of that name; "LightsOff*" also allows stacks with names such as
+      "LightsOff2" and "LightsOffTest"; and "StackSet-LightsOff-*" allows a
+      StackSet named "LightsOff", whose StackSet instances receive names
+      beginning "StackSet-LightsOff-". See
+      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
+    Default: "LightsOff*"
 
 Metadata:
 
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Essentials
+          default: For Reference
         Parameters:
           - PlaceholderHelp
-          - LambdaSourceS3BucketNamePrefix
-          - StackNameBase
+          - PlaceholderSuggestedStackName
+      - Label:
+          default: Advanced Options
+        Parameters:
+          - PlaceholderAdvancedParameters
+      - Label:
+          default: For stacks created with the deployment role...
+        Parameters:
+          - StackNameLike
     ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
-      LambdaSourceS3BucketNamePrefix:
-        default: S3 bucket for AWS Lambda function source code
-      StackNameBase:
-        default: >-
-          Name of future stack or StackSet
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
+      PlaceholderAdvancedParameters:
+        default: Do not change parameters below, unless necessary!
+      StackNameLike:
+        default: Allowed stack name pattern
 
 Resources:
 
@@ -82,15 +79,6 @@ Resources:
             Version: "2012-10-17"
             Statement:
 
-              # Sufficient only for the current AWS account. For a multi-account
-              # deployment, also allow access from all StackSets target accounts,
-              # in each S3 bucket's bucket policy.
-              - Effect: Allow
-                Action:
-                  - s3:GetObject*
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${LambdaSourceS3BucketNamePrefix}-*/*"
-
               - Effect: Allow
                 Action:
                   - lambda:CreateFunction
@@ -106,8 +94,7 @@ Resources:
                   - lambda:TagResource
                   - lambda:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - lambda:CreateEventSourceMapping
@@ -118,8 +105,17 @@ Resources:
                 Condition:
                   ArnLikeIfExists:
                     "lambda:FunctionArn":
-                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:StackSet-*${StackNameBase}*"
-                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:*${StackNameBase}*"
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
+              - Effect: Allow
+                Action:
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:event-source-mapping:*"
+              - Effect: Allow
+                Action:
+                  - lambda:ListTags
+                Resource: "*"
 
               - Effect: Allow
                 Action:
@@ -127,14 +123,18 @@ Resources:
                   - logs:DeleteLogGroup
                   - logs:PutRetentionPolicy
                   - logs:DeleteRetentionPolicy
+                  - logs:AssociateKmsKey
+                  - logs:DisassociateKmsKey
                   - logs:TagLogGroup
+                  - logs:TagResource
                   - logs:UntagLogGroup
+                  - logs:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - logs:DescribeLogGroups
+                  - logs:ListTagsForResource
                 Resource: "*"
 
               - Effect: Allow
@@ -150,8 +150,11 @@ Resources:
                   - events:TagResource
                   - events:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}*"
+              - Effect: Allow
+                Action:
+                  - events:ListTagsForResource
+                Resource: "*"
 
               - Effect: Allow
                 Action:
@@ -166,35 +169,21 @@ Resources:
                   - sqs:TagQueue
                   - sqs:UntagQueue
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - sqs:ListQueues
+                  - sqs:ListQueueTags
                 Resource: "*"
 
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-              - Effect: Allow
-                Action:
-                  - iam:CreatePolicy
-                  - iam:GetPolicy
-                  - iam:DeletePolicy
-                  - iam:CreatePolicyVersion
-                  - iam:ListPolicyVersions
-                  - iam:GetPolicyVersion
-                  - iam:DeletePolicyVersion
-                  - iam:TagPolicy
-                  - iam:UntagPolicy
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
               - Effect: Allow
                 Action:
                   - iam:CreateRole
+                  - iam:UpdateRoleDescription
                   - iam:GetRole
                   - iam:DeleteRole
                   - iam:UpdateAssumeRolePolicy
@@ -205,20 +194,14 @@ Resources:
                   - iam:PutRolePolicy
                   - iam:DeleteRolePolicy
                   - iam:ListEntitiesForPolicy
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*${StackNameBase}*"
-              - Effect: Allow
-                Action:
                   - iam:TagRole
                   - iam:UntagRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/StackSet-*${StackNameBase}*"
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*${StackNameBase}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
               - Effect: Allow
                 Action:
+                  - iam:ListRoles
+                  - iam:ListRoleTags
                   - iam:ListAttachedRolePolicies
                 Resource: "*"
 
@@ -226,6 +209,7 @@ Resources:
                 Action:
                   - kms:ListKeys
                   - kms:ListAliases
+                  - kms:ListResourceTags
                   - kms:DescribeKey
                 Resource: "*"
 
