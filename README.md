@@ -15,9 +15,8 @@ Ever forget to turn the lights off? Now you can:
 _Most of all, this solution is lightweight. Not counting blanks, comments, or
 test files, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 Python lines! At under 600 Python lines and under 900
-CloudFormation YAML lines, Lights Off is easy to understand, maintain, and
-extend._
+has over 9,500 lines of Python! At under 600 lines of Python, Lights Off is
+easy to understand, maintain, and extend._
 
 Jump to:
 [Quick Start](#quick-start)
