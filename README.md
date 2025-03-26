@@ -132,7 +132,7 @@ you must add a statement to the key policies.
 
 - For a single-account installation, delete the entire
   `"ForAnyValue:StringLike"` section and replace _ACCOUNT_ with the account
-  number of the AWS account where Lights Off is installed.
+  number of the AWS account in which you have installed Lights Off.
 
 - For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ ,
   _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your
