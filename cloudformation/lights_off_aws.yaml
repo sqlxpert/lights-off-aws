@@ -116,6 +116,32 @@ Parameters:
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
 
+  DoLambdaFnReservedConcurrentExecutions:
+    Type: Number
+    Description: >-
+      How many scheduled operations can be done in parallel. See
+      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
+    MinValue: 0
+    Default: 5
+
+  RequireSameAccountKmsKeyPolicyForEc2StartInstances:
+    Type: String
+    Description: >-
+      When starting an EC2 instance with an EBS volume that is encrypted with
+      a custom KMS key, whether to defer to the key policy even if the custom
+      key and the EC2 instance are in the same AWS account. The default,
+      "false", lets the "Do" AWS Lambda function use any custom key in the
+      same AWS account even if the key policy doesn't explicitly allow it.
+      Changing this to "true" treats same-account custom keys just like
+      other-account custom keys: the "Do" function can only use a key if the
+      key policy allows, and otherwise, the request to start the EC2 instance
+      will fail. For a sample key policy statement, see:
+      https://github.com/sqlxpert/lights-off-aws#starting-ec2-instances-with-encrypted-ebs-volumes
+    Default: "false"
+    AllowedValues:
+      - "false"
+      - "true"
+
   DoLambdaFnRoleAttachLocalPolicyName:
     Type: String
     Description: >-
@@ -127,14 +153,6 @@ Parameters:
       Policies are account-wide, not regional. See
       https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
-
-  DoLambdaFnReservedConcurrentExecutions:
-    Type: Number
-    Description: >-
-      How many scheduled operations can be done in parallel. See
-      https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
-    MinValue: 0
-    Default: 5
 
   DoLambdaFnMemoryMB:
     Type: Number
@@ -245,13 +263,11 @@ Metadata:
         Parameters:
           - Enable
       - Label:
-          default: >-
-            Advanced...
+          default: Advanced...
         Parameters:
           - PlaceholderAdvancedParameters
       - Label:
-          default: >-
-            Backups
+          default: Backups
         Parameters:
           - BackupRoleName
           - BackupVaultName
@@ -268,6 +284,7 @@ Metadata:
           default: AWS Lambda function to do scheduled operations
         Parameters:
           - DoLambdaFnReservedConcurrentExecutions
+          - RequireSameAccountKmsKeyPolicyForEc2StartInstances
           - DoLambdaFnRoleAttachLocalPolicyName
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
@@ -311,6 +328,8 @@ Metadata:
         default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
         default: Number of parallel operations
+      RequireSameAccountKmsKeyPolicyForEc2StartInstances:
+        default: Require same-account KMS key policy for EC2 sched-start
       DoLambdaFnRoleAttachLocalPolicyName:
         default: Name of local policy to attach
       DoLambdaFnMemoryMB:
@@ -336,8 +355,8 @@ Conditions:
 
   EnableTrue: !Equals [ !Ref Enable, "true" ]
 
-  DoLambdaFnRoleAttachLocalPolicyNameBlank:
-    !Equals [ !Ref DoLambdaFnRoleAttachLocalPolicyName, "" ]
+  RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue:
+    !Equals [ !Ref RequireSameAccountKmsKeyPolicyForEc2StartInstances, "true" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
 
@@ -345,6 +364,9 @@ Conditions:
     Fn::And:
       - !Not [ !Equals [ !Ref SqsKmsKey, "" ] ]
       - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
+
+  DoLambdaFnRoleAttachLocalPolicyNameBlank:
+    !Equals [ !Ref DoLambdaFnRoleAttachLocalPolicyName, "" ]
 
   CloudWatchLogsKmsKeyBlank: !Equals [ !Ref CloudWatchLogsKmsKey, "" ]
 
@@ -556,6 +578,36 @@ Resources:
                   - ec2:DeregisterImage
                   - ec2:DeleteSnapshot
                 Resource: "*"
+
+        - Fn::If:
+            - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
+            - PolicyName: KmsForEc2StartInstancesRequireSameAccountKmsKeyPolicy
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - kms:CreateGrant
+                    NotResource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:*"
+                    Condition:
+                      StringEquals: { "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com" }
+                      Bool: { "kms:GrantIsForAWSResource": "true" }
+            - !Ref AWS::NoValue
+
+        - Fn::If:
+            - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
+            - !Ref AWS::NoValue
+            - PolicyName: KmsForEc2StartInstances
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - kms:CreateGrant
+                    Resource: "*"
+                    Condition:
+                      StringEquals: { "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com" }
+                      Bool: { "kms:GrantIsForAWSResource": "true" }
 
         - PolicyName: RdsWrite
           PolicyDocument:
