@@ -65,6 +65,7 @@ Jump to:
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
 
+- `sched-start` and `sched-backup` may require [extra setup](#extra-setup).
 - [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
 - Database clusters and the instances inside them each have their own tags.
   Whether an operation is at the cluster level or the instance level depends
@@ -115,16 +116,23 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
-The `sched-start` tag works for EC2 instances with unencrypted EBS volumes or
-volumes encrypted with the default, AWS-managed `aws/ebs` key.
+The `sched-start` tag works for EC2 instances if:
 
-For custom KMS keys, you must add a statement to the key policies.
+- Your EBS volumes are unencrypted, or
+- You use the default, AWS-managed `aws/ebs` encryption key, or
+- You use custom keys in the same AWS account as each EC2 instance, the key
+  policies contain the default `"Enable IAM User Permissions"` statement, and
+  they do not contain `"Deny"` statements.
+
+If your custom keys are in a different AWS account than your EC2 instances,
+you must add a statement to the key policies.
 
 <details>
-  <summary>View sample KMS key policy statement for custom EBS encryption</summary>
+  <summary>View sample KMS key policy statement for cross-account EBS encryption</summary>
 
-- For a single account, delete the `"ForAnyValue:StringLike"` section and
-  replace _ACCOUNT_ with your AWS account number.
+- For a single-account installation, delete the entire
+  `"ForAnyValue:StringLike"` section and replace _ACCOUNT_ with the account
+  number of the AWS account where Lights Off is installed.
 
 - For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ ,
   _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your
@@ -168,9 +176,10 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
    AWS Backup creates the `Default` vault the first time you open the
    [list of vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
    in a given AWS account and region, using the AWS Console. Otherwise, see
-   [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html),
+   [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html)
+   and
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
-   , or
+   or
    [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)
    . Update the `BackupVaultName` CloudFormation stack parameter if necessary.
 
@@ -190,6 +199,7 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 4. KMS key policies
 
    `AWSBackupDefaultServiceRole` works if:
+
    - Your EBS volumes and RDS/Aurora databases are unencrypted, or
    - You use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys, or
    - You use custom keys in the same AWS account as each disk and database,
