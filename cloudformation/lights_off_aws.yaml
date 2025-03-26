@@ -263,13 +263,11 @@ Metadata:
         Parameters:
           - Enable
       - Label:
-          default: >-
-            Advanced...
+          default: Advanced...
         Parameters:
           - PlaceholderAdvancedParameters
       - Label:
-          default: >-
-            Backups
+          default: Backups
         Parameters:
           - BackupRoleName
           - BackupVaultName
