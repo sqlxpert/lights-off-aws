@@ -503,7 +503,7 @@ Despite new features, the code has gotten shorter, based on GitHub LOC.
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|530 &check;|820|
+|2025|530 &check;|870|
 
 ## Dedication
 
