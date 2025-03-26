@@ -116,7 +116,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
-The `sched-start` tag works for EC2 instances if:
+The `sched-start` tag works for EC2 instances with EBS volumes if:
 
 - Your EBS volumes are unencrypted, or
 - You use the default, AWS-managed `aws/ebs` encryption key, or
