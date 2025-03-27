@@ -55,15 +55,15 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`||
+||`sched-stop`|`sched-hibernate`|`sched-backup`|
 |:---|:---:|:---:|:---:|
 ||**`sched-start`**|||
-||**`sched-reboot`**||**`sched-backup`**|
+||**`sched-reboot`**|||
 |EC2:||||
 |[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
 |RDS and Aurora:||||
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||rarr; Snapshot|
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
 
 - [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
@@ -95,7 +95,7 @@ Jump to:
   |:---:|:---:|:---:|
   |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
   |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-  |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|Extra monthly and weekly operations|1st day of the month at 03:00, _plus_ Fridays at 19:00, _plus_ every day at 11:15|
+  |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|Extra monthly and weekly operations|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ### Schedule Rules
 
