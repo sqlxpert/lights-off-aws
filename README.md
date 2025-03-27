@@ -55,15 +55,16 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`|||
-|:---|:---:|:---:|:---:|:---:|
-||**`sched-start`**|**`sched-start`**|`sched-reboot`|`sched-backup`|
-|EC2:|||||
-|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&check;|&rarr; Image (AMI)|
-|[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)||||&rarr; Snapshot|
-|RDS and Aurora:|||||
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+||`sched-stop`|`sched-hibernate`||
+|:---|:---:|:---:|:---:|
+||**`sched-start`**|||
+||**`sched-reboot`**||**`sched-backup`**|
+|EC2:||||
+|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
+|[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
+|RDS and Aurora:||||
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||rarr; Snapshot|
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
 
 - [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
 - Whether a database operation is at the cluster or instance level depends on
