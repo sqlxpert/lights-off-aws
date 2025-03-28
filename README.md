@@ -167,14 +167,16 @@ instances, you must add a statement like the following to the key policies:
 
 ### Making Backups
 
-You can use the `sched-backup` tag without extra setup if you have already
-used the AWS Console to view the
+You can use the `sched-backup` tag with minimal setup if you work in a small
+number of regions and/or AWS accounts. Use the AWS Console to view the
 [list of AWS Backup vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
-in every AWS account and region and to make a backup once in every AWS account
-(AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup).
+at least one time in each AWS account and region. Make at least one backup in
+each AWS account (AWS Backup &rarr; My account &rarr; Dashboard &rarr;
+On-demand backup). If you use _custom_ KMS keys, they must be in the same AWS
+account as the disks and databases encrypted with them.
 
 <details>
-  <summary>If you work in many regions and/or AWS accounts...</summary>
+  <summary>If you work across many regions and/or AWS accounts...</summary>
 
 Because you want to use the `sched-backup` tag in a complex AWS environment,
 you must address the following AWS Backup requirements:
