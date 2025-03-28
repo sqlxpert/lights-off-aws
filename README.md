@@ -116,7 +116,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 Most people can use the `sched-start` tag without extra setup.
 
 <details>
-  <summary>If you use KMS encryption keys from a different AWS account...</summary>
+  <summary>If you use custom KMS encryption keys from a different AWS account...</summary>
 
 The `sched-start` tag works for EC2 instances with EBS volumes if:
 
@@ -128,16 +128,6 @@ The `sched-start` tag works for EC2 instances with EBS volumes if:
 
 Because your custom keys are in a different AWS account than your EC2
 instances, you must add a statement like the following to the key policies:
-
-- One account: Delete the entire `"ForAnyValue:StringLike"` section and
-  replace _ACCOUNT_ with the account number of the AWS account in which you
-  have installed Lights Off.
-
-- AWS Organizations: Replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_ ,
-  and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
-  organization root, and the organizational unit in which you have installed
-  Lights Off. `/*` at the end of this organization path stands for child OUs,
-  if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 
 ```json
     {
@@ -163,6 +153,16 @@ instances, you must add a statement like the following to the key policies:
     }
 ```
 
+- One account: Delete the entire `"ForAnyValue:StringLike"` section and
+  replace _ACCOUNT_ with the account number of the AWS account in which you
+  have installed Lights Off.
+
+- AWS Organizations: Replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_ ,
+  and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
+  organization root, and the organizational unit in which you have installed
+  Lights Off. `/*` at the end of this organization path stands for child OUs,
+  if any. Do not use a path less specific than `"o-ORG_ID/*"` .
+
 </details>
 
 ### Making Backups
@@ -174,7 +174,7 @@ in every AWS account and region and to make a backup once in every AWS account
 (AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup).
 
 <details>
-  <summary>If you use AWS Backup in many regions and/or AWS accounts...</summary>
+  <summary>If you work in many regions and/or AWS accounts...</summary>
 
 Because you want to use the `sched-backup` tag in a complex AWS environment,
 you must address the following AWS Backup requirements:
