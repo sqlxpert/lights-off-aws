@@ -131,7 +131,7 @@ you must add a statement to the key policies.
   replace _ACCOUNT_ with the account number of the AWS account in which you
   have installed Lights Off.
 
-- AWS Organizations: Replace _ACCOUNT_ with `*` and _o-ORG_ID_ ,_r-ROOT_ID_ ,
+- AWS Organizations: Replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_ ,
   and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
   organization root, and the organizational unit in which you have installed
   Lights Off. `/*` at the end of this organization path stands for child OUs,
