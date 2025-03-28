@@ -113,7 +113,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
-Most people can use the `sched-start` tag without extra setup.
+In most cases, you can use the `sched-start` tag without extra setup.
 
 <details>
   <summary>If you use custom KMS encryption keys from a different AWS account...</summary>
