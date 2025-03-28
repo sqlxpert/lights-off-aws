@@ -113,6 +113,11 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
+Most people can use the `sched-start` tag without extra setup.
+
+<details>
+  <summary>If you use KMS encryption keys from a different AWS account...</summary>
+
 The `sched-start` tag works for EC2 instances with EBS volumes if:
 
 - Your EBS volumes are unencrypted, or
@@ -121,11 +126,8 @@ The `sched-start` tag works for EC2 instances with EBS volumes if:
   policies contain the default `"Enable IAM User Permissions"` statement, and
   they do not contain `"Deny"` statements.
 
-If your custom keys are in a different AWS account than your EC2 instances,
-you must add a statement to the key policies.
-
-<details>
-  <summary>View sample KMS key policy statement for cross-account EBS encryption</summary>
+Because your custom keys are in a different AWS account than your EC2
+instances, you must add a statement like the following to the key policies:
 
 - One account: Delete the entire `"ForAnyValue:StringLike"` section and
   replace _ACCOUNT_ with the account number of the AWS account in which you
@@ -165,7 +167,17 @@ you must add a statement to the key policies.
 
 ### Making Backups
 
-Before you can use the `sched-backup` tag, a few steps may be necessary.
+You can use the `sched-backup` tag without extra setup if you have already
+used the AWS Console to view the
+[list of AWS Backup vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+in every AWS account and region and to make a backup once in every AWS account
+(AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup).
+
+<details>
+  <summary>If you use AWS Backup in many regions and/or AWS accounts...</summary>
+
+Because you want to use the `sched-backup` tag in a complex AWS environment,
+you must address the following AWS Backup requirements:
 
 1. Vault
 
@@ -212,6 +224,8 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 
 If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
 problem is likely.
+
+</details>
 
 ### Hidden Policies
 
