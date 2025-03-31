@@ -13,7 +13,7 @@ Ever forget to turn the lights off? Now you can:
 - Easily deploy this solution to multiple AWS accounts and regions.
 
 _Most of all, this solution is lightweight. Not counting blanks, comments, or
-test files, AWS's
+tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
 has over 9,500 lines of Python! At under 600 lines of Python, Lights Off is
 easy to understand, maintain, and extend._
@@ -55,22 +55,20 @@ Jump to:
 
 ## Tag Keys (Operations)
 
-||`sched-stop`|`sched-hibernate`|`sched-reboot`|`sched-backup`|
-|:---|:---:|:---:|:---:|:---:|
-||**`sched-start`**|**`sched-start`**|||
-|EC2:|||||
-|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&check;|&rarr; Image (AMI)|
-|[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)||||&rarr; Snapshot|
-|RDS and Aurora:|||||
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&check;|&rarr; Snapshot|
+||`sched-stop`|`sched-hibernate`|`sched-backup`|
+|:---|:---:|:---:|:---:|
+||**`sched-start`**|||
+||**`sched-reboot`**|||
+|EC2:||||
+|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
+|[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
+|RDS and Aurora:||||
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
 
-- `sched-start` and `sched-backup` may require [extra setup](#extra-setup).
 - [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
-- Database clusters and the instances inside them each have their own tags.
-  Whether an operation is at the cluster level or the instance level depends
-  on your choice of Aurora or RDS, and for RDS, also on your choice of
-  configuration.
+- Whether a database operation is at the cluster or instance level depends on
+  your choice of Aurora or RDS, and for RDS, on the database's configuration.
 
 ## Tag Values (Schedules)
 
@@ -97,15 +95,14 @@ Jump to:
   |:---:|:---:|:---:|
   |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
   |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-  |`uTH:M=2T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|2 extra weekly operations|Tuesdays at 03:00, Fridays at 19:00, _plus_ every day at 11:15|
-  |`dTH:M=01T03:00 u=3 H=19 M=15`|Extra monthly operation|1st day of the month at 03:00, _plus_ Wednesdays at 19:15|
+  |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|Extra monthly and weekly operations|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ### Schedule Rules
 
 - [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
 - 24-hour clock
 - Days before times, hours before minutes
-- The day, the hour and the minute must all be specified in some way
+- The day, the hour and the minute must all be resolved
 - Instead of the end of the month, specify the start, `dTH:M=01T00:00`
 - Multiple operations on the same resource at the same time are _all_ canceled
 
@@ -116,6 +113,11 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 ### Starting EC2 Instances with Encrypted EBS Volumes
 
+In most cases, you can use the `sched-start` tag without setup.
+
+<details>
+  <summary>If you use custom KMS encryption keys from a different AWS account...</summary>
+
 The `sched-start` tag works for EC2 instances with EBS volumes if:
 
 - Your EBS volumes are unencrypted, or
@@ -124,22 +126,8 @@ The `sched-start` tag works for EC2 instances with EBS volumes if:
   policies contain the default `"Enable IAM User Permissions"` statement, and
   they do not contain `"Deny"` statements.
 
-If your custom keys are in a different AWS account than your EC2 instances,
-you must add a statement to the key policies.
-
-<details>
-  <summary>View sample KMS key policy statement for cross-account EBS encryption</summary>
-
-- For a single-account installation, delete the entire
-  `"ForAnyValue:StringLike"` section and replace _ACCOUNT_ with the account
-  number of the AWS account in which you have installed Lights Off.
-
-- For AWS Organizations, replace _ACCOUNT_ with `*` and _o-ORG_ID_ ,
-  _r-ROOT_ID_ , and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your
-  organization, your organization root, and the organizational unit (OU) in
-  which you have installed Lights Off. `/*` at the end of this organization
-  path stands for child OUs, if any. Do not use a path less specific than
-  `"o-ORG_ID/*"` .
+Because your custom keys are in a different AWS account than your EC2
+instances, you must add a statement like the following to the key policies:
 
 ```json
     {
@@ -165,11 +153,36 @@ you must add a statement to the key policies.
     }
 ```
 
+- One account: Delete the entire `"ForAnyValue:StringLike"` section and
+  replace _ACCOUNT_ with the account number of the AWS account in which you
+  have installed Lights Off.
+
+- AWS Organizations: Replace _ACCOUNT_ with `*` and _o-ORG_ID_ , _r-ROOT_ID_ ,
+  and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
+  organization root, and the organizational unit in which you have installed
+  Lights Off. `/*` at the end of this organization path stands for child OUs,
+  if any. Do not use a path less specific than `"o-ORG_ID/*"` .
+
+If an EC2 instance does not start as scheduled, a KMS key permissions error is
+possible.
+
 </details>
 
 ### Making Backups
 
-Before you can use the `sched-backup` tag, a few steps may be necessary.
+You can use the `sched-backup` tag with minimal setup if you work in a small
+number of regions and/or AWS accounts. Use the AWS Console to view the
+[list of AWS Backup vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+one time in each AWS account and region. Make one backup in each AWS account
+(AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup). If
+you use _custom_ KMS keys, they must be in the same AWS account as the disks
+and databases encrypted with them.
+
+<details>
+  <summary>If you work across many regions and/or AWS accounts...</summary>
+
+Because you want to use the `sched-backup` tag in a complex AWS environment,
+you must address the following AWS Backup requirements:
 
 1. Vault
 
@@ -217,11 +230,13 @@ Before you can use the `sched-backup` tag, a few steps may be necessary.
 If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
 problem is likely.
 
+</details>
+
 ### Hidden Policies
 
-Service and resource control policies (SCPs and RCPs), permission boundaries,
-and session policies can interfere with Lights Off. Ask your AWS
-administrator!
+Service and resource control policies (SCPs and RCPs), permissions boundaries,
+and session policies can interfere with the installation or usage of Lights
+Off. Check with your AWS administrator!
 
 ## Accessing Backups
 
@@ -250,7 +265,9 @@ form (example: `2024-12-31T14:00Z`).
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
 - Log entries are JSON objects. Entries from Lights Off include `"level"`,
   `"type"` and `"value"` keys.
-- For more or less data, change the `LogLevel` in CloudFormation.
+- For more data, change the `LogLevel` in CloudFormation.
+- Check CloudTrail for the final stages of `sched-start` and `sched-backup`
+  operations.
 
 ## Advanced Installation
 
@@ -360,21 +377,17 @@ software at your own risk. You are encouraged to evaluate the source code._
 - Only allow trusted people and services to tag AWS resources. You can
   deny the right to add, change and delete `sched-` tags by including the
   [aws:TagKeys condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in a permission boundary.
+  in a permissions boundary.
 
-- Never authorize a role that can create backups (or, in this case, set tags
-  to schedule backups) delete backups as well.
+- Prevent people who can set the `sched-backup` tag from deleting backups.
 
 - Prevent people from modifying components, most of which can be identified by
   `LightsOff` in ARNs and in the automatic `aws:cloudformation:stack-name`
   tag. Limiting permissions so that the deployment role is _necessary_ for
-  stack modifications is ideal. Short of that, you could copy the deployment
-  role policies, delete statements with `"Resource": "*"` , change `"Effect"`
-  to `"Deny"` in the remaining statements, and use this inverted policy as a
-  permission boundary.
+  stack modifications is ideal.
 
-- Add policies to prevent people from directly invoking the AWS Lambda
-  functions and from passing their roles to other functions.
+- Prevent people from directly invoking the AWS Lambda functions and from
+  passing the function roles to arbitrary functions.
 
 - Log infrastructure changes using AWS CloudTrail, and set up alerts.
 
