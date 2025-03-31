@@ -163,6 +163,9 @@ instances, you must add a statement like the following to the key policies:
   Lights Off. `/*` at the end of this organization path stands for child OUs,
   if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 
+If an EC2 instance does not start as scheduled, a KMS key permission error is
+possible.
+
 </details>
 
 ### Making Backups
@@ -231,9 +234,9 @@ problem is likely.
 
 ### Hidden Policies
 
-Service and resource control policies (SCPs and RCPs), permission boundaries,
-and session policies can interfere with Lights Off. Ask your AWS
-administrator!
+Service and resource control policies (SCPs and RCPs), permissions boundaries,
+and session policies can interfere with the installation or usage of Lights
+Off. Check with your AWS administrator!
 
 ## Accessing Backups
 
@@ -262,7 +265,9 @@ form (example: `2024-12-31T14:00Z`).
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
 - Log entries are JSON objects. Entries from Lights Off include `"level"`,
   `"type"` and `"value"` keys.
-- For more or less data, change the `LogLevel` in CloudFormation.
+- For more data, change the `LogLevel` in CloudFormation.
+- Check CloudTrail for the final stages of `sched-start` and `sched-backup`
+  operations.
 
 ## Advanced Installation
 
@@ -372,7 +377,7 @@ software at your own risk. You are encouraged to evaluate the source code._
 - Only allow trusted people and services to tag AWS resources. You can
   deny the right to add, change and delete `sched-` tags by including the
   [aws:TagKeys condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in a permission boundary.
+  in a permissions boundary.
 
 - Prevent people who can set the `sched-backup` tag from deleting backups.
 
