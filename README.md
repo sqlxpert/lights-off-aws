@@ -163,7 +163,7 @@ instances, you must add a statement like the following to the key policies:
   Lights Off. `/*` at the end of this organization path stands for child OUs,
   if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 
-If an EC2 instance does not start as scheduled, a KMS key permission error is
+If an EC2 instance does not start as scheduled, a KMS key permissions error is
 possible.
 
 </details>
