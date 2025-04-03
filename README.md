@@ -194,9 +194,10 @@ You can use the `sched-backup` tag with minimal setup if you work in a small
 number of regions and/or AWS accounts. Use the AWS Console to view the
 [list of AWS Backup vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
 one time in each AWS account and region. Make one backup in each AWS account
-(AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup). If
-you use _custom_ KMS keys, they must be in the same AWS account as the disks
-and databases encrypted with them.
+([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My account
+&rarr; Dashboard &rarr; On-demand backup). If you use _custom_ KMS keys, they
+must be in the same AWS account as the disks and databases encrypted with
+them.
 
 <details>
   <summary>If you work across many regions and/or AWS accounts...</summary>
@@ -320,7 +321,7 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 ### Least-Privilege Installation
 
 <details>
-  <summary>View least-privilege installation details</summary>
+  <summary>Least-privilege installation details...</summary>
 
 You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
@@ -362,7 +363,7 @@ warranty, an indemnification, an assumption of liability, etc. Use this
 software at your own risk. You are encouraged to evaluate the source code._
 
 <details>
-  <summary>View security details</summary>
+  <summary>Security details...</summary>
 
 ### Security Design Goals
 
@@ -439,7 +440,7 @@ software at your own risk. You are encouraged to evaluate the source code._
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
 <details>
-  <summary>View scheduled stack update details</summary>
+  <summary>Scheduled CloudFormation stack update details...</summary>
 
 Lights Off can delete and recreate many types of expensive AWS infrastructure
 in your own CloudFormation stacks, based on cron schedules in stack tags.
@@ -468,7 +469,7 @@ a stack update, toggling the value of the `Enable` parameter to `true` or
 ## Extensibility
 
 <details>
-  <summary>View extensibility details</summary>
+  <summary>Extensibility details...</summary>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
