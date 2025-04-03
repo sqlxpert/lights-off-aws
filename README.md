@@ -126,9 +126,9 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 |Tag Value|Description|
 |:---:|:---:|
-|`d=01 d=15 H=03 H=19 M=00`|cron: 1st and 15th days of the month, at 03:00 and 19:00|
+|`d=01 d=15 H=03 H=19 M=00`|Traditional cron: 1st and 15th days of the month, at 03:00 and 19:00|
 |`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-|`dTH:M=01T00:00`|Start of month (use in place of end of month)|
+|`dTH:M=01T00:00`|Start of month _(use in place of end of month)_|
 |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ## Extra Setup
