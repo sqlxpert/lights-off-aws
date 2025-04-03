@@ -81,7 +81,7 @@ Jump to:
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 (see
-[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=224&p2=75&p3=64&p4=179&p5=1440&p6=136&p7=133&p8=195&p9=367&p10=54)).
+[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=1440&p2=224&p3=75&p4=64&p5=179&p6=136&p7=133&p8=195&p9=367&p10=54)).
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
@@ -452,7 +452,7 @@ Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
-To make your CloudFormation template compatible, see
+To make your own CloudFormation template compatible, see
 [lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
 .
 
