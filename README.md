@@ -79,7 +79,8 @@ Jump to:
 
 ### Readymade Examples
 
-These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round.
+These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
+([time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=224&p2=179&p3=1440&p4=136&p5=133&p6=195&p7=367&p8=54)).
 In North America, outlying provinces and states are excluded.
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
