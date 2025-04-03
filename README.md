@@ -80,7 +80,7 @@ Jump to:
 ### Readymade Examples
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round.
-Some outlying areas are excluded.
+In North America, outlying provinces and states are excluded.
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
@@ -124,8 +124,8 @@ Space was chosen as the separator and underscore, as the wildcard, because
 |Tag Value|Description|
 |:---:|:---:|
 |`d=01 d=15 H=03 H=19 M=00`|cron: 1st and 15th days of the month, at 03:00 and 19:00|
-|`dTH:M=01T00:00`|Start of month (use in place of end of month)|
 |`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
+|`dTH:M=01T00:00`|Start of month (use in place of end of month)|
 |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ## Extra Setup
@@ -333,7 +333,7 @@ are limited, you might need permission to pass the deployment role to
 CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
 policy for an example.
 
-For a multi-account CloudFormation StackSet, you can use
+For a CloudFormation StackSet, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
 by copying the inline IAM policy of `LightsOffPrereq-DeploymentRole` to a
 customer-managed IAM policy, attaching your policy to
