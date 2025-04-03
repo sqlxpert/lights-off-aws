@@ -80,7 +80,8 @@ Jump to:
 ### Readymade Examples
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
-([time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=224&p2=75&p3=64&p4=179&p5=1440&p6=136&p7=133&p8=195&p9=367&p10=54)).
+(see
+[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=224&p2=75&p3=64&p4=179&p5=1440&p6=136&p7=133&p8=195&p9=367&p10=54)).
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
@@ -128,7 +129,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 |:---:|:---:|
 |`d=01 d=15 H=03 H=19 M=00`|Traditional cron: 1st and 15th days of the month, at 03:00 and 19:00|
 |`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-|`dTH:M=01T00:00`|Start of month _(use in place of end of month)_|
+|`dTH:M=01T00:00`|Start of month _(instead of end of month)_|
 |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ## Extra Setup
