@@ -81,19 +81,17 @@ Jump to:
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 (see
-[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=1440&p2=224&p3=75&p4=64&p5=179&p6=136&p7=133&p8=195&p9=367&p10=54)).
+[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=1440&p2=103&p3=224&p4=75&p5=64&p6=179&p7=175&p8=136&p9=133&p10=195&p11=367&p12=54)).
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
-|North America|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
+|USA Mainland|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
+|North America (Hawaii to Newfoundland)|42%|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
 |Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 |India|64%|`u=1 H:M=02:00`|`u=5 H:M=14:00`|
-|North America, Europe|29%|`u=1 H:M=04:30`|`u=6 H:M=03:30`|
-|North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
+|North America, Europe|28%|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
+|North America, Europe, India|26%|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
 |Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
-
-Stop later to include Hawaii and/or Alaska. For North America alone, start
-earlier to include the Atlantic time zone.
 
 ### Rules
 
