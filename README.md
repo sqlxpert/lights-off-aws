@@ -86,9 +86,9 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
 |North America|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
-|Europe|61%|`u=1 u=2 u=3 u=4 u=5 H:M=06:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 |India|64%|`u=1 H:M=02:00`|`u=5 H:M=14:00`|
-|North America, Europe|31%|`u=1 H:M=06:30`|`u=6 H:M=03:30`|
+|North America, Europe|29%|`u=1 H:M=04:30`|`u=6 H:M=03:30`|
 |North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
 |Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
 
