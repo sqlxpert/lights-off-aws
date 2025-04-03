@@ -53,6 +53,11 @@ Jump to:
 4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
    it and delete the `sched-stop` tag.
 
+Jump to:
+[Extra Setup](#extra-setup)
+&bull;
+[Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
+
 ## Tag Keys (Operations)
 
 ||`sched-stop`|`sched-hibernate`|`sched-backup`|
@@ -72,42 +77,56 @@ Jump to:
 
 ## Tag Values (Schedules)
 
-### Single Terms
+### Readymade Examples
 
-  |Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
-  |:---|:---:|:---:|
-  |Day of month|`d=01` ... `d=31`|`d=_`|
-  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
-  |Hour|`H=00` ... `H=23`|`H=_`|
-  |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
+These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round.
+Some outlying areas are excluded.
 
-### Compound Terms
+|Locations|Hours Saved|`sched-start`|`sched-stop`|
+|:---|:---:|:---:|:---:|
+|North America|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
+|Europe|61%|`u=1 u=2 u=3 u=4 u=5 H:M=06:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|India|64%|`u=1 H:M=02:00`|`u=5 H:M=14:00`|
+|North America, Europe|31%|`u=1 H:M=06:30`|`u=6 H:M=03:30`|
+|North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
+|Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
 
-  |Type|Note|Literal Values|
-  |:---|:---:|:---:|
-  |Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
-  |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
-  |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
-
-### Schedule Examples
-
-  |Tag Value|Scenario|Meaning|
-  |:---:|:---:|:---:|
-  |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
-  |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-  |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|Extra monthly and weekly operations|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
-
-### Schedule Rules
+### Rules
 
 - [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
 - 24-hour clock
 - Days before times, hours before minutes
 - The day, the hour and the minute must all be resolved
-- Instead of the end of the month, specify the start, `dTH:M=01T00:00`
 - Multiple operations on the same resource at the same time are _all_ canceled
 
 Space was chosen as the separator and underscore, as the wildcard, because
 [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
+
+### Single Terms
+
+|Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
+|:---|:---:|:---:|
+|Day of month|`d=01` ... `d=31`|`d=_`|
+|Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
+|Hour|`H=00` ... `H=23`|`H=_`|
+|Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
+
+### Compound Terms
+
+|Type|Note|Literal Values|
+|:---|:---:|:---:|
+|Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
+|Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
+|Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
+
+### More Examples
+
+|Tag Value|Description|
+|:---:|:---:|
+|`d=01 d=15 H=03 H=19 M=00`|cron: 1st and 15th days of the month, at 03:00 and 19:00|
+|`dTH:M=01T00:00`|Start of month (use in place of end of month)|
+|`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
+|`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ## Extra Setup
 
@@ -240,7 +259,7 @@ Off. Check with your AWS administrator!
 
 ## Accessing Backups
 
-|Goal|Service(s)|
+|Goal|Services|
 |:---|:---:|
 |List backups|AWS Backup|
 |View underlying images and/or snapshots|EC2 and RDS|
