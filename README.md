@@ -81,7 +81,6 @@ Jump to:
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 ([time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=224&p2=75&p3=64&p4=179&p5=1440&p6=136&p7=133&p8=195&p9=367&p10=54)).
-The Hawaii, Alaska and Atlantic time zones are excluded.
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
@@ -91,6 +90,9 @@ The Hawaii, Alaska and Atlantic time zones are excluded.
 |North America, Europe|31%|`u=1 H:M=06:30`|`u=6 H:M=03:30`|
 |North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
 |Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
+
+Stop later if you need to include Alaska and Hawaii. For North America alone,
+start earlier if you need to include the Atlantic time zone.
 
 ### Rules
 
