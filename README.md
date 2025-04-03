@@ -458,10 +458,9 @@ To make your CloudFormation template compatible, see
 
 Not every resource needs to be deleted and recreated; condition the creation
 of _expensive_ resources on the `Enable` parameter. In the AWS Client VPN
-stack, the server and client certificates, endpoints and network security
-groups are not deleted, because they do not cost anything. The expensive VPN
-attachments can be deleted and recreated with no need to reconfigure VPN
-clients.
+stack, the VPN endpoints and VPC security groups are not deleted, because they
+do not cost anything. The VPN attachments can be deleted and recreated with no
+need to reconfigure VPN clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack. At the scheduled times, Lights Off will perform
