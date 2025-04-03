@@ -77,7 +77,7 @@ Jump to:
 
 ## Tag Values (Schedules)
 
-### Readymade Examples
+### Work Week Examples
 
 These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 (see
@@ -92,12 +92,12 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 |North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
 |Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
 
-Stop later if you need to include Alaska and Hawaii. For North America alone,
-start earlier if you need to include the Atlantic time zone.
+Stop later to include Hawaii and/or Alaska. For North America alone, start
+earlier to include the Atlantic time zone.
 
 ### Rules
 
-- [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
+- Coordinated Universal Time (UTC)
 - 24-hour clock
 - Days before times, hours before minutes
 - The day, the hour and the minute must all be resolved
@@ -123,9 +123,9 @@ Space was chosen as the separator and underscore, as the wildcard, because
 |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
 |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
-### More Examples
+### Backup Examples
 
-|Tag Value|Description|
+|`sched-backup`|Description|
 |:---:|:---:|
 |`d=01 d=15 H=03 H=19 M=00`|Traditional cron: 1st and 15th days of the month, at 03:00 and 19:00|
 |`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
