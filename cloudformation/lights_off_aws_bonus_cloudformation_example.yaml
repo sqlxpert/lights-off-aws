@@ -94,7 +94,7 @@ Metadata:  # Optional section, for AWS Console users
         Parameters:
           - Enable
           - VpcId
-    ParameterLabels:  # Determines parameter labels
+    ParameterLabels:
       PlaceholderHelp:
         default: For help with this stack, see
       PlaceholderSuggestedStackName:

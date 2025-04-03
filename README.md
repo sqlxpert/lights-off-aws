@@ -53,6 +53,11 @@ Jump to:
 4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
    it and delete the `sched-stop` tag.
 
+Jump to:
+[Extra Setup](#extra-setup)
+&bull;
+[Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
+
 ## Tag Keys (Operations)
 
 ||`sched-stop`|`sched-hibernate`|`sched-backup`|
@@ -72,42 +77,60 @@ Jump to:
 
 ## Tag Values (Schedules)
 
-### Single Terms
+### Work Week Examples
 
-  |Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
-  |:---|:---:|:---:|
-  |Day of month|`d=01` ... `d=31`|`d=_`|
-  |Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
-  |Hour|`H=00` ... `H=23`|`H=_`|
-  |Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
+These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
+(see
+[time zone converter](https://www.timeanddate.com/worldclock/converter.html?p1=1440&p2=224&p3=75&p4=64&p5=179&p6=136&p7=133&p8=195&p9=367&p10=54)).
 
-### Compound Terms
+|Locations|Hours Saved|`sched-start`|`sched-stop`|
+|:---|:---:|:---:|:---:|
+|North America|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
+|Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|India|64%|`u=1 H:M=02:00`|`u=5 H:M=14:00`|
+|North America, Europe|29%|`u=1 H:M=04:30`|`u=6 H:M=03:30`|
+|North America, Europe, India|28%|`u=1 H:M=02:00`|`u=6 H:M=03:30`|
+|Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
 
-  |Type|Note|Literal Values|
-  |:---|:---:|:---:|
-  |Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
-  |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
-  |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
+Stop later to include Hawaii and/or Alaska. For North America alone, start
+earlier to include the Atlantic time zone.
 
-### Schedule Examples
+### Rules
 
-  |Tag Value|Scenario|Meaning|
-  |:---:|:---:|:---:|
-  |`d=01 d=15 H=03 H=19 M=00`|cron|1st and 15th days of the month, at 03:00 and 19:00|
-  |`d=_ H:M=03:00 H=_ M=15 M=45`|Extra daily operation|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
-  |`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|Extra monthly and weekly operations|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
-
-### Schedule Rules
-
-- [Universal Coordinated Time](https://www.timeanddate.com/worldclock/timezone/utc)
+- Coordinated Universal Time (UTC)
 - 24-hour clock
 - Days before times, hours before minutes
 - The day, the hour and the minute must all be resolved
-- Instead of the end of the month, specify the start, `dTH:M=01T00:00`
 - Multiple operations on the same resource at the same time are _all_ canceled
 
 Space was chosen as the separator and underscore, as the wildcard, because
 [RDS does not allow commas or asterisks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#Overview.Tagging).
+
+### Single Terms
+
+|Type|Literal Values ([strftime](http://manpages.ubuntu.com/manpages/noble/man3/strftime.3.html#description))|Wildcard|
+|:---|:---:|:---:|
+|Day of month|`d=01` ... `d=31`|`d=_`|
+|Day of week ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Week_dates))|`u=1` (Monday) ... `u=7` (Sunday)||
+|Hour|`H=00` ... `H=23`|`H=_`|
+|Minute (multiple of 10)|`M=00` , `M=10` , `M=20` , `M=30` , `M=40` , `M=50`||
+
+### Compound Terms
+
+|Type|Note|Literal Values|
+|:---|:---:|:---:|
+|Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
+|Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
+|Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
+
+### Backup Examples
+
+|`sched-backup`|Description|
+|:---:|:---:|
+|`d=01 d=15 H=03 H=19 M=00`|Traditional cron: 1st and 15th days of the month, at 03:00 and 19:00|
+|`d=_ H:M=03:00 H=_ M=15 M=45`|Every day, at 03:00 _plus_ every hour at 15 and 45 minutes after the hour|
+|`dTH:M=01T00:00`|Start of month _(instead of end of month)_|
+|`dTH:M=01T03:00 uTH:M=5T19:00 d=_ H=11 M=15`|1st day of the month at 03:00, _plus_ Friday at 19:00, _plus_ every day at 11:15|
 
 ## Extra Setup
 
@@ -174,9 +197,10 @@ You can use the `sched-backup` tag with minimal setup if you work in a small
 number of regions and/or AWS accounts. Use the AWS Console to view the
 [list of AWS Backup vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
 one time in each AWS account and region. Make one backup in each AWS account
-(AWS Backup &rarr; My account &rarr; Dashboard &rarr; On-demand backup). If
-you use _custom_ KMS keys, they must be in the same AWS account as the disks
-and databases encrypted with them.
+([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My account
+&rarr; Dashboard &rarr; On-demand backup). If you use _custom_ KMS keys, they
+must be in the same AWS account as the disks and databases encrypted with
+them.
 
 <details>
   <summary>If you work across many regions and/or AWS accounts...</summary>
@@ -240,7 +264,7 @@ Off. Check with your AWS administrator!
 
 ## Accessing Backups
 
-|Goal|Service(s)|
+|Goal|Services|
 |:---|:---:|
 |List backups|AWS Backup|
 |View underlying images and/or snapshots|EC2 and RDS|
@@ -300,7 +324,7 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 ### Least-Privilege Installation
 
 <details>
-  <summary>View least-privilege installation details</summary>
+  <summary>Least-privilege installation details...</summary>
 
 You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
@@ -314,7 +338,7 @@ are limited, you might need permission to pass the deployment role to
 CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
 policy for an example.
 
-For a multi-account CloudFormation StackSet, you can use
+For a CloudFormation StackSet, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
 by copying the inline IAM policy of `LightsOffPrereq-DeploymentRole` to a
 customer-managed IAM policy, attaching your policy to
@@ -342,7 +366,7 @@ warranty, an indemnification, an assumption of liability, etc. Use this
 software at your own risk. You are encouraged to evaluate the source code._
 
 <details>
-  <summary>View security details</summary>
+  <summary>Security details...</summary>
 
 ### Security Design Goals
 
@@ -419,7 +443,7 @@ software at your own risk. You are encouraged to evaluate the source code._
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
 <details>
-  <summary>View scheduled stack update details</summary>
+  <summary>Scheduled CloudFormation stack update details...</summary>
 
 Lights Off can delete and recreate many types of expensive AWS infrastructure
 in your own CloudFormation stacks, based on cron schedules in stack tags.
@@ -428,16 +452,15 @@ Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
-To make your CloudFormation template compatible, see
+To make your own CloudFormation template compatible, see
 [lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
 .
 
 Not every resource needs to be deleted and recreated; condition the creation
 of _expensive_ resources on the `Enable` parameter. In the AWS Client VPN
-stack, the server and client certificates, endpoints and network security
-groups are not deleted, because they do not cost anything. The expensive VPN
-attachments can be deleted and recreated with no need to reconfigure VPN
-clients.
+stack, the VPN endpoints and VPC security groups are not deleted, because they
+do not cost anything. The VPN attachments can be deleted and recreated with no
+need to reconfigure VPN clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack. At the scheduled times, Lights Off will perform
@@ -448,7 +471,7 @@ a stack update, toggling the value of the `Enable` parameter to `true` or
 ## Extensibility
 
 <details>
-  <summary>View extensibility details</summary>
+  <summary>Extensibility details...</summary>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
