@@ -88,10 +88,10 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 |USA Mainland|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
 |North America (Hawaii to Newfoundland)|42%|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
 |Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
-|India|64%|`u=1 H:M=02:00`|`u=5 H:M=14:00`|
+|India|64%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=14:00`|
 |North America, Europe|28%|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
 |North America, Europe, India|26%|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
-|Europe, India|48%|`u=1 H:M=02:00`|`u=5 H:M=19:30`|
+|Europe, India|48%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 
 ### Rules
 
@@ -226,8 +226,9 @@ you must address the following AWS Backup requirements:
 3. Backup role
 
    AWS Backup creates `AWSBackupDefaultServiceRole` the first time you make a
-   backup in a given AWS account using the AWS Console (AWS Backup &rarr;
-   My account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
+   backup in a given AWS account using the AWS Console
+   ([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My
+   account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
    [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
    Update `BackupRoleName` in CloudFormation if necessary.
 
