@@ -8,13 +8,13 @@ Description: |-
 
 Parameters:
 
-  PlaceholderHelp:
-    Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#quick-start"
-
   PlaceholderSuggestedStackName:
     Type: String
     Default: "LightsOff"
+
+  PlaceholderHelp:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws#quick-start"
 
   Enable:
     Type: String
@@ -39,9 +39,9 @@ Parameters:
       backups. Specify only the name, not the ARN. For a StackSet, the role
       must exist, and have the same name, in every target AWS account. Roles
       are account-wide, not regional. AWS Backup creates
-      "service-role/AWSBackupDefaultServiceRole" the first time you start a
-      backup job in the AWS Console. Otherwise, if you want to use this role,
-      you must create it explicitly. See
+      "service-role/AWSBackupDefaultServiceRole" the first time you start an
+      on-demand backup in the AWS Console. Otherwise, if you want to use this
+      role, you must create it explicitly. See
       https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles
       . Security warning: The AWS Lambda execution role for the "Do" function
       receives permission to iam:PassRole the backup role to AWS Backup.
@@ -54,8 +54,8 @@ Parameters:
       ARN. The vault must have been created in the same AWS account and region
       where you are creating this stack. For a StackSet, the vault must exist,
       and have the same name, in every target AWS account and region. AWS
-      Backup creates the "Default" vault the first time you access the Backup
-      Vaults page in the AWS Console. Otherwise, you must explicitly create a
+      Backup creates the "Default" vault the first time you access the list of
+      vaults in the AWS Console. Otherwise, you must explicitly create a
       vault. See
       https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html
     Default: "Default"
@@ -256,8 +256,8 @@ Metadata:
       - Label:
           default: For Reference
         Parameters:
-          - PlaceholderHelp
           - PlaceholderSuggestedStackName
+          - PlaceholderHelp
       - Label:
           default: Essential
         Parameters:
@@ -359,10 +359,9 @@ Conditions:
     !Equals [ !Ref RequireSameAccountKmsKeyPolicyForEc2StartInstances, "true" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
-
   SqsKmsKeyCustom:
     Fn::And:
-      - !Not [ !Equals [ !Ref SqsKmsKey, "" ] ]
+      - !Not [ !Condition SqsKmsKeyBlank ]
       - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
 
   DoLambdaFnRoleAttachLocalPolicyNameBlank:
@@ -682,8 +681,7 @@ Resources:
               - Effect: Allow
                 Action: backup:StartBackupJob
                 Resource: !Sub "arn:${AWS::Partition}:backup:${AWS::Region}:${AWS::AccountId}:backup-vault:${BackupVaultName}"
-              - Sid: Changed
-                Effect: Allow
+              - Effect: Allow
                 Action: iam:PassRole
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
                 Condition:
@@ -925,7 +923,7 @@ Resources:
             # The JSON encoder in the AWS Lambda Python runtime isn't configured to
             # serialize datatime values in responses returned by AWS's own Python SDK!
             #
-            # Powertools for Lambda is too heavy for a simple deployment.
+            # Alternative considered:
             # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
 
             logger.log(
@@ -940,11 +938,11 @@ Resources:
             completed. For example, it may take hours for a backup to become available.
             Checking completion is left to other tools.
             """
-            return all([
-              isinstance(resp, dict),
-              isinstance(resp.get("ResponseMetadata", None), dict),
-              resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
-            ])
+            return (
+              isinstance(resp, dict)
+              and isinstance(resp.get("ResponseMetadata"), dict)
+              and (resp["ResponseMetadata"].get("HTTPStatusCode") == 200)
+            )
 
 
           def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
@@ -954,9 +952,9 @@ Resources:
               log_level = logging.INFO
             else:
               log_level = logging.ERROR
-              log("START", cycle_start_str, log_level=log_level)
-            log("SQS_SEND", send_kwargs, log_level=log_level)
-            log(entry_type, entry_value, log_level=log_level)
+              log("START", cycle_start_str, log_level)
+            log("SQS_SEND", send_kwargs, log_level)
+            log(entry_type, entry_value, log_level)
 
 
           def op_log(
@@ -964,11 +962,11 @@ Resources:
           ):
             """Log Lambda function event, optional error, optional boto3 response
             """
-            log("LAMBDA_EVENT", event, log_level=log_level)
+            log("LAMBDA_EVENT", event, log_level)
             if resp is not None:
-              log("AWS_RESPONSE", resp, log_level=log_level)
+              log("AWS_RESPONSE", resp, log_level)
             if entry_type:
-              log(entry_type, entry_value, log_level=log_level)
+              log(entry_type, entry_value, log_level)
 
 
           def tag_key_join(tag_key_words):
@@ -1011,7 +1009,7 @@ Resources:
             msg_out = json.dumps(msg_in)
             msg_out_len = len(bytes(msg_out, "utf-8"))
             if msg_out_len > QUEUE_MSG_BYTES_MAX:
-              log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+              log("QUEUE_MSG", msg_out, logging.ERROR)
               raise SQSMessageTooLong()
             return msg_out
 
@@ -1021,14 +1019,19 @@ Resources:
 
           def svc_client_get(svc):
             """Take an AWS service, return a boto3 client, creating it if needed
+
+            boto3 method references can only be resolved at run-time, against an
+            instance of an AWS service's Client class.
+            http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
+
+            Alternatives considered:
+            https://github.com/boto/boto3/issues/3197#issue-1175578228
+            https://github.com/aws-samples/boto-session-manager-project
             """
-            if svc_clients.get(svc, None) is None:
+            if svc not in svc_clients:
               svc_clients[svc] = boto3.client(
                 svc, config=botocore.config.Config(retries={"mode": "standard"})
               )
-              # boto3 method references can only be resolved at run-time,
-              # against an instance of an AWS service's Client class.
-              # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
             return svc_clients[svc]
 
 
@@ -1142,11 +1145,11 @@ Resources:
                     op = self.ops[op_tags_matched[0]]
                     op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
                   elif op_tags_matched_count > 1:
-                    log("START", cycle_start_str, log_level=logging.ERROR)
+                    log("START", cycle_start_str, logging.ERROR)
                     log(
                       "MULTIPLE_OPS",
                       {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
-                      log_level=logging.ERROR
+                      logging.ERROR
                     )
 
 
@@ -1477,27 +1480,73 @@ Resources:
                 raise RuntimeError()
         # ZIPFILE_END
 
-  FindLambdaFnSched:
-    Type: AWS::Events::Rule
+  FindLambdaFnSchedGrp:
+    Type: AWS::Scheduler::ScheduleGroup
     Properties:
-      Description: >-
-        Every 10 minutes (do not change!): run Find AWS Lambda function
-      ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
-      State:
-        Fn::If:
-          - EnableTrue
-          - ENABLED
-          - DISABLED
-      Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
 
   # Administrator should block other invocation of this AWS Lambda function
-  FindLambdaFnPerm:
-    Type: AWS::Lambda::Permission
+  InvokeFindLambdaFnRole:
+    Type: AWS::IAM::Role
     Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref FindLambdaFn
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt FindLambdaFnSched.Arn
+      Description: !Sub "For ${AWS::Region} region"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !GetAtt FindLambdaFnSchedGrp.Arn
+                # Must be a schedule group, not an individual schedule!
+      Policies:
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt FindLambdaFn.Arn
+
+  FindLambdaFnSched:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      GroupName: !Ref FindLambdaFnSchedGrp
+      Description: >-
+        Every 10 minutes (do not change!): invoke "Find" AWS Lambda function
+      ScheduleExpressionTimezone: UTC
+      ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
+      # cron(minutes hours day-of-month month day-of-week year)
+      # https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html#cron-based
+      FlexibleTimeWindow: { Mode: "OFF" }  # Quotes required!
+      Target:
+        RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn
+        Arn: !GetAtt FindLambdaFn.Arn
+        RetryPolicy:
+          MaximumRetryAttempts: 0
+      State: !If [ EnableTrue, ENABLED, DISABLED ]
+
+  # FindLambdaFnSched:
+  #   Type: AWS::Events::Rule
+  #   Properties:
+  #     Description: >-
+  #       Every 10 minutes (do not change!): run Find AWS Lambda function
+  #     ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
+  #     State:
+  #       Fn::If:
+  #         - EnableTrue
+  #         - ENABLED
+  #         - DISABLED
+  #     Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
+
+  # # Administrator should block other invocation of this AWS Lambda function
+  # FindLambdaFnPerm:
+  #   Type: AWS::Lambda::Permission
+  #   Properties:
+  #     Action: lambda:InvokeFunction
+  #     FunctionName: !Ref FindLambdaFn
+  #     Principal: events.amazonaws.com
+  #     SourceArn: !GetAtt FindLambdaFnSched.Arn
 
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
@@ -1614,7 +1663,7 @@ Resources:
             # The JSON encoder in the AWS Lambda Python runtime isn't configured to
             # serialize datatime values in responses returned by AWS's own Python SDK!
             #
-            # Powertools for Lambda is too heavy for a simple deployment.
+            # Alternative considered:
             # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
 
             logger.log(
@@ -1629,11 +1678,11 @@ Resources:
             completed. For example, it may take hours for a backup to become available.
             Checking completion is left to other tools.
             """
-            return all([
-              isinstance(resp, dict),
-              isinstance(resp.get("ResponseMetadata", None), dict),
-              resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
-            ])
+            return (
+              isinstance(resp, dict)
+              and isinstance(resp.get("ResponseMetadata"), dict)
+              and (resp["ResponseMetadata"].get("HTTPStatusCode") == 200)
+            )
 
 
           def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
@@ -1643,9 +1692,9 @@ Resources:
               log_level = logging.INFO
             else:
               log_level = logging.ERROR
-              log("START", cycle_start_str, log_level=log_level)
-            log("SQS_SEND", send_kwargs, log_level=log_level)
-            log(entry_type, entry_value, log_level=log_level)
+              log("START", cycle_start_str, log_level)
+            log("SQS_SEND", send_kwargs, log_level)
+            log(entry_type, entry_value, log_level)
 
 
           def op_log(
@@ -1653,11 +1702,11 @@ Resources:
           ):
             """Log Lambda function event, optional error, optional boto3 response
             """
-            log("LAMBDA_EVENT", event, log_level=log_level)
+            log("LAMBDA_EVENT", event, log_level)
             if resp is not None:
-              log("AWS_RESPONSE", resp, log_level=log_level)
+              log("AWS_RESPONSE", resp, log_level)
             if entry_type:
-              log(entry_type, entry_value, log_level=log_level)
+              log(entry_type, entry_value, log_level)
 
 
           def tag_key_join(tag_key_words):
@@ -1700,7 +1749,7 @@ Resources:
             msg_out = json.dumps(msg_in)
             msg_out_len = len(bytes(msg_out, "utf-8"))
             if msg_out_len > QUEUE_MSG_BYTES_MAX:
-              log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+              log("QUEUE_MSG", msg_out, logging.ERROR)
               raise SQSMessageTooLong()
             return msg_out
 
@@ -1710,14 +1759,19 @@ Resources:
 
           def svc_client_get(svc):
             """Take an AWS service, return a boto3 client, creating it if needed
+
+            boto3 method references can only be resolved at run-time, against an
+            instance of an AWS service's Client class.
+            http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
+
+            Alternatives considered:
+            https://github.com/boto/boto3/issues/3197#issue-1175578228
+            https://github.com/aws-samples/boto-session-manager-project
             """
-            if svc_clients.get(svc, None) is None:
+            if svc not in svc_clients:
               svc_clients[svc] = boto3.client(
                 svc, config=botocore.config.Config(retries={"mode": "standard"})
               )
-              # boto3 method references can only be resolved at run-time,
-              # against an instance of an AWS service's Client class.
-              # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
             return svc_clients[svc]
 
 
@@ -1831,11 +1885,11 @@ Resources:
                     op = self.ops[op_tags_matched[0]]
                     op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
                   elif op_tags_matched_count > 1:
-                    log("START", cycle_start_str, log_level=logging.ERROR)
+                    log("START", cycle_start_str, logging.ERROR)
                     log(
                       "MULTIPLE_OPS",
                       {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
-                      log_level=logging.ERROR
+                      logging.ERROR
                     )
 
 
@@ -2180,10 +2234,10 @@ Resources:
     Type: AWS::Lambda::EventSourceMapping
     DependsOn: DoLambdaFnInvokeLambdaPerm
     Properties:
-      BatchSize: 1
+      EventSourceArn: !GetAtt OperationQueue.Arn
       MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
+      BatchSize: 1
+      FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
         MaximumConcurrency: !Ref DoLambdaFnReservedConcurrentExecutions
       Enabled: !Ref Enable
-      EventSourceArn: !GetAtt OperationQueue.Arn
-      FunctionName: !GetAtt DoLambdaFn.Arn

@@ -8,13 +8,19 @@ Description: |-
 
 Parameters:
 
+  PlaceholderSuggestedStackName:
+    Type: String
+    Default: "LightsOffPrereq"
+
   PlaceholderHelp:
     Type: String
     Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege-installation"
 
-  PlaceholderSuggestedStackName:
+  PlaceholderAdvancedParameters:
     Type: String
-    Default: "LightsOffPrereq"
+    Default: ""
+    AllowedValues:
+      - ""
 
   StackNameLike:
     Type: String
@@ -35,14 +41,14 @@ Metadata:
       - Label:
           default: For Reference
         Parameters:
-          - PlaceholderHelp
           - PlaceholderSuggestedStackName
+          - PlaceholderHelp
       - Label:
           default: Advanced Options
         Parameters:
           - PlaceholderAdvancedParameters
       - Label:
-          default: For stacks created with the deployment role...
+          default: For stacks created using the deployment role...
         Parameters:
           - StackNameLike
     ParameterLabels:
@@ -139,22 +145,57 @@ Resources:
 
               - Effect: Allow
                 Action:
-                  - events:PutRule
-                  - events:DescribeRule
-                  - events:EnableRule
-                  - events:DisableRule
-                  - events:DeleteRule
-                  - events:PutTargets
-                  - events:ListTargetsByRule
-                  - events:RemoveTargets
-                  - events:TagResource
-                  - events:UntagResource
+                  - scheduler:CreateScheduleGroup
+                  - scheduler:GetScheduleGroup
+                  - scheduler:DeleteScheduleGroup
+                  - scheduler:TagResource
+                  - scheduler:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule-group/${StackNameLike}*"
               - Effect: Allow
                 Action:
-                  - events:ListTagsForResource
+                  - scheduler:CreateSchedule
+                  - scheduler:GetSchedule
+                  - scheduler:UpdateSchedule
+                  - scheduler:DeleteSchedule
+                  # Possible future requirement:
+                  - scheduler:TagResource
+                  - scheduler:UntagResource
+                Resource:
+                  # Compare CloudWatch Logs and EventBridge Scheduler.
+                  # Right-trimming the stream name from a LogStream ARN gives
+                  # the ARN of the parent LogGroup, but unfortunately,
+                  # right-trimming the schedule name from a schedule ARN does
+                  # not give the ARN of the parent ScheduleGroup.
+                  # arn:PARTITION:logs:REGION:ACCOUNT:log-group:GROUP_NAME:log-stream:STREAM_NAME
+                  # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule-group/GROUP_NAME
+                  # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule/GROUP_NAME/SCHED_NAME
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}*/${StackNameLike}*"
+              - Effect: Allow
+                Action:
+                  - scheduler:ListScheduleGroups
+                  - scheduler:ListSchedules
+                  - scheduler:ListTagsForResource
                 Resource: "*"
+
+              # - Effect: Allow
+              #   Action:
+              #     - events:PutRule
+              #     - events:DescribeRule
+              #     - events:EnableRule
+              #     - events:DisableRule
+              #     - events:DeleteRule
+              #     - events:PutTargets
+              #     - events:ListTargetsByRule
+              #     - events:RemoveTargets
+              #     - events:TagResource
+              #     - events:UntagResource
+              #   Resource:
+              #     - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}*"
+              # - Effect: Allow
+              #   Action:
+              #     - events:ListTagsForResource
+              #   Resource: "*"
 
               - Effect: Allow
                 Action:
