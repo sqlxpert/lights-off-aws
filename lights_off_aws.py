@@ -76,7 +76,7 @@ def log(entry_type, entry_value, log_level=logging.INFO):
   # The JSON encoder in the AWS Lambda Python runtime isn't configured to
   # serialize datatime values in responses returned by AWS's own Python SDK!
   #
-  # Powertools for Lambda is too heavy for a simple deployment.
+  # Alternative considered:
   # https://docs.powertools.aws.dev/lambda/python/latest/core/logger/
 
   logger.log(
@@ -91,11 +91,11 @@ def boto3_success(resp):
   completed. For example, it may take hours for a backup to become available.
   Checking completion is left to other tools.
   """
-  return all([
-    isinstance(resp, dict),
-    isinstance(resp.get("ResponseMetadata", None), dict),
-    resp["ResponseMetadata"].get("HTTPStatusCode", 0) == 200
-  ])
+  return (
+    isinstance(resp, dict)
+    and isinstance(resp.get("ResponseMetadata"), dict)
+    and (resp["ResponseMetadata"].get("HTTPStatusCode") == 200)
+  )
 
 
 def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
@@ -105,9 +105,9 @@ def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
     log_level = logging.INFO
   else:
     log_level = logging.ERROR
-    log("START", cycle_start_str, log_level=log_level)
-  log("SQS_SEND", send_kwargs, log_level=log_level)
-  log(entry_type, entry_value, log_level=log_level)
+    log("START", cycle_start_str, log_level)
+  log("SQS_SEND", send_kwargs, log_level)
+  log(entry_type, entry_value, log_level)
 
 
 def op_log(
@@ -115,11 +115,11 @@ def op_log(
 ):
   """Log Lambda function event, optional error, optional boto3 response
   """
-  log("LAMBDA_EVENT", event, log_level=log_level)
+  log("LAMBDA_EVENT", event, log_level)
   if resp is not None:
-    log("AWS_RESPONSE", resp, log_level=log_level)
+    log("AWS_RESPONSE", resp, log_level)
   if entry_type:
-    log(entry_type, entry_value, log_level=log_level)
+    log(entry_type, entry_value, log_level)
 
 
 def tag_key_join(tag_key_words):
@@ -162,7 +162,7 @@ def msg_body_encode(msg_in):
   msg_out = json.dumps(msg_in)
   msg_out_len = len(bytes(msg_out, "utf-8"))
   if msg_out_len > QUEUE_MSG_BYTES_MAX:
-    log("QUEUE_MSG", msg_out, log_level=logging.ERROR)
+    log("QUEUE_MSG", msg_out, logging.ERROR)
     raise SQSMessageTooLong()
   return msg_out
 
@@ -172,14 +172,19 @@ svc_clients = {}
 
 def svc_client_get(svc):
   """Take an AWS service, return a boto3 client, creating it if needed
+
+  boto3 method references can only be resolved at run-time, against an
+  instance of an AWS service's Client class.
+  http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
+
+  Alternatives considered:
+  https://github.com/boto/boto3/issues/3197#issue-1175578228
+  https://github.com/aws-samples/boto-session-manager-project
   """
-  if svc_clients.get(svc, None) is None:
+  if svc not in svc_clients:
     svc_clients[svc] = boto3.client(
       svc, config=botocore.config.Config(retries={"mode": "standard"})
     )
-    # boto3 method references can only be resolved at run-time,
-    # against an instance of an AWS service's Client class.
-    # http://boto3.readthedocs.io/en/latest/guide/events.html#extensibility-guide
   return svc_clients[svc]
 
 
@@ -293,11 +298,11 @@ class AWSRsrcType():
           op = self.ops[op_tags_matched[0]]
           op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
         elif op_tags_matched_count > 1:
-          log("START", cycle_start_str, log_level=logging.ERROR)
+          log("START", cycle_start_str, logging.ERROR)
           log(
             "MULTIPLE_OPS",
             {"arn": self.arn(rsrc), "tag_keys": op_tags_matched},
-            log_level=logging.ERROR
+            logging.ERROR
           )
 
 
