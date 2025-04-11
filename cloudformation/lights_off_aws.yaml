@@ -1482,7 +1482,6 @@ Resources:
 
   FindLambdaFnSchedGrp:
     Type: AWS::Scheduler::ScheduleGroup
-    Properties:
 
   # Administrator should block other invocation of this AWS Lambda function
   InvokeFindLambdaFnRole:
@@ -1508,7 +1507,7 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt FindLambdaFn.Arn
 
-  FindLambdaFnSched:
+  FindLambdaFnSched2:
     Type: AWS::Scheduler::Schedule
     Properties:
       GroupName: !Ref FindLambdaFnSchedGrp

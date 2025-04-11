@@ -87,7 +87,7 @@ Resources:
 
               - Effect: Allow
                 Action:
-                  - lambda:CreateFunction
+                  - lambda:CreateFunction  # Also iam:PassRole
                   - lambda:GetFunction
                   - lambda:DeleteFunction
                   - lambda:UpdateFunctionCode
@@ -100,7 +100,7 @@ Resources:
                   - lambda:TagResource
                   - lambda:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - lambda:CreateEventSourceMapping
@@ -111,7 +111,7 @@ Resources:
                 Condition:
                   ArnLikeIfExists:
                     "lambda:FunctionArn":
-                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}*"
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - lambda:TagResource
@@ -136,7 +136,7 @@ Resources:
                   - logs:UntagLogGroup
                   - logs:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - logs:DescribeLogGroups
@@ -151,12 +151,21 @@ Resources:
                   - scheduler:TagResource
                   - scheduler:UntagResource
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule-group/${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule-group/${StackNameLike}-*"
+              - Sid: ForDeleteScheduleGroup
+                Effect: Allow
+                Action:
+                  - scheduler:DeleteSchedule
+                  # Possible future requirement:
+                  - scheduler:TagResource
+                  - scheduler:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/*"
               - Effect: Allow
                 Action:
-                  - scheduler:CreateSchedule
+                  - scheduler:CreateSchedule  # Also iam:PassRole
                   - scheduler:GetSchedule
-                  - scheduler:UpdateSchedule
+                  - scheduler:UpdateSchedule  # Also iam:PassRole
                   - scheduler:DeleteSchedule
                   # Possible future requirement:
                   - scheduler:TagResource
@@ -170,7 +179,7 @@ Resources:
                   # arn:PARTITION:logs:REGION:ACCOUNT:log-group:GROUP_NAME:log-stream:STREAM_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule-group/GROUP_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule/GROUP_NAME/SCHED_NAME
-                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}*/${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - scheduler:ListScheduleGroups
@@ -178,24 +187,27 @@ Resources:
                   - scheduler:ListTagsForResource
                 Resource: "*"
 
-              # - Effect: Allow
-              #   Action:
-              #     - events:PutRule
-              #     - events:DescribeRule
-              #     - events:EnableRule
-              #     - events:DisableRule
-              #     - events:DeleteRule
-              #     - events:PutTargets
-              #     - events:ListTargetsByRule
-              #     - events:RemoveTargets
-              #     - events:TagResource
-              #     - events:UntagResource
-              #   Resource:
-              #     - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}*"
-              # - Effect: Allow
-              #   Action:
-              #     - events:ListTagsForResource
-              #   Resource: "*"
+              # Left so that existing users can maintain, and eventually,
+              # delete, the old EventBridge rule (replaced by an EventBridge
+              # schedule)
+              - Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DescribeRule
+                  - events:EnableRule
+                  - events:DisableRule
+                  - events:DeleteRule
+                  - events:PutTargets
+                  - events:ListTargetsByRule
+                  - events:RemoveTargets
+                  - events:TagResource
+                  - events:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/${StackNameLike}-*"
+              - Effect: Allow
+                Action:
+                  - events:ListTagsForResource
+                Resource: "*"
 
               - Effect: Allow
                 Action:
@@ -210,7 +222,7 @@ Resources:
                   - sqs:TagQueue
                   - sqs:UntagQueue
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:sqs:*:${AWS::AccountId}:${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - sqs:ListQueues
@@ -220,7 +232,16 @@ Resources:
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}-*"
+                Condition:
+                  StringEquals:
+                    "iam:PassedToService":
+                      - lambda.amazonaws.com
+                      - scheduler.amazonaws.com
+                  ArnLike:
+                    "iam:AssociatedResourceArn":
+                      - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
+                      - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - iam:CreateRole
@@ -238,7 +259,7 @@ Resources:
                   - iam:TagRole
                   - iam:UntagRole
                 Resource:
-                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}*"
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNameLike}-*"
               - Effect: Allow
                 Action:
                   - iam:ListRoles
