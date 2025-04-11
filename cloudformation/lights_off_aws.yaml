@@ -1526,28 +1526,6 @@ Resources:
           MaximumRetryAttempts: 0
       State: !If [ EnableTrue, ENABLED, DISABLED ]
 
-  # FindLambdaFnSched:
-  #   Type: AWS::Events::Rule
-  #   Properties:
-  #     Description: >-
-  #       Every 10 minutes (do not change!): run Find AWS Lambda function
-  #     ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
-  #     State:
-  #       Fn::If:
-  #         - EnableTrue
-  #         - ENABLED
-  #         - DISABLED
-  #     Targets: [ { Arn: !GetAtt FindLambdaFn.Arn, Id: !Ref FindLambdaFn } ]
-
-  # # Administrator should block other invocation of this AWS Lambda function
-  # FindLambdaFnPerm:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !Ref FindLambdaFn
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt FindLambdaFnSched.Arn
-
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
