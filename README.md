@@ -50,6 +50,19 @@ Jump to:
 
    - Stack name: `LightsOff`
 
+   <details>
+     <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
+
+     Request that
+     [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
+     be increased. The default value is `1000` .
+
+     Lights Off needs 1 unit for a time-critical AWS Lambda function. New AWS
+     accounts start with a quota of 10 units, but AWS always holds back 10,
+     which leaves 0 available for use!
+
+   </details>
+
 4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
    it and delete the `sched-stop` tag.
 
