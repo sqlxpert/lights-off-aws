@@ -63,7 +63,6 @@ Jump to:
 ||`sched-stop`|`sched-hibernate`|`sched-backup`|
 |:---|:---:|:---:|:---:|
 ||**`sched-start`**|||
-||**`sched-reboot`**|||
 |EC2:||||
 |[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
@@ -286,9 +285,12 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-- Log entries are JSON objects. Entries from Lights Off include `"level"`,
-  `"type"` and `"value"` keys.
-- For more data, change the `LogLevel` in CloudFormation.
+  - Log entries are JSON objects. Entries from Lights Off include `"level"`,
+    `"type"` and `"value"` keys.
+  - For more data, change the `LogLevel` in CloudFormation.
+- Check the `ErrorQueue`
+  [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
+  for undeliverable "Find" and "Do" events.
 - Check CloudTrail for the final stages of `sched-start` and `sched-backup`
   operations.
 
@@ -376,14 +378,14 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 - A least-privilege queue policy. The operation queue can only consume
   messages from the "Find" function and produce messages for the "Do" function
-  (or a dead-letter queue, if an operation fails). Encryption in transit is
+  (or an error queue, if an operation fails). Encryption in transit is
   required.
 
 - Readable IAM policies, formatted as CloudFormation YAML rather than JSON,
   and broken down into discrete statements by service, resource or principal.
 
 - Optional encryption at rest with the AWS Key Management System (KMS), for
-  queue message bodies (which contain resource identifiers) and for logs (may
+  queue message bodies (may contain resource identifiers) and for logs (may
   contain resource metadata).
 
 - No data storage other than in queues and logs, with short or configurable
@@ -418,8 +420,8 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 - Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might add a custom policy to the
-  "Do" function's role, denying authority to reboot and stop production
-  resources ( `AttachLocalPolicy` in CloudFormation).
+  "Do" function's role, denying authority to stop production resources (
+  `AttachLocalPolicy` in CloudFormation).
 
 </details>
 
@@ -484,7 +486,6 @@ _clusters_ (RDS database _instances_ were already supported) required adding:
       {
         ("start", ): {},
         ("stop", ): {},
-        ("reboot", ): {},
         ("backup", ): {"class": AWSOpBackUp},
       },
       rsrc_id_key_suffix="Identifier",
