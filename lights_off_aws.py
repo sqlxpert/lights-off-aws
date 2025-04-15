@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start, reboot, stop and back up AWS resources tagged with cron schedules
+"""Start, stop and back up AWS resources tagged with cron schedules
 
 github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
 """
@@ -501,7 +501,6 @@ def rsrc_types_init():
       ("Instance", ),
       {
         ("start", ): {"class": AWSOpMultipleRsrcs},
-        ("reboot", ): {"class": AWSOpMultipleRsrcs},
         ("stop", ): {"class": AWSOpMultipleRsrcs},
         ("hibernate", ): {
           "class": AWSOpMultipleRsrcs,
@@ -535,8 +534,6 @@ def rsrc_types_init():
       {
         ("start", ): {},
         ("stop", ): {},
-        ("reboot", ): {},
-        ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
         ("backup", ): {"class": AWSOpBackUp},
       },
       rsrc_id_key_suffix="Identifier",
@@ -549,7 +546,6 @@ def rsrc_types_init():
       {
         ("start", ): {},
         ("stop", ): {},
-        ("reboot", ): {},
         ("backup", ): {"class": AWSOpBackUp},
       },
       rsrc_id_key_suffix="Identifier",
@@ -613,7 +609,7 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
         event,
         entry_type="EXPIRED_OP",
         entry_value="Schedule fewer operations per 10-minute cycle or "
-        "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+        "increase DoLambdaFnMaximumConcurrency in CloudFormation"
       )
       raise RuntimeError()
 

@@ -50,6 +50,20 @@ Jump to:
 
    - Stack name: `LightsOff`
 
+   <br>
+   <details>
+     <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
+
+   Request that
+   [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
+   be increased. The default value is `1000` .
+
+   Lights Off needs 1 unit for a time-critical function. New AWS accounts
+   start with a quota of 10 units, but AWS always holds back 10, which leaves
+   0 available!
+
+   </details>
+
 4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
    it and delete the `sched-stop` tag.
 
@@ -63,7 +77,6 @@ Jump to:
 ||`sched-stop`|`sched-hibernate`|`sched-backup`|
 |:---|:---:|:---:|:---:|
 ||**`sched-start`**|||
-||**`sched-reboot`**|||
 |EC2:||||
 |[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
@@ -286,9 +299,12 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-- Log entries are JSON objects. Entries from Lights Off include `"level"`,
-  `"type"` and `"value"` keys.
-- For more data, change the `LogLevel` in CloudFormation.
+  - Log entries are JSON objects. Entries from Lights Off include `"level"`,
+    `"type"` and `"value"` keys.
+  - For more data, change the `LogLevel` in CloudFormation.
+- Check the `ErrorQueue`
+  [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
+  for undeliverable "Find" and "Do" events.
 - Check CloudTrail for the final stages of `sched-start` and `sched-backup`
   operations.
 
@@ -305,7 +321,11 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 2. Complete the prerequisites for creating a _StackSet_ with
    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
-3. In the management AWS account (or a delegated administrator account),
+3. Make sure that every target AWS Account has a sufficient AWS Lambda
+   `Concurrent executions` quota. See the note at the end of
+   [Quick Start](#quick-start) Step 3.
+
+4. In the management AWS account (or a delegated administrator account),
    create a
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
    Select Upload a template file, then select Choose file and upload a
@@ -315,7 +335,7 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 
    - StackSet name: `LightsOff`
 
-4. Two pages later, under Deployment targets, select Deploy to Organizational
+5. Two pages later, under Deployment targets, select Deploy to Organizational
    Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
@@ -376,14 +396,14 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 - A least-privilege queue policy. The operation queue can only consume
   messages from the "Find" function and produce messages for the "Do" function
-  (or a dead-letter queue, if an operation fails). Encryption in transit is
+  (or an error queue, if an operation fails). Encryption in transit is
   required.
 
 - Readable IAM policies, formatted as CloudFormation YAML rather than JSON,
   and broken down into discrete statements by service, resource or principal.
 
 - Optional encryption at rest with the AWS Key Management System (KMS), for
-  queue message bodies (which contain resource identifiers) and for logs (may
+  queue message bodies (may contain resource identifiers) and for logs (may
   contain resource metadata).
 
 - No data storage other than in queues and logs, with short or configurable
@@ -418,8 +438,8 @@ software at your own risk. You are encouraged to evaluate the source code._
 
 - Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might add a custom policy to the
-  "Do" function's role, denying authority to reboot and stop production
-  resources ( `AttachLocalPolicy` in CloudFormation).
+  "Do" function's role, denying authority to stop production resources (
+  `AttachLocalPolicy` in CloudFormation).
 
 </details>
 
@@ -484,7 +504,6 @@ _clusters_ (RDS database _instances_ were already supported) required adding:
       {
         ("start", ): {},
         ("stop", ): {},
-        ("reboot", ): {},
         ("backup", ): {"class": AWSOpBackUp},
       },
       rsrc_id_key_suffix="Identifier",
@@ -550,7 +569,7 @@ for suggesting the new name.
 ## Licenses
 
 |Scope|Link|Included Copy|
-|:---:|:---:|:---:|
+|:---|:---:|:---:|
 |Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](/LICENSE-CODE.md)|
 |Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
 

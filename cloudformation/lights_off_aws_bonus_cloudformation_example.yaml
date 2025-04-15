@@ -41,7 +41,8 @@ Description: |-
 #
 # For many AWS services, you can achieve a least-privilege design with a
 # policy condition:
-#   "StringLike": { "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*" }
+#   "StringLike":
+#     "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*"
 # where KEYWORD is a string that you will require in the name of all stacks
 # created using your deployment role, and that you will not allow in the
 # names of any other stacks.

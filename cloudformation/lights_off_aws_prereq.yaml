@@ -146,25 +146,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - scheduler:CreateScheduleGroup
-                  - scheduler:GetScheduleGroup
                   - scheduler:DeleteScheduleGroup
                   - scheduler:TagResource
                   - scheduler:UntagResource
                 Resource:
                   - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule-group/${StackNameLike}-*"
-              - Sid: ForDeleteScheduleGroup
-                Effect: Allow
-                Action:
-                  - scheduler:DeleteSchedule
-                  # Possible future requirement:
-                  - scheduler:TagResource
-                  - scheduler:UntagResource
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/*"
               - Effect: Allow
                 Action:
                   - scheduler:CreateSchedule  # Also iam:PassRole
-                  - scheduler:GetSchedule
                   - scheduler:UpdateSchedule  # Also iam:PassRole
                   - scheduler:DeleteSchedule
                   # Possible future requirement:
@@ -179,11 +168,13 @@ Resources:
                   # arn:PARTITION:logs:REGION:ACCOUNT:log-group:GROUP_NAME:log-stream:STREAM_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule-group/GROUP_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule/GROUP_NAME/SCHED_NAME
-                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/${StackNameLike}-*"
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/*"
               - Effect: Allow
                 Action:
                   - scheduler:ListScheduleGroups
+                  - scheduler:GetScheduleGroup
                   - scheduler:ListSchedules
+                  - scheduler:GetSchedule
                   - scheduler:ListTagsForResource
                 Resource: "*"
 

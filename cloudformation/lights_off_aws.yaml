@@ -2,7 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |-
-  Start, reboot, stop and back up AWS resources tagged with cron schedules.
+  Start, stop and back up AWS resources tagged with cron schedules.
 
   github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
@@ -119,9 +119,21 @@ Parameters:
   DoLambdaFnReservedConcurrentExecutions:
     Type: Number
     Description: >-
-      How many scheduled operations can be done in parallel. See
+      How many scheduled operations can definitely be started in parallel. To
+      decline access to AWS Lambda reserved concurrency, set this to -1. See
       https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
-    MinValue: 0
+    MinValue: -1
+    Default: -1
+
+  DoLambdaFnMaximumConcurrency:
+    Type: Number
+    Description: >-
+      How many scheduled operations may be started in parallel. The minimum is
+      2. If you set reserved parallel operations to 2 or more, set this no
+      larger than reserved parallel operations.
+      See
+      https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-scaling.html#events-sqs-max-concurrency
+    MinValue: 2
     Default: 5
 
   RequireSameAccountKmsKeyPolicyForEc2StartInstances:
@@ -145,12 +157,14 @@ Parameters:
   DoLambdaFnRoleAttachLocalPolicyName:
     Type: String
     Description: >-
-      The name of a customer-managed IAM policy to be attached to the "Do"
+      The name of a customer-managed IAM policy to attach to the "Do"
       function's role. By including "Effect": "Deny" statements, you could,
-      for example, prevent the rebooting or stopping of production resources.
-      Specify only the name, not the ARN. For a StackSet, the policy must
-      exist, and have exactly the same name, in every target AWS account.
-      Policies are account-wide, not regional. See
+      for example, prevent production resources from being stopped.
+      Specify only the name, not the ARN.
+      For a StackSet, the policy must exist, and have exactly the same name,
+      in every target AWS account.
+      Policies are account-wide, not regional.
+      See
       https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
 
@@ -177,22 +191,6 @@ Parameters:
       https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
     Default: 90
 
-  SqsKmsKey:
-    Type: String
-    Description: >-
-      If this is blank, queue messages will not be encrypted. To use the
-      AWS-managed key (which does not support key policy restrictions, or
-      cross-region or cross-account usage), specify "alias/aws/sqs". To use a
-      custom key, specify "ACCOUNT:key/KEY_ID". Whether the custom key is a
-      single-region key, a multi-region key primary, or a multi-region key
-      replica, it must be in the same region where you are creating this
-      stack. If the custom key is in a different AWS account than this stack,
-      you must update the key policy to allow cross-account usage. For a
-      StackSet, if you wish to use a custom key, it must be multi-region
-      ("mrk-" prefix in the KEY_ID), and a replica (or the primary key itself)
-      must exist in every target region.
-    Default: ""
-
   QueueMessageBytesMax:
     Type: Number
     Description: >-
@@ -201,15 +199,31 @@ Parameters:
     Default: 32768  # 32 KiB (worst case when copying 50 long tags)
     MaxValue: 262144  # 256 KiB
 
-  OperationFailedQueueMessageRetentionPeriodSecs:
+  ErrorQueueMessageRetentionPeriodSecs:
     Type: Number
     Description: >-
-      How many seconds to keep queue messages for scheduled operations that
-      failed. For consistency with the log retention period, and if CloudWatch
-      Logs and SQS allow, set this to LogsRetainDays * 86400 . See
-      MessageRetentionPeriod in
+      How many seconds to keep error queue messages. For consistency with the
+      log retention period, and if CloudWatch Logs and SQS allow, set this to
+      LogsRetainDays * 86400 . See MessageRetentionPeriod in
       https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
     Default: 604800
+
+  SqsKmsKey:
+    Type: String
+    Description: >-
+      If this is blank, default non-KMS SQS encryption applies. To use the
+      AWS-managed key (which does not support key policy restrictions, or
+      cross-region or cross-account usage), specify "alias/aws/sqs". To use a
+      custom key, specify "ACCOUNT:key/KEY_ID". Whether the custom key is a
+      single-region key, a multi-region key primary, or a multi-region key
+      replica, it must be in the same region where you are creating this
+      stack. Even if the custom key is in the same AWS account as this stack,
+      you must update the key policy to allow usage by SQS. See
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#compatibility-with-aws-services
+      . For a StackSet, if you wish to use a custom key, it must be
+      multi-region ("mrk-" prefix in the KEY_ID), and a replica (or the
+      primary key itself) must exist in every target region.
+    Default: ""
 
   LogsRetainDays:
     Type: Number
@@ -284,17 +298,18 @@ Metadata:
           default: AWS Lambda function to do scheduled operations
         Parameters:
           - DoLambdaFnReservedConcurrentExecutions
+          - DoLambdaFnMaximumConcurrency
           - RequireSameAccountKmsKeyPolicyForEc2StartInstances
           - DoLambdaFnRoleAttachLocalPolicyName
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
       - Label:
-          default: SQS queues for scheduled operations
+          default: SQS queues for errors and scheduled operations
         Parameters:
           - OperationQueueVisibilityTimeoutSecs
-          - SqsKmsKey
           - QueueMessageBytesMax
-          - OperationFailedQueueMessageRetentionPeriodSecs
+          - ErrorQueueMessageRetentionPeriodSecs
+          - SqsKmsKey
       - Label:
           default: Logs
         Parameters:
@@ -327,7 +342,9 @@ Metadata:
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
-        default: Number of parallel operations
+        default: Number of reserved parallel operations
+      DoLambdaFnMaximumConcurrency:
+        default: Maximum number of parallel operations
       RequireSameAccountKmsKeyPolicyForEc2StartInstances:
         default: Require same-account KMS key policy for EC2 sched-start
       DoLambdaFnRoleAttachLocalPolicyName:
@@ -340,10 +357,10 @@ Metadata:
         default: Seconds before message visibility timeout
       QueueMessageBytesMax:
         default: Maximum bytes in a message
+      ErrorQueueMessageRetentionPeriodSecs:
+        default: Seconds before deleting an error queue message
       SqsKmsKey:
         default: KMS encryption key
-      OperationFailedQueueMessageRetentionPeriodSecs:
-        default: Seconds before deleting a message for a failed operation
       LogsRetainDays:
         default: Days before deleting
       LogLevel:
@@ -367,14 +384,18 @@ Conditions:
   DoLambdaFnRoleAttachLocalPolicyNameBlank:
     !Equals [ !Ref DoLambdaFnRoleAttachLocalPolicyName, "" ]
 
+  DoLambdaFnReservedConcurrentExecutionsOff:
+    !Equals [ !Ref DoLambdaFnReservedConcurrentExecutions, -1 ]
+
   CloudWatchLogsKmsKeyBlank: !Equals [ !Ref CloudWatchLogsKmsKey, "" ]
 
 Resources:
 
-  OperationFailedQueue:
+  ErrorQueue:
     Type: AWS::SQS::Queue
     Properties:
       DelaySeconds: 0
+      SqsManagedSseEnabled: !If [ SqsKmsKeyBlank, true, false ]
       KmsMasterKeyId:
         Fn::If:
           - SqsKmsKeyBlank
@@ -384,18 +405,15 @@ Resources:
               - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
               - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
-        Fn::If:
-          - SqsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - 86400  # seconds (24 hours)
-      MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: !Ref OperationFailedQueueMessageRetentionPeriodSecs
+        !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
+      MessageRetentionPeriod: !Ref ErrorQueueMessageRetentionPeriodSecs
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: 0  # seconds; dead message retries don't make sense
 
   OperationQueue:
     Type: AWS::SQS::Queue
     Properties:
+      SqsManagedSseEnabled: !If [ SqsKmsKeyBlank, true, false ]
       KmsMasterKeyId:
         Fn::If:
           - SqsKmsKeyBlank
@@ -405,17 +423,14 @@ Resources:
               - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
               - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
-        Fn::If:
-          - SqsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - 86400  # seconds (24 hours)
+        !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
       MessageRetentionPeriod: 720  # seconds (12 minutes)
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
-        maxReceiveCount: 1  # Rely on boto3 retry logic instead (retry_mode)
-        deadLetterTargetArn: !GetAtt OperationFailedQueue.Arn
+        maxReceiveCount: 10
+        deadLetterTargetArn: !GetAtt ErrorQueue.Arn
       RedriveAllowPolicy:
         redrivePermission: denyAll
 
@@ -502,8 +517,9 @@ Resources:
                 Statement:
                   - Effect: Allow
                     Action:
-                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
                       - kms:GenerateDataKey
+                      - kms:Decrypt  # To verify a new data key!
                     Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                     Condition:
                       StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
@@ -556,11 +572,6 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringLike: { "aws:ResourceTag/sched-start": "*" }
-              - Effect: Allow
-                Action: ec2:RebootInstances
-                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-reboot": "*" }
               - Effect: Allow
                 Action: ec2:StopInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
@@ -623,26 +634,6 @@ Resources:
                   StringLike: { "aws:ResourceTag/sched-start": "*" }
               - Effect: Allow
                 Action:
-                  - rds:RebootDBInstance
-                  - rds:RebootDBCluster
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-reboot": "*" }
-              - Effect: Allow
-                Action: rds:RebootDBCluster
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-              - Effect: Allow
-                Action:
-                  - rds:RebootDBInstance
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-reboot-failover": "*" }
-              - Effect: Allow
-                Action:
                   - rds:StopDBInstance
                   - rds:StopDBCluster
                 Resource:
@@ -702,14 +693,14 @@ Resources:
                       StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
             - !Ref AWS::NoValue
 
-  OperationFailedQueuePol:
+  ErrorQueuePol:
     Type: AWS::SQS::QueuePolicy
     Properties:
-      Queues: [ !Ref OperationFailedQueue ]
+      Queues: [ !Ref ErrorQueue ]
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: RequireSsl
+          - Sid: RequireTls
             Effect: Deny
             Principal: "*"
             Action: sqs:*
@@ -719,21 +710,23 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: sqs:GetQueueAttributes
-            Resource: !GetAtt OperationFailedQueue.Arn
-          - Sid: DeadLetterSource
-            Effect: Allow
+            Resource: !GetAtt ErrorQueue.Arn
+          - Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt OperationFailedQueue.Arn
+            Resource: !GetAtt ErrorQueue.Arn
             Condition:
-              ArnEquals: { aws:SourceArn: !GetAtt OperationQueue.Arn }
-          - Sid: ExclusiveSource
-            Effect: Deny
+              ArnEquals:
+                "aws:PrincipalArn":
+                  - !GetAtt InvokeFindLambdaFnRole.Arn
+          - Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt OperationFailedQueue.Arn
+            Resource: !GetAtt ErrorQueue.Arn
             Condition:
-              ArnNotEquals: { aws:SourceArn: !GetAtt OperationQueue.Arn }
+              ArnEquals:
+                "aws:SourceArn":
+                  - !GetAtt OperationQueue.Arn
 
   OperationQueuePol:
     Type: AWS::SQS::QueuePolicy
@@ -786,7 +779,7 @@ Resources:
               - sqs:DeleteMessage
             Resource: !GetAtt OperationQueue.Arn
             Condition:
-              ArnEquals: { aws:SourceArn: !GetAtt OperationFailedQueue.Arn }
+              ArnEquals: { aws:SourceArn: !GetAtt ErrorQueue.Arn }
           - Sid: ExclusiveTargets
             Effect: Deny
             Principal: "*"
@@ -800,7 +793,7 @@ Resources:
                 aws:PrincipalArn:
                   - !GetAtt DoLambdaFnRole.Arn
                 aws:SourceArn:
-                  - !GetAtt OperationFailedQueue.Arn
+                  - !GetAtt ErrorQueue.Arn
 
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
@@ -846,7 +839,7 @@ Resources:
       Code:
         ZipFile: |
           #!/usr/bin/env python3
-          """Start, reboot, stop and back up AWS resources tagged with cron schedules
+          """Start, stop and back up AWS resources tagged with cron schedules
 
           github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
           """
@@ -1348,7 +1341,6 @@ Resources:
                 ("Instance", ),
                 {
                   ("start", ): {"class": AWSOpMultipleRsrcs},
-                  ("reboot", ): {"class": AWSOpMultipleRsrcs},
                   ("stop", ): {"class": AWSOpMultipleRsrcs},
                   ("hibernate", ): {
                     "class": AWSOpMultipleRsrcs,
@@ -1382,8 +1374,6 @@ Resources:
                 {
                   ("start", ): {},
                   ("stop", ): {},
-                  ("reboot", ): {},
-                  ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
                   ("backup", ): {"class": AWSOpBackUp},
                 },
                 rsrc_id_key_suffix="Identifier",
@@ -1396,7 +1386,6 @@ Resources:
                 {
                   ("start", ): {},
                   ("stop", ): {},
-                  ("reboot", ): {},
                   ("backup", ): {"class": AWSOpBackUp},
                 },
                 rsrc_id_key_suffix="Identifier",
@@ -1460,7 +1449,7 @@ Resources:
                   event,
                   entry_type="EXPIRED_OP",
                   entry_value="Schedule fewer operations per 10-minute cycle or "
-                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                  "increase DoLambdaFnMaximumConcurrency in CloudFormation"
                 )
                 raise RuntimeError()
 
@@ -1522,7 +1511,9 @@ Resources:
         RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn
         Arn: !GetAtt FindLambdaFn.Arn
         RetryPolicy:
-          MaximumRetryAttempts: 0
+          MaximumRetryAttempts: 0  # ReservedConcurrentExecutions >= 0
+          MaximumEventAgeInSeconds: 300  # 5 minutes (future use)
+        DeadLetterConfig: { Arn: !GetAtt ErrorQueue.Arn }
       State: !If [ EnableTrue, ENABLED, DISABLED ]
 
   DoLambdaFnLogGrp:
@@ -1539,7 +1530,11 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Role: !GetAtt DoLambdaFnRole.Arn
-      ReservedConcurrentExecutions: !Ref DoLambdaFnReservedConcurrentExecutions
+      ReservedConcurrentExecutions:
+        Fn::If:
+          - DoLambdaFnReservedConcurrentExecutionsOff
+          - !Ref AWS::NoValue
+          - !Ref DoLambdaFnReservedConcurrentExecutions
       Timeout: !Ref DoLambdaFnTimeoutSecs
       MemorySize: !Ref DoLambdaFnMemoryMB
       LoggingConfig:
@@ -1547,6 +1542,7 @@ Resources:
         LogFormat: JSON
         SystemLogLevel: WARN
         ApplicationLogLevel: !Ref LogLevel
+      TracingConfig: { Mode: PassThrough }
       Architectures:
         - arm64
       Runtime: python3.13
@@ -1563,7 +1559,7 @@ Resources:
       Code:
         ZipFile: |
           #!/usr/bin/env python3
-          """Start, reboot, stop and back up AWS resources tagged with cron schedules
+          """Start, stop and back up AWS resources tagged with cron schedules
 
           github.com/sqlxpert/lights-off-aws  GPLv3  Copyright Paul Marcelin
           """
@@ -2065,7 +2061,6 @@ Resources:
                 ("Instance", ),
                 {
                   ("start", ): {"class": AWSOpMultipleRsrcs},
-                  ("reboot", ): {"class": AWSOpMultipleRsrcs},
                   ("stop", ): {"class": AWSOpMultipleRsrcs},
                   ("hibernate", ): {
                     "class": AWSOpMultipleRsrcs,
@@ -2099,8 +2094,6 @@ Resources:
                 {
                   ("start", ): {},
                   ("stop", ): {},
-                  ("reboot", ): {},
-                  ("reboot", "failover"): {"kwargs_add": {"ForceFailover": True}},
                   ("backup", ): {"class": AWSOpBackUp},
                 },
                 rsrc_id_key_suffix="Identifier",
@@ -2113,7 +2106,6 @@ Resources:
                 {
                   ("start", ): {},
                   ("stop", ): {},
-                  ("reboot", ): {},
                   ("backup", ): {"class": AWSOpBackUp},
                 },
                 rsrc_id_key_suffix="Identifier",
@@ -2177,7 +2169,7 @@ Resources:
                   event,
                   entry_type="EXPIRED_OP",
                   entry_value="Schedule fewer operations per 10-minute cycle or "
-                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                  "increase DoLambdaFnMaximumConcurrency in CloudFormation"
                 )
                 raise RuntimeError()
 
@@ -2216,5 +2208,5 @@ Resources:
       BatchSize: 1
       FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
-        MaximumConcurrency: !Ref DoLambdaFnReservedConcurrentExecutions
+        MaximumConcurrency: !Ref DoLambdaFnMaximumConcurrency
       Enabled: !Ref Enable
