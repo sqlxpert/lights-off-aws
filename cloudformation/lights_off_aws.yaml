@@ -705,7 +705,7 @@ Resources:
             Condition:
               ArnEquals:
                 "aws:SourceArn":
-                  - !GetAtt FindLambdaFnSched2.Arn
+                  - !GetAtt FindLambdaFnSchedGrp.Arn
                   - !GetAtt OperationQueue.Arn
           - Sid: ExclusiveSource
             Effect: Deny
@@ -715,7 +715,7 @@ Resources:
             Condition:
               ArnNotEquals:
                 "aws:SourceArn":
-                  - !GetAtt FindLambdaFnSched2.Arn
+                  - !GetAtt FindLambdaFnSchedGrp.Arn
                   - !GetAtt OperationQueue.Arn
 
   OperationQueuePol:
