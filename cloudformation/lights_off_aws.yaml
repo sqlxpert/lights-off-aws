@@ -2195,7 +2195,6 @@ Resources:
       EventSourceArn: !GetAtt OperationQueue.Arn
       MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
       BatchSize: 1
-      MaximumRetryAttempts: 10
       FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
         MaximumConcurrency:
