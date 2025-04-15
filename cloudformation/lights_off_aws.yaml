@@ -125,6 +125,17 @@ Parameters:
     MinValue: -1
     Default: -1
 
+  DoLambdaFnMaximumConcurrency:
+    Type: Number
+    Description: >-
+      How many scheduled operations may be started in parallel. The minimum is
+      2. If you set reserved parallel operations to 2 or more, set this no
+      larger than reserved parallel operations.
+      See
+      https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-scaling.html#events-sqs-max-concurrency
+    MinValue: 2
+    Default: 5
+
   RequireSameAccountKmsKeyPolicyForEc2StartInstances:
     Type: String
     Description: >-
@@ -287,6 +298,7 @@ Metadata:
           default: AWS Lambda function to do scheduled operations
         Parameters:
           - DoLambdaFnReservedConcurrentExecutions
+          - DoLambdaFnMaximumConcurrency
           - RequireSameAccountKmsKeyPolicyForEc2StartInstances
           - DoLambdaFnRoleAttachLocalPolicyName
           - DoLambdaFnMemoryMB
@@ -330,7 +342,9 @@ Metadata:
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
-        default: Number of parallel operations
+        default: Number of reserved parallel operations
+      DoLambdaFnMaximumConcurrency:
+        default: Maximum number of parallel operations
       RequireSameAccountKmsKeyPolicyForEc2StartInstances:
         default: Require same-account KMS key policy for EC2 sched-start
       DoLambdaFnRoleAttachLocalPolicyName:
@@ -697,25 +711,21 @@ Resources:
             Principal: "*"
             Action: sqs:GetQueueAttributes
             Resource: !GetAtt ErrorQueue.Arn
-          - Sid: DeadLetterSource
-            Effect: Allow
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt ErrorQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:PrincipalArn":
+                  - !GetAtt InvokeFindLambdaFnRole.Arn
+          - Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
             Resource: !GetAtt ErrorQueue.Arn
             Condition:
               ArnEquals:
                 "aws:SourceArn":
-                  - !GetAtt FindLambdaFnSchedGrp.Arn
-                  - !GetAtt OperationQueue.Arn
-          - Sid: ExclusiveSource
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: !GetAtt ErrorQueue.Arn
-            Condition:
-              ArnNotEquals:
-                "aws:SourceArn":
-                  - !GetAtt FindLambdaFnSchedGrp.Arn
                   - !GetAtt OperationQueue.Arn
 
   OperationQueuePol:
@@ -1439,7 +1449,7 @@ Resources:
                   event,
                   entry_type="EXPIRED_OP",
                   entry_value="Schedule fewer operations per 10-minute cycle or "
-                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                  "increase DoLambdaFnMaximumConcurrency in CloudFormation"
                 )
                 raise RuntimeError()
 
@@ -1501,7 +1511,8 @@ Resources:
         RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn
         Arn: !GetAtt FindLambdaFn.Arn
         RetryPolicy:
-          MaximumRetryAttempts: 0
+          MaximumRetryAttempts: 0  # ReservedConcurrentExecutions >= 0
+          MaximumEventAgeInSeconds: 300  # 5 minutes (future use)
         DeadLetterConfig: { Arn: !GetAtt ErrorQueue.Arn }
       State: !If [ EnableTrue, ENABLED, DISABLED ]
 
@@ -2158,7 +2169,7 @@ Resources:
                   event,
                   entry_type="EXPIRED_OP",
                   entry_value="Schedule fewer operations per 10-minute cycle or "
-                  "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+                  "increase DoLambdaFnMaximumConcurrency in CloudFormation"
                 )
                 raise RuntimeError()
 
@@ -2197,9 +2208,5 @@ Resources:
       BatchSize: 1
       FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
-        MaximumConcurrency:
-          Fn::If:
-            - DoLambdaFnReservedConcurrentExecutionsOff
-            - 5
-            - !Ref DoLambdaFnReservedConcurrentExecutions
+        MaximumConcurrency: !Ref DoLambdaFnMaximumConcurrency
       Enabled: !Ref Enable

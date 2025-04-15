@@ -609,7 +609,7 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
         event,
         entry_type="EXPIRED_OP",
         entry_value="Schedule fewer operations per 10-minute cycle or "
-        "increase DoLambdaFnReservedConcurrentExecutions in CloudFormation"
+        "increase DoLambdaFnMaximumConcurrency in CloudFormation"
       )
       raise RuntimeError()
 
