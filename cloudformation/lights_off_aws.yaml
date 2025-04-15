@@ -146,12 +146,14 @@ Parameters:
   DoLambdaFnRoleAttachLocalPolicyName:
     Type: String
     Description: >-
-      The name of a customer-managed IAM policy to be attached to the "Do"
+      The name of a customer-managed IAM policy to attach to the "Do"
       function's role. By including "Effect": "Deny" statements, you could,
-      for example, prevent the stopping of production resources.
-      Specify only the name, not the ARN. For a StackSet, the policy must
-      exist, and have exactly the same name, in every target AWS account.
-      Policies are account-wide, not regional. See
+      for example, prevent production resources from being stopped.
+      Specify only the name, not the ARN.
+      For a StackSet, the policy must exist, and have exactly the same name,
+      in every target AWS account.
+      Policies are account-wide, not regional.
+      See
       https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
 
