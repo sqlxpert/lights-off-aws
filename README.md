@@ -321,7 +321,11 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 2. Complete the prerequisites for creating a _StackSet_ with
    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
-3. In the management AWS account (or a delegated administrator account),
+3. Make sure that every target AWS Account has a sufficient AWS Lambda
+   `Concurrent executions` quota. See the note at the end of
+   [Quick Start](#quick-start) Step 3.
+
+4. In the management AWS account (or a delegated administrator account),
    create a
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
    Select Upload a template file, then select Choose file and upload a
@@ -331,7 +335,7 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 
    - StackSet name: `LightsOff`
 
-4. Two pages later, under Deployment targets, select Deploy to Organizational
+5. Two pages later, under Deployment targets, select Deploy to Organizational
    Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.

@@ -179,7 +179,10 @@ Resources:
                   # arn:PARTITION:logs:REGION:ACCOUNT:log-group:GROUP_NAME:log-stream:STREAM_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule-group/GROUP_NAME
                   # arn:PARTITION:scheduler:REGION:ACCOUNT:schedule/GROUP_NAME/SCHED_NAME
-                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/${StackNameLike}-*"
+                  #
+                  # Also: CloudFormation seems to assign temporary SCHED_NAME
+                  # values!
+                  - !Sub "arn:${AWS::Partition}:scheduler:*:${AWS::AccountId}:schedule/${StackNameLike}-*/*"
               - Effect: Allow
                 Action:
                   - scheduler:ListScheduleGroups
