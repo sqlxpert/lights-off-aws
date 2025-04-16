@@ -429,7 +429,7 @@ Resources:
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
-        maxReceiveCount: 10
+        maxReceiveCount: 3
         deadLetterTargetArn: !GetAtt ErrorQueue.Arn
       RedriveAllowPolicy:
         redrivePermission: denyAll
@@ -511,7 +511,7 @@ Resources:
 
         - Fn::If:
             - SqsKmsKeyCustom
-            - PolicyName: SqsKmsEncrypt
+            - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
               PolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -680,7 +680,7 @@ Resources:
 
         - Fn::If:
             - SqsKmsKeyCustom
-            - PolicyName: SqsKmsDecrypt
+            - PolicyName: SqsKmsDecryptNoteComplementsQueuePolicy
               PolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -710,21 +710,42 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: sqs:GetQueueAttributes
-            Resource: !GetAtt ErrorQueue.Arn
-          - Effect: Allow
+            Resource: "*"
+          - Sid:
+              Fn::If:
+                - SqsKmsKeyCustom
+                - SourceScheduleNoteRoleNeedsSqsKmsEncrypt
+                - SourceSchedule
+            Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt ErrorQueue.Arn
+            Resource: "*"
             Condition:
               ArnEquals:
                 "aws:PrincipalArn":
                   - !GetAtt InvokeFindLambdaFnRole.Arn
-          - Effect: Allow
+          - Sid:
+              Fn::If:
+                - SqsKmsKeyCustom
+                - SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt
+                - SourceQueue
+            Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt ErrorQueue.Arn
+            Resource: "*"
             Condition:
               ArnEquals:
+                "aws:SourceArn":
+                  - !GetAtt OperationQueue.Arn
+          - Sid: ExclusiveSources
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: "*"
+            Condition:
+              ArnNotEquals:
+                "aws:PrincipalArn":
+                  - !GetAtt InvokeFindLambdaFnRole.Arn
                 "aws:SourceArn":
                   - !GetAtt OperationQueue.Arn
 
@@ -735,7 +756,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: RequireSsl
+          - Sid: RequireTls
             Effect: Deny
             Principal: "*"
             Action: sqs:*
@@ -745,39 +766,51 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: sqs:GetQueueAttributes
-            Resource: !GetAtt OperationQueue.Arn
-          - Sid: Source
+            Resource: "*"
+          - Sid:
+              Fn::If:
+                - SqsKmsKeyCustom
+                - SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt
+                - SourceLambdaFn
             Effect: Allow
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt OperationQueue.Arn
+            Resource: "*"
             Condition:
               ArnEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
           - Sid: ExclusiveSource
             Effect: Deny
             Principal: "*"
             Action: sqs:SendMessage
-            Resource: !GetAtt OperationQueue.Arn
+            Resource: "*"
             Condition:
               ArnNotEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
-          - Sid: Target
+          - Sid:
+              Fn::If:
+                - SqsKmsKeyCustom
+                - TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt
+                - TargetLambdaFn
             Effect: Allow
             Principal: "*"
             Action:
               - sqs:ChangeMessageVisibility
               - sqs:ReceiveMessage
               - sqs:DeleteMessage
-            Resource: !GetAtt OperationQueue.Arn
+            Resource: "*"
             Condition:
               ArnEquals: { aws:PrincipalArn: !GetAtt DoLambdaFnRole.Arn }
-          - Sid: DeadLetterTarget
+          - Sid:
+              Fn::If:
+                - SqsKmsKeyCustom
+                - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
+                - TargetDeadLetterQueue
             Effect: Allow
             Principal: "*"
             Action:
               - sqs:ChangeMessageVisibility
               - sqs:ReceiveMessage
               - sqs:DeleteMessage
-            Resource: !GetAtt OperationQueue.Arn
+            Resource: "*"
             Condition:
               ArnEquals: { aws:SourceArn: !GetAtt ErrorQueue.Arn }
           - Sid: ExclusiveTargets
@@ -787,7 +820,7 @@ Resources:
               - sqs:ChangeMessageVisibility
               - sqs:ReceiveMessage
               - sqs:DeleteMessage
-            Resource: !GetAtt OperationQueue.Arn
+            Resource: "*"
             Condition:
               ArnNotEquals:
                 aws:PrincipalArn:
@@ -1488,6 +1521,7 @@ Resources:
                 "aws:SourceArn": !GetAtt FindLambdaFnSchedGrp.Arn
                 # Must be a schedule group, not an individual schedule!
       Policies:
+
         - PolicyName: LambdaInvoke
           PolicyDocument:
             Version: "2012-10-17"
@@ -1495,6 +1529,22 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt FindLambdaFn.Arn
+
+        - Fn::If:
+            - SqsKmsKeyCustom
+            - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
+                      - kms:GenerateDataKey
+                      - kms:Decrypt  # To verify a new data key!
+                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+                    Condition:
+                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+            - !Ref AWS::NoValue
 
   FindLambdaFnSched2:
     Type: AWS::Scheduler::Schedule

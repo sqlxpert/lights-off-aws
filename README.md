@@ -56,11 +56,12 @@ Jump to:
 
    Request that
    [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
-   be increased. The default value is `1000` .
+   be increased. The default is `1000` .
 
    Lights Off needs 1 unit for a time-critical function. New AWS accounts
-   start with a quota of 10 units, but AWS always holds back 10, which leaves
-   0 available!
+   start with a quota of 10, but Lambda always holds back 10, which leaves 0
+   available! Within a given AWS account, the quota is set separately for
+   each region.
 
    </details>
 
@@ -321,9 +322,9 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 2. Complete the prerequisites for creating a _StackSet_ with
    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
-3. Make sure that every target AWS Account has a sufficient AWS Lambda
-   `Concurrent executions` quota. See the note at the end of
-   [Quick Start](#quick-start) Step 3.
+3. Make sure that the AWS Lambda `Concurrent executions` quota is sufficient
+   in every target AWS account, in every target region. See the note at the
+   end of [Quick Start](#quick-start) Step 3.
 
 4. In the management AWS account (or a delegated administrator account),
    create a
