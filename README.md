@@ -505,7 +505,7 @@ _clusters_ (RDS database _instances_ were already supported) required adding:
       {
         ("start", ): {},
         ("stop", ): {},
-        ("backup", ): {"class": AWSOpBackUp},
+        ("backup", ): {},
       },
       rsrc_id_key_suffix="Identifier",
       tags_key="TagList",
