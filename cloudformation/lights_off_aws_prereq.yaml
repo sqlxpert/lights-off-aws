@@ -14,7 +14,7 @@ Parameters:
 
   PlaceholderHelp:
     Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#least-privilege-installation"
+    Default: "github.com/sqlxpert/lights-off-aws#least-privilege-installation"
 
   PlaceholderAdvancedParameters:
     Type: String
