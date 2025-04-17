@@ -50,13 +50,24 @@ Description: |-
 
 Parameters:
 
-  PlaceholderHelp:
-    Type: String
-    Default: "https://github.com/sqlxpert/lights-off-aws#bonus-delete-and-recreate-expensive-resources-on-a-schedule"
-
   PlaceholderSuggestedStackName:
     Type: String
     Default: "LightsOffBonusCloudFormationExample"
+
+  PlaceholderHelp:
+    Type: String
+    Default: "github.com/sqlxpert/lights-off-aws#bonus-delete-and-recreate-expensive-resources-on-a-schedule"
+
+  PlaceholderTimeZoneConverter:
+    Type: String
+    Default: "www.timeanddate.com/worldclock/timezone/utc"
+
+  PlaceholderSuggestedStackTags:
+    Type: String
+    Description: >-
+      Copy this pair of on/off stack tags to get started. Update the times.
+      Times must be in UTC. Minute values must be multiples of 10.
+    Default: "sched-set-Enable-true : d=_ H:M=07:30 , sched-set-Enable-false : d=_ H:M=07:40"
 
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -88,18 +99,24 @@ Metadata:  # Optional section, for AWS Console users
       - Label:
           default: For Reference
         Parameters:
-          - PlaceholderHelp
           - PlaceholderSuggestedStackName
+          - PlaceholderHelp
+          - PlaceholderTimeZoneConverter
+          - PlaceholderSuggestedStackTags
       - Label:
           default: Essential
         Parameters:
           - Enable
           - VpcId
     ParameterLabels:
-      PlaceholderHelp:
-        default: For help with this stack, see
       PlaceholderSuggestedStackName:
         default: Suggested stack name
+      PlaceholderHelp:
+        default: For help with this stack, see
+      PlaceholderTimeZoneConverter:
+        default: To convert local time to UTC, see
+      PlaceholderSuggestedStackTags:
+        default: Suggested stack tags
       Enable:
         default: Enabled?
       VpcId:
