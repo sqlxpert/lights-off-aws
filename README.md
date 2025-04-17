@@ -543,8 +543,8 @@ What capabilities would you like to add? Submit a
 
 ## Progress
 
-Paul wrote TagSchedOps, the first version of this project, before Systems
-Manager, Data Lifecycle Manager or AWS Backup existed. The project remains a
+Paul wrote TagSchedOps, the first version of this tool, before Systems
+Manager, Data Lifecycle Manager or AWS Backup existed. The tool remains a
 simple alternative to
 [Systems Manager Automation runbooks for
 stopping EC2 instances](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html),
@@ -552,13 +552,12 @@ etc. It is now integrated with AWS Backup, leveraging the security and
 management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
-Despite new features, the code has gotten shorter, based on GitHub LOC.
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
 |2017| &asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|530 &check;|890|
+|2025|550 &check;|940|
 
 ## Dedication
 

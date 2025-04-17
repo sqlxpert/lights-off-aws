@@ -267,7 +267,7 @@ class AWSRsrcType():
     ).paginate(**self.describe_kwargs)
 
   def get_rsrcs(self):
-    """Returns an iterator over individual boto3 describe_ items
+    """Return an iterator over individual boto3 describe_ items
     """
     return (
       rsrc
