@@ -287,7 +287,7 @@ Off. Check with your AWS administrator!
 AWS Backup copies resource tags to backups. Lights Off adds `sched-time` to
 indicate when the backup was _scheduled_ to occur, in
 [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations)
-form (example: `2024-12-31T14:00Z`).
+basic format (example: `20241231T1400Z`).
 
 ## On/Off Switch
 
@@ -561,7 +561,7 @@ offering a simple alternative to
 
 ## Dedication
 
-This project is dedicated to ej, Marianne and R&eacute;gis, and to the
+This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
 wonderful colleagues whom Paul has worked with over the years. Thank you to
 Corey for sharing the original version with the AWS user community, and to Lee
 for suggesting the new name.
