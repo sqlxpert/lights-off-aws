@@ -123,42 +123,40 @@ def op_log(
 
 
 def assess_op_except(svc, op_method_name, svc_client, misc_except):
-  """Take an operation and an exception, return log level and fatal flag
+  """Take an operation and an exception, return log level and recoverability
   """
-  log_level = logging.ERROR
-  fatal = True
+  verb = op_method_name.split("_")[0]
+  misc_except_str = str(misc_except)
 
-  if svc == "cloudformation":
-    if isinstance(
-      misc_except, svc_client.exceptions.TokenAlreadyExistsException
-    ):
-      # Idempotent update_stack operation, not an error
-      log_level = logging.INFO
-      fatal = False
+  log_level = logging.INFO
+  recoverable = True
 
-  elif svc == "rds":
-    verb = op_method_name.split("_")[0]
-    misc_except_msg = str(misc_except)
-    if isinstance(
-      misc_except, svc_client.exceptions.InvalidDBInstanceStateFault
-    ):
-      # Idempotent database INSTANCE operations cannot be distinguished from
-      # permanent errors. Available exception is too general, because it does
-      # not name the invalid state. Log as an error, but a non-fatal one.
-      fatal = False
-    elif isinstance(
-      misc_except, svc_client.exceptions.InvalidDBClusterStateFault
-    ) and (
-      ((verb == "start") and "is in available" in misc_except_msg)
-      or f"is in {verb}" in misc_except_msg
-    ):
-      # Idempotent database CLUSTER operations: start_db_cluster when
-      # "in available[ state]" or "in start[ing state]", stop_db_cluster when
-      # "in stop[ped state]" or "in stop[ping state]"
-      log_level = logging.INFO
-      fatal = False
+  match (svc, misc_except):
 
-  return (log_level, fatal)
+    case ("cloudformation", botocore.exceptions.ClientError()) if (
+      "No updates are to be performed." in misc_except_str
+    ):
+      pass  # Recent, identical external update_stack
+
+    case ("rds", svc_client.exceptions.InvalidDBClusterStateFault()) if (
+      ((verb == "start") and "is in available" in misc_except_str)
+      or f"is in {verb}" in misc_except_str
+    ):
+      pass
+      # start_db_cluster when "in available[ state]" or "in start[ing state]"
+      # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+
+    case ("rds", svc_client.exceptions.InvalidDBInstanceStateFault()):
+      log_level = logging.ERROR
+      # Idempotent start_db_instance or stop_db_instance , or an actual error
+      # (The available exception does not give the present, invalid state for
+      # us to check, so log an error but do not raise.)
+
+    case _:
+      log_level = logging.ERROR
+      recoverable = False
+
+  return (log_level, recoverable)
 
 
 def tag_key_join(tag_key_words):
@@ -702,7 +700,7 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       op_method = getattr(svc_client, op_method_name)
       resp = op_method(**op_kwargs)
     except Exception as misc_except:  # pylint: disable=broad-exception-caught
-      (log_level, fatal) = assess_op_except(
+      (log_level, recoverable) = assess_op_except(
         svc, op_method_name, svc_client, misc_except
       )
       op_log(
@@ -711,10 +709,7 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
         entry_value=misc_except,
         log_level=log_level
       )
-      if fatal:
+      if not recoverable:
         raise
-    if boto3_success(resp):
-      op_log(event, resp=resp, log_level=logging.INFO)
     else:
-      op_log(event, resp=resp)
-      raise RuntimeError()
+      op_log(event, resp=resp, log_level=logging.INFO)
