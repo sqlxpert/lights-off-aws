@@ -15,7 +15,7 @@ Ever forget to turn the lights off? Now you can:
 _Most of all, this solution is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 lines of Python! At under 600 lines of Python, Lights Off is
+has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
 easy to understand, maintain, and extend._
 
 Jump to:
@@ -300,9 +300,17 @@ basic format (example: `20241231T1400Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-  - Log entries are JSON objects. Entries from Lights Off include `"level"`,
-    `"type"` and `"value"` keys.
+  - Log entries are JSON objects. Lights Off includes `"level"`, `"type"` and
+    `"value"` keys in its custom log entries. (Other software components may
+    use different keys.)
   - For more data, change the `LogLevel` in CloudFormation.
+  - Operations are idempotent. Lights Off logs the results of most harmless,
+    repeated AWS API calls (depending on the AWS service, either HTTPS success
+    responses, or expected exceptions) at the `INFO` level. For RDS database
+    _instance_ start/stop operations, however, Lights Off logs expected
+    exceptions at the `ERROR` level; these may represent harmless repetition,
+    or errors that require attention.
+  - Lights Off logs unexpected (uncaught) exceptions at the `ERROR` level.
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
   for undeliverable "Find" and "Do" events.
@@ -555,9 +563,9 @@ offering a simple alternative to
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
-|2017| &asymp; 775|&asymp; 2,140|
+|2017|&asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|550 &check;|940|
+|2025|600 &check;|940|
 
 ## Dedication
 
