@@ -310,6 +310,9 @@ basic format (example: `20241231T1400Z`).
     - Otherwise, they _possibly_ require attention.
       <details>
         <summary>Why the ambiguity?</summary>
+      "Find" log:
+      Any entry at the ERROR level is unexpected and requires attention.
+      "Do" log:
       The state of an AWS resource might change between the "Find" and "Do"
       steps; this sequence is fundamentally non-atomic. An operation might
       also be repeated due to queue message delivery logic; operations are
