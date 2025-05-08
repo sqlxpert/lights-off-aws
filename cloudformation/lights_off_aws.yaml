@@ -984,8 +984,8 @@ Resources:
               log(entry_type, entry_value, log_level)
 
 
-          def assess_op_client_err(svc, op_method_name, client_err_except):
-            """Take a ClientError exception, return log level and recoverability
+          def assess_op_except(svc, op_method_name, misc_except):
+            """Take an operation and an exception, return log level and recoverability
 
             botocore.exceptions.ClientError is general but statically-defined, making
             comparison easier, in a multi-service context, than for service-specific but
@@ -995,36 +995,36 @@ Resources:
 
             https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
             """
-            verb = op_method_name.split("_")[0]
-            err_dict = getattr(client_err_except, "response", {}).get("Error", {})
-            err_msg = err_dict.get("Message")
+            log_level = logging.ERROR
+            recoverable = False
 
-            log_level = logging.INFO
-            recoverable = True
+            if isinstance(misc_except, botocore.exceptions.ClientError):
+              verb = op_method_name.split("_")[0]
+              err_dict = getattr(misc_except, "response", {}).get("Error", {})
+              err_msg = err_dict.get("Message")
 
-            match (svc, err_dict.get("Code")):
+              match (svc, err_dict.get("Code")):
 
-              case ("cloudformation", "ValidationError") if (
-                "No updates are to be performed." == err_msg
-              ):
-                pass  # Recent, identical external update_stack
+                case ("cloudformation", "ValidationError") if (
+                  "No updates are to be performed." == err_msg
+                ):
+                  log_level = logging.INFO
+                  recoverable = True
+                  # Recent, identical external update_stack
 
-              case ("rds", "InvalidDBClusterStateFault") if (
-                ((verb == "start") and "is in available" in err_msg)
-                or f"is in {verb}" in err_msg
-              ):
-                pass
-                # start_db_cluster when "in available[ state]" or "in start[ing state]"
-                # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+                case ("rds", "InvalidDBClusterStateFault") if (
+                  ((verb == "start") and "is in available" in err_msg)
+                  or f"is in {verb}" in err_msg
+                ):
+                  log_level = logging.INFO
+                  recoverable = True
+                  # start_db_cluster when "in available[ state]" or "in start[ing state]"
+                  # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
 
-              case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-                log_level = logging.ERROR
-                # Can't decide between idempotent start_db_instance / stop_db_instance
-                # or error, because message does not reveal the current, invalid state.
-
-              case _:
-                log_level = logging.ERROR
-                recoverable = False
+                case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
+                  recoverable = True
+                  # Can't decide between idempotent start_db_instance / stop_db_instance
+                  # or error, because message does not reveal the current, invalid state.
 
             return (log_level, recoverable)
 
@@ -1575,14 +1575,14 @@ Resources:
                 op_kwargs = json.loads(msg["body"])
                 op_method = getattr(svc_client, op_method_name)
                 resp = op_method(**op_kwargs)
-              except botocore.exceptions.ClientError as client_err_except:
-                (log_level, recoverable) = assess_op_client_err(
-                  svc, op_method_name, client_err_except
+              except Exception as misc_except:  # pylint: disable=broad-exception-caught
+                (log_level, recoverable) = assess_op_except(
+                  svc, op_method_name, misc_except
                 )
                 op_log(
                   event,
                   entry_type="EXCEPTION",
-                  entry_value=client_err_except,
+                  entry_value=misc_except,
                   log_level=log_level
                 )
                 if not recoverable:
@@ -1810,8 +1810,8 @@ Resources:
               log(entry_type, entry_value, log_level)
 
 
-          def assess_op_client_err(svc, op_method_name, client_err_except):
-            """Take a ClientError exception, return log level and recoverability
+          def assess_op_except(svc, op_method_name, misc_except):
+            """Take an operation and an exception, return log level and recoverability
 
             botocore.exceptions.ClientError is general but statically-defined, making
             comparison easier, in a multi-service context, than for service-specific but
@@ -1821,36 +1821,36 @@ Resources:
 
             https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
             """
-            verb = op_method_name.split("_")[0]
-            err_dict = getattr(client_err_except, "response", {}).get("Error", {})
-            err_msg = err_dict.get("Message")
+            log_level = logging.ERROR
+            recoverable = False
 
-            log_level = logging.INFO
-            recoverable = True
+            if isinstance(misc_except, botocore.exceptions.ClientError):
+              verb = op_method_name.split("_")[0]
+              err_dict = getattr(misc_except, "response", {}).get("Error", {})
+              err_msg = err_dict.get("Message")
 
-            match (svc, err_dict.get("Code")):
+              match (svc, err_dict.get("Code")):
 
-              case ("cloudformation", "ValidationError") if (
-                "No updates are to be performed." == err_msg
-              ):
-                pass  # Recent, identical external update_stack
+                case ("cloudformation", "ValidationError") if (
+                  "No updates are to be performed." == err_msg
+                ):
+                  log_level = logging.INFO
+                  recoverable = True
+                  # Recent, identical external update_stack
 
-              case ("rds", "InvalidDBClusterStateFault") if (
-                ((verb == "start") and "is in available" in err_msg)
-                or f"is in {verb}" in err_msg
-              ):
-                pass
-                # start_db_cluster when "in available[ state]" or "in start[ing state]"
-                # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+                case ("rds", "InvalidDBClusterStateFault") if (
+                  ((verb == "start") and "is in available" in err_msg)
+                  or f"is in {verb}" in err_msg
+                ):
+                  log_level = logging.INFO
+                  recoverable = True
+                  # start_db_cluster when "in available[ state]" or "in start[ing state]"
+                  # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
 
-              case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-                log_level = logging.ERROR
-                # Can't decide between idempotent start_db_instance / stop_db_instance
-                # or error, because message does not reveal the current, invalid state.
-
-              case _:
-                log_level = logging.ERROR
-                recoverable = False
+                case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
+                  recoverable = True
+                  # Can't decide between idempotent start_db_instance / stop_db_instance
+                  # or error, because message does not reveal the current, invalid state.
 
             return (log_level, recoverable)
 
@@ -2401,14 +2401,14 @@ Resources:
                 op_kwargs = json.loads(msg["body"])
                 op_method = getattr(svc_client, op_method_name)
                 resp = op_method(**op_kwargs)
-              except botocore.exceptions.ClientError as client_err_except:
-                (log_level, recoverable) = assess_op_client_err(
-                  svc, op_method_name, client_err_except
+              except Exception as misc_except:  # pylint: disable=broad-exception-caught
+                (log_level, recoverable) = assess_op_except(
+                  svc, op_method_name, misc_except
                 )
                 op_log(
                   event,
                   entry_type="EXCEPTION",
-                  entry_value=client_err_except,
+                  entry_value=misc_except,
                   log_level=log_level
                 )
                 if not recoverable:
