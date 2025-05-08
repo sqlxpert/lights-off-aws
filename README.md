@@ -301,7 +301,7 @@ basic format (example: `20241231T1400Z`).
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
   - Log entries are JSON objects.
-    - Lights Off includes `"level"`, `"type"` and `"value"` keys.
+    - Lights Off includes `"level"` , `"type"` and `"value"` keys.
     - Other software components may use different keys.
   - For more data, change the `LogLevel` in CloudFormation.
   - Scrutinize log entries at the `ERROR` level.
@@ -311,7 +311,7 @@ basic format (example: `20241231T1400Z`).
       <details>
         <summary>Why the ambiguity?</summary>
       "Find" log:
-      Any entry at the ERROR level is unexpected and requires attention.
+      All entries at the ERROR level are unexpected and require attention.
       "Do" log:
       The state of an AWS resource might change between the "Find" and "Do"
       steps; this sequence is fundamentally non-atomic. An operation might
@@ -321,7 +321,7 @@ basic format (example: `20241231T1400Z`).
       (depending on the AWS service) at the INFO level. For RDS database
       instance start/stop operations, however, Lights Off logs expected
       exceptions at the ERROR level because it cannot tell whether they
-      represenet harmless repetition or actual errors.
+      represent harmless repetition or actual errors.
       </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
