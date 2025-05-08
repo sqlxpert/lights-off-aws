@@ -317,11 +317,11 @@ basic format (example: `20241231T1400Z`).
       steps; this sequence is fundamentally non-atomic. An operation might
       also be repeated due to queue message delivery logic; operations are
       idempotent. If a state change is favorable or an operation is repeated,
-      Lights Off logs HTTPS success responses or expected exceptions
-      (depending on the AWS service) at the INFO level. For RDS database
-      instance start/stop operations, however, Lights Off logs expected
-      exceptions at the ERROR level because it cannot tell whether they
-      represent harmless repetition or actual errors.
+      Lights Off logs success responses or expected exceptions (depending on
+      the AWS service) at the INFO level. For RDS database instance start/stop
+      operations, however, Lights Off logs expected exceptions at the ERROR
+      level because it cannot tell whether they represent harmless repetition
+      or actual errors.
       </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
