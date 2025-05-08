@@ -15,7 +15,7 @@ Ever forget to turn the lights off? Now you can:
 _Most of all, this solution is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 lines of Python! At under 600 lines of Python, Lights Off is
+has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
 easy to understand, maintain, and extend._
 
 Jump to:
@@ -287,7 +287,7 @@ Off. Check with your AWS administrator!
 AWS Backup copies resource tags to backups. Lights Off adds `sched-time` to
 indicate when the backup was _scheduled_ to occur, in
 [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations)
-form (example: `2024-12-31T14:00Z`).
+basic format (example: `20241231T1400Z`).
 
 ## On/Off Switch
 
@@ -300,9 +300,32 @@ form (example: `2024-12-31T14:00Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-  - Log entries are JSON objects. Entries from Lights Off include `"level"`,
-    `"type"` and `"value"` keys.
+  - Log entries are JSON objects.
+    - Lights Off includes `"level"` , `"type"` and `"value"` keys.
+    - Other software components may use different keys.
   - For more data, change the `LogLevel` in CloudFormation.
+  - Scrutinize log entries at the `ERROR` level.
+    - Both logs:
+      Entries with the `"stackTrace"` key represent unexpected exceptions that
+      require correction.
+    - "Find" log:
+      All other entries at the `ERROR` level require correction.
+    - "Do" log:
+      Some other entries at the `ERROR` level do not require correction.
+      <details>
+        <summary>What to consider...</summary>
+
+        The state of an AWS resource might change between the "Find" and "Do"
+        steps; this sequence is fundamentally non-atomic. An operation might
+        also be repeated due to queue message delivery logic; operations are
+        idempotent. If a state change is favorable or an operation is repeated,
+        Lights Off logs success responses or expected exceptions (depending on
+        the AWS service) at the `INFO` level. For RDS database _instance_
+        start/stop operations, however, Lights Off logs expected exceptions at
+        the `ERROR` level because it cannot determine whether they represent
+        actual errors or harmless repetition (such as trying to start a
+        database instance that has already been started).
+      </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
   for undeliverable "Find" and "Do" events.
@@ -486,6 +509,13 @@ Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack. At the scheduled times, Lights Off will perform
 a stack update, toggling the value of the `Enable` parameter to `true` or
 `false`. (Capitalize **E**nable in the tag keys, to match the parameter name.)
+
+If your stack's status is other than `CREATE_COMPLETE` or `UPDATE_COMPLETE` at
+the scheduled time, Lights Off logs an error of `"type"`
+`STACK_STATUS_IRREGULAR` in the "Find" [log](#logging) instead of attempting
+an update that is likely to fail and require a rollback. To resume scheduled
+stack updates, resolve the underlying template error or permissions error and
+successfully complete one manual stack update.
 </details>
 
 ## Extensibility
@@ -555,13 +585,13 @@ offering a simple alternative to
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
-|2017| &asymp; 775|&asymp; 2,140|
+|2017|&asymp; 775|&asymp; 2,140|
 |2022|630|800 &check;|
-|2025|550 &check;|940|
+|2025|600 &check;|940|
 
 ## Dedication
 
-This project is dedicated to ej, Marianne and R&eacute;gis, and to the
+This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
 wonderful colleagues whom Paul has worked with over the years. Thank you to
 Corey for sharing the original version with the AWS user community, and to Lee
 for suggesting the new name.

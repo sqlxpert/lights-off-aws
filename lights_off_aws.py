@@ -84,27 +84,16 @@ def log(entry_type, entry_value, log_level=logging.INFO):
   )
 
 
-def boto3_success(resp):
-  """Take a boto3 response, return True if result was success
-
-  Success means an AWS operation has started, not necessarily that it has
-  completed. For example, it may take hours for a backup to become available.
-  Checking completion is left to other tools.
-  """
-  return (
-    isinstance(resp, dict)
-    and isinstance(resp.get("ResponseMetadata"), dict)
-    and (resp["ResponseMetadata"].get("HTTPStatusCode") == 200)
-  )
-
-
-def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
+def sqs_send_log(
+  cycle_start_str,
+  send_kwargs,
+  entry_type,
+  entry_value,
+  log_level=logging.ERROR
+):
   """Log scheduled start time (on error), SQS send_message content, outcome
   """
-  if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
-    log_level = logging.INFO
-  else:
-    log_level = logging.ERROR
+  if log_level == logging.ERROR:
     log("START", cycle_start_str, log_level)
   log("SQS_SEND", send_kwargs, log_level)
   log(entry_type, entry_value, log_level)
@@ -120,6 +109,51 @@ def op_log(
     log("AWS_RESPONSE", resp, log_level)
   if entry_type:
     log(entry_type, entry_value, log_level)
+
+
+def assess_op_except(svc, op_method_name, misc_except):
+  """Take an operation and an exception, return log level and recoverability
+
+  botocore.exceptions.ClientError is general but statically-defined, making
+  comparison easier, in a multi-service context, than for service-specific but
+  dynamically-defined exceptions like
+  boto3.Client("rds").exceptions.InvalidDBClusterStateFault and
+  boto3.Client("rds").exceptions.InvalidDBInstanceStateFault
+
+  https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
+  """
+  log_level = logging.ERROR
+  recoverable = False
+
+  if isinstance(misc_except, botocore.exceptions.ClientError):
+    verb = op_method_name.split("_")[0]
+    err_dict = getattr(misc_except, "response", {}).get("Error", {})
+    err_msg = err_dict.get("Message")
+
+    match (svc, err_dict.get("Code")):
+
+      case ("cloudformation", "ValidationError") if (
+        "No updates are to be performed." == err_msg
+      ):
+        log_level = logging.INFO
+        recoverable = True
+        # Recent, identical external update_stack
+
+      case ("rds", "InvalidDBClusterStateFault") if (
+        ((verb == "start") and "is in available" in err_msg)
+        or f"is in {verb}" in err_msg
+      ):
+        log_level = logging.INFO
+        recoverable = True
+        # start_db_cluster when "in available[ state]" or "in start[ing state]"
+        # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+
+      case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
+        recoverable = True
+        # Can't decide between idempotent start_db_instance / stop_db_instance
+        # or error, because message does not reveal the current, invalid state.
+
+  return (log_level, recoverable)
 
 
 def tag_key_join(tag_key_words):
@@ -387,7 +421,13 @@ class AWSOp():
         sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_except)
         raise  # In error cases other than this, log 1 failed send but move on
       else:
-        sqs_send_log(cycle_start_str, send_kwargs, "AWS_RESPONSE", sqs_resp)
+        sqs_send_log(
+          cycle_start_str,
+          send_kwargs,
+          "AWS_RESPONSE",
+          sqs_resp,
+          log_level=logging.INFO
+        )
 
   def __str__(self):
     return " ".join([
@@ -418,7 +458,10 @@ class AWSOpUpdateStack(AWSOp):
 
     # Use of final template instead of original makes this incompatible with
     # CloudFormation "transforms". describe_stacks does not return templates.
-    self.kwargs_add["UsePreviousTemplate"] = True
+    self.kwargs_add.update({
+      "UsePreviousTemplate": True,
+      "RetainExceptOnCreate": True,
+    })
 
     # Use previous parameter values, except for:
     #                          Param  Value
@@ -437,30 +480,40 @@ class AWSOpUpdateStack(AWSOp):
     op_kwargs_out = {}
     params_out = []
 
-    for param in rsrc.get("Parameters", []):
+    if rsrc.get("StackStatus") in (
+      "UPDATE_COMPLETE",
+      "CREATE_COMPLETE",
+    ):
+      for param in rsrc.get("Parameters", []):
+        param_key = param["ParameterKey"]
+        param_out = {
+          "ParameterKey": param_key,
+          "UsePreviousValue": True,
+        }
 
-      param_key = param["ParameterKey"]
-      param_out = {
-        "ParameterKey": param_key,
-        "UsePreviousValue": True,
-      }
+        if param_key == self.changing_param_key:
+          if param.get("ParameterValue") == self.changing_param_value_out:
+            break
 
-      if param_key == self.changing_param_key:
-        if param.get("ParameterValue") == self.changing_param_value_out:
-          break
+          # One time, if changing_param is present and not already up-to-date
+          param_out.update({
+            "UsePreviousValue": False,
+            "ParameterValue": self.changing_param_value_out,
+          })
+          op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
+          op_kwargs_out.update({
+            "ClientRequestToken": f"{self.tag_key}-{cycle_start_str}",
+            "Parameters": params_out,  # Continue updating dict in-place
+          })
+          capabilities = rsrc.get("Capabilities")
+          if capabilities:
+            op_kwargs_out["Capabilities"] = capabilities
 
-        # Never, if changing_param is absent or up-to-date; once at most...
-        param_out.update({
-          "UsePreviousValue": False,
-          "ParameterValue": self.changing_param_value_out,
-        })
-        op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
-        op_kwargs_out["Parameters"] = params_out  # Continue updating in-place
-        capabilities = rsrc.get("Capabilities")
-        if capabilities:
-          op_kwargs_out["Capabilities"] = capabilities
+        params_out.append(param_out)
 
-      params_out.append(param_out)
+    else:
+      log("ERROR", "STACK_STATUS_IRREGULAR", logging.ERROR)
+      log("AWS_RESPONSE_PART", rsrc, logging.ERROR)
 
     return op_kwargs_out
 
@@ -600,7 +653,10 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   (cycle_start, cycle_cutoff) = cycle_start_end(
     datetime.datetime.now(datetime.timezone.utc)
   )
-  cycle_start_str = cycle_start.strftime("%Y-%m-%dT%H:%MZ")
+
+  # ISO 8601 basic, no puctuation (downstream requirement)
+  cycle_start_str = cycle_start.strftime("%Y%m%dT%H%MZ")
+
   cycle_cutoff_epoch_str = str(int(cycle_cutoff.timestamp()))
   sched_regexp = re.compile(
     cycle_start.strftime(SCHED_REGEXP_STRFTIME_FMT), re.VERBOSE
@@ -645,11 +701,17 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       op_kwargs = json.loads(msg["body"])
       op_method = getattr(svc_client_get(svc), op_method_name)
       resp = op_method(**op_kwargs)
-    except Exception as misc_except:
-      op_log(event, entry_type="EXCEPTION", entry_value=misc_except)
-      raise
-    if boto3_success(resp):
-      op_log(event, resp=resp, log_level=logging.INFO)
+    except Exception as misc_except:  # pylint: disable=broad-exception-caught
+      (log_level, recoverable) = assess_op_except(
+        svc, op_method_name, misc_except
+      )
+      op_log(
+        event,
+        entry_type="EXCEPTION",
+        entry_value=misc_except,
+        log_level=log_level
+      )
+      if not recoverable:
+        raise
     else:
-      op_log(event, resp=resp)
-      raise RuntimeError()
+      op_log(event, resp=resp, log_level=logging.INFO)
