@@ -305,23 +305,26 @@ basic format (example: `20241231T1400Z`).
     - Other software components may use different keys.
   - For more data, change the `LogLevel` in CloudFormation.
   - Scrutinize log entries at the `ERROR` level.
-    - If they contain the `"stackTrace"` key, they represent unexpected
-      exceptions that _definitely_ require attention.
-    - Otherwise, they _possibly_ require attention.
+    - Both logs:
+      Entries with the `"stackTrace"` key represent unexpected exceptions that
+      require correction.
+    - "Find" log:
+      All other entries at the `ERROR` level require correction.
+    - "Do" log:
+      Some other entries at the `ERROR` level do not require correction.
       <details>
-        <summary>Why the ambiguity?</summary>
-      "Find" log:
-      All entries at the ERROR level are unexpected and require attention.
-      "Do" log:
-      The state of an AWS resource might change between the "Find" and "Do"
-      steps; this sequence is fundamentally non-atomic. An operation might
-      also be repeated due to queue message delivery logic; operations are
-      idempotent. If a state change is favorable or an operation is repeated,
-      Lights Off logs success responses or expected exceptions (depending on
-      the AWS service) at the INFO level. For RDS database instance start/stop
-      operations, however, Lights Off logs expected exceptions at the ERROR
-      level because it cannot tell whether they represent harmless repetition
-      or actual errors.
+        <summary>What to consider...</summary>
+
+        The state of an AWS resource might change between the "Find" and "Do"
+        steps; this sequence is fundamentally non-atomic. An operation might
+        also be repeated due to queue message delivery logic; operations are
+        idempotent. If a state change is favorable or an operation is repeated,
+        Lights Off logs success responses or expected exceptions (depending on
+        the AWS service) at the `INFO` level. For RDS database _instance_
+        start/stop operations, however, Lights Off logs expected exceptions at
+        the `ERROR` level because it cannot determine whether they represent
+        actual errors or harmless repetition (such as trying to start a
+        database instance that has already been started).
       </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
@@ -506,6 +509,13 @@ Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack. At the scheduled times, Lights Off will perform
 a stack update, toggling the value of the `Enable` parameter to `true` or
 `false`. (Capitalize **E**nable in the tag keys, to match the parameter name.)
+
+If your stack's status is other than `CREATE_COMPLETE` or `UPDATE_COMPLETE` at
+the scheduled time, Lights Off logs an error of `"type"`
+`STACK_STATUS_IRREGULAR` in the "Find" [log](#logging) instead of attempting
+an update that is likely to fail and require a rollback. To resume scheduled
+stack updates, resolve the underlying template error or permissions error and
+successfully complete one manual stack update.
 </details>
 
 ## Extensibility
