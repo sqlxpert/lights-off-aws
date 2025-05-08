@@ -697,10 +697,9 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
 
     svc = msg_attr_str_decode(msg, "svc")
     op_method_name = msg_attr_str_decode(msg, "op_method_name")
-    svc_client = svc_client_get(svc)
     try:
       op_kwargs = json.loads(msg["body"])
-      op_method = getattr(svc_client, op_method_name)
+      op_method = getattr(svc_client_get(svc), op_method_name)
       resp = op_method(**op_kwargs)
     except Exception as misc_except:  # pylint: disable=broad-exception-caught
       (log_level, recoverable) = assess_op_except(
