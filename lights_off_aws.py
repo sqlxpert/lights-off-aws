@@ -84,27 +84,16 @@ def log(entry_type, entry_value, log_level=logging.INFO):
   )
 
 
-def boto3_success(resp):
-  """Take a boto3 response, return True if result was success
-
-  Success means an AWS operation has started, not necessarily that it has
-  completed. For example, it may take hours for a backup to become available.
-  Checking completion is left to other tools.
-  """
-  return (
-    isinstance(resp, dict)
-    and isinstance(resp.get("ResponseMetadata"), dict)
-    and (resp["ResponseMetadata"].get("HTTPStatusCode") == 200)
-  )
-
-
-def sqs_send_log(cycle_start_str, send_kwargs, entry_type, entry_value):
+def sqs_send_log(
+  cycle_start_str,
+  send_kwargs,
+  entry_type,
+  entry_value,
+  log_level=logging.ERROR
+):
   """Log scheduled start time (on error), SQS send_message content, outcome
   """
-  if (entry_type == "AWS_RESPONSE") and boto3_success(entry_value):
-    log_level = logging.INFO
-  else:
-    log_level = logging.ERROR
+  if log_level == logging.ERROR:
     log("START", cycle_start_str, log_level)
   log("SQS_SEND", send_kwargs, log_level)
   log(entry_type, entry_value, log_level)
@@ -122,35 +111,43 @@ def op_log(
     log(entry_type, entry_value, log_level)
 
 
-def assess_op_except(svc, op_method_name, svc_client, misc_except):
-  """Take an operation and an exception, return log level and recoverability
+def assess_op_client_err(svc, op_method_name, client_err_except):
+  """Take a ClientError exception, return log level and recoverability
+
+  botocore.exceptions.ClientError is general but statically-defined, making
+  comparison easier, in a multi-service context, than for service-specific but
+  dynamically-defined exceptions like
+  boto3.Client("rds").exceptions.InvalidDBClusterStateFault and
+  boto3.Client("rds").exceptions.InvalidDBInstanceStateFault
+
+  https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
   """
   verb = op_method_name.split("_")[0]
-  misc_except_str = str(misc_except)
+  err_dict = getattr(client_err_except, "response", {}).get("Error", {})
+  err_msg = err_dict.get("Message")
 
   log_level = logging.INFO
   recoverable = True
 
-  match (svc, misc_except):
+  match (svc, err_dict.get("Code")):
 
-    case ("cloudformation", botocore.exceptions.ClientError()) if (
-      "No updates are to be performed." in misc_except_str
+    case ("cloudformation", "ValidationError") if (
+      "No updates are to be performed." == err_msg
     ):
       pass  # Recent, identical external update_stack
 
-    case ("rds", svc_client.exceptions.InvalidDBClusterStateFault()) if (
-      ((verb == "start") and "is in available" in misc_except_str)
-      or f"is in {verb}" in misc_except_str
+    case ("rds", "InvalidDBClusterStateFault") if (
+      ((verb == "start") and "is in available" in err_msg)
+      or f"is in {verb}" in err_msg
     ):
       pass
       # start_db_cluster when "in available[ state]" or "in start[ing state]"
       # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
 
-    case ("rds", svc_client.exceptions.InvalidDBInstanceStateFault()):
+    case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
       log_level = logging.ERROR
-      # Idempotent start_db_instance or stop_db_instance , or an actual error
-      # (The available exception does not give the present, invalid state for
-      # us to check, so log an error but do not raise.)
+      # Can't decide between idempotent start_db_instance / stop_db_instance
+      # or error, because message does not reveal the current, invalid state.
 
     case _:
       log_level = logging.ERROR
@@ -424,7 +421,13 @@ class AWSOp():
         sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_except)
         raise  # In error cases other than this, log 1 failed send but move on
       else:
-        sqs_send_log(cycle_start_str, send_kwargs, "AWS_RESPONSE", sqs_resp)
+        sqs_send_log(
+          cycle_start_str,
+          send_kwargs,
+          "AWS_RESPONSE",
+          sqs_resp,
+          log_level=logging.INFO
+        )
 
   def __str__(self):
     return " ".join([
@@ -699,14 +702,14 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
       op_kwargs = json.loads(msg["body"])
       op_method = getattr(svc_client, op_method_name)
       resp = op_method(**op_kwargs)
-    except Exception as misc_except:  # pylint: disable=broad-exception-caught
-      (log_level, recoverable) = assess_op_except(
-        svc, op_method_name, svc_client, misc_except
+    except botocore.exceptions.ClientError as client_err_except:
+      (log_level, recoverable) = assess_op_client_err(
+        svc, op_method_name, client_err_except
       )
       op_log(
         event,
         entry_type="EXCEPTION",
-        entry_value=misc_except,
+        entry_value=client_err_except,
         log_level=log_level
       )
       if not recoverable:

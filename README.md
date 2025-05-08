@@ -300,17 +300,26 @@ basic format (example: `20241231T1400Z`).
 
 - Check the
   [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-  - Log entries are JSON objects. Lights Off includes `"level"`, `"type"` and
-    `"value"` keys in its custom log entries. (Other software components may
-    use different keys.)
+  - Log entries are JSON objects.
+    - Lights Off includes `"level"`, `"type"` and `"value"` keys.
+    - Other software components may use different keys.
   - For more data, change the `LogLevel` in CloudFormation.
-  - Operations are idempotent. Lights Off logs the results of most harmless,
-    repeated AWS API calls (depending on the AWS service, either HTTPS success
-    responses, or expected exceptions) at the `INFO` level. For RDS database
-    _instance_ start/stop operations, however, Lights Off logs expected
-    exceptions at the `ERROR` level; these may represent harmless repetition,
-    or errors that require attention.
-  - Lights Off logs unexpected (uncaught) exceptions at the `ERROR` level.
+  - Scrutinize log entries at the `ERROR` level.
+    - If they contain the `"stackTrace"` key, they represent unexpected
+      exceptions that _definitely_ require attention.
+    - Otherwise, they _possibly_ require attention.
+      <details>
+        <summary>Why the uncertainty?</summary>
+      The state of an AWS resource might change between the "Find" and "Do"
+      steps; this sequence is fundamentally non-atomic. An operation might
+      also be repeated due to queue message delivery logic; operations are
+      idempotent. If a state change is favorable or an operation is repeated,
+      Lights Off logs HTTPS success responses or expected exceptions
+      (depending on the AWS service) at the `INFO` level. For _RDS database
+      instance_ start/stop operations, however, Lights Off logs expected
+      exceptions at the `ERROR` level because it cannot tell whether they
+      represenet harmless repetition or actual errors.
+      </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
   for undeliverable "Find" and "Do" events.
