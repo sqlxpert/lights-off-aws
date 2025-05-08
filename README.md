@@ -309,15 +309,15 @@ basic format (example: `20241231T1400Z`).
       exceptions that _definitely_ require attention.
     - Otherwise, they _possibly_ require attention.
       <details>
-        <summary>Why the uncertainty?</summary>
+        <summary>Why the ambiguity?</summary>
       The state of an AWS resource might change between the "Find" and "Do"
       steps; this sequence is fundamentally non-atomic. An operation might
       also be repeated due to queue message delivery logic; operations are
       idempotent. If a state change is favorable or an operation is repeated,
       Lights Off logs HTTPS success responses or expected exceptions
-      (depending on the AWS service) at the `INFO` level. For _RDS database
-      instance_ start/stop operations, however, Lights Off logs expected
-      exceptions at the `ERROR` level because it cannot tell whether they
+      (depending on the AWS service) at the INFO level. For RDS database
+      instance start/stop operations, however, Lights Off logs expected
+      exceptions at the ERROR level because it cannot tell whether they
       represenet harmless repetition or actual errors.
       </details>
 - Check the `ErrorQueue`
