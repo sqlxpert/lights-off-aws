@@ -81,9 +81,8 @@ Jump to:
 |EC2:||||
 |[Instance](https://console.aws.amazon.com/ec2/home#Instances)|[&check;](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html)|[&check;](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
-|RDS:||||
+|RDS and Aurora:||||
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html)||&rarr; Snapshot|
-|Aurora:||||
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-cluster-stop-start.html)||&rarr; Snapshot|
 
 - Whether a database operation is at the cluster or instance level depends on
