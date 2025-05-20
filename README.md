@@ -79,13 +79,13 @@ Jump to:
 |:---|:---:|:---:|:---:|
 ||**`sched-start`**|||
 |EC2:||||
-|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|&check;|&check;|&rarr; Image (AMI)|
+|[Instance](https://console.aws.amazon.com/ec2/home#Instances)|[&check;](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html)|[&check;](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)|&rarr; Image (AMI)|
 |[EBS Volume](https://console.aws.amazon.com/ec2/home#Volumes)|||&rarr; Snapshot|
-|RDS and Aurora:||||
-|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
-|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|&check;||&rarr; Snapshot|
+|RDS:||||
+|[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html)||&rarr; Snapshot|
+|Aurora:||||
+|[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-cluster-stop-start.html)||&rarr; Snapshot|
 
-- [EC2 instance hibernation support varies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html).
 - Whether a database operation is at the cluster or instance level depends on
   your choice of Aurora or RDS, and for RDS, on the database's configuration.
 
@@ -103,9 +103,45 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 |North America (Hawaii to Newfoundland)|42%|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
 |Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 |India|64%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=14:00`|
-|North America, Europe|28%|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
-|North America, Europe, India|26%|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
-|Europe, India|48%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|North America + Europe|28%|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
+|North America + Europe + India|26%|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
+|Europe + India|48%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+
+#### Stopping an RDS or Aurora Database Longer than 7 Days
+
+<details>
+  <summary>Examples for stopping a database indefinitely...</summary>
+
+RDS and Aurora automatically restart stopped databases after 7 days. A simple
+work-around involves modifying one of the `sched-stop` schedules above, and
+setting a once-a-week `sched-start` schedule that leaves enough time for the
+database to start before it will be stopped again. At minimum, the database
+will be started and stopped one day a week.
+
+- Change the `sched-start` time to an earlier time if the database routinely
+  takes more than 1 hour to start. (You may also have to change the weekday to
+  be 1 day earlier.)
+- One or two days are added to `sched-stop` so that a slow-starting database
+  will receive an extra stop attempt 24 hours after the first attempt (and,
+  where possible, 48 hours after, as well). Stopping a database that has
+  already been stopped is harmless.
+- For North America + Europe or North America + Europe + India, if you start
+  the database manually, be sure to stop it manually when you are finished
+  using it. Elsewhere, it will be stopped at the end of the usual work day.
+- It is a good practice to set a database's maintenance window to a weekday
+  and time of day when the database will be running.
+
+|Locations|`sched-start`|`sched-stop`|
+|:---|:---:|:---:|
+|USA Mainland|`uTH:M=6T02:30`|`d=_ H:M=03:30`|
+|North America (Hawaii to Newfoundland)|`uTH:M=6T04:30`|`d=_ H:M=05:30`|
+|Europe|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
+|India|`uTH:M=5T13:00`|`d=_ H:M=14:00`|
+|North America + Europe|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
+|North America + Europe + India|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
+|Europe, India|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
+
+</details>
 
 ### Rules
 
@@ -313,7 +349,7 @@ basic format (example: `20241231T1400Z`).
     - "Do" log:
       Some other entries at the `ERROR` level do not require correction.
       <details>
-        <summary>What to consider...</summary>
+        <summary>What to consider when evaluating errors...</summary>
 
         The state of an AWS resource might change between the "Find" and "Do"
         steps; this sequence is fundamentally non-atomic. An operation might
@@ -325,6 +361,10 @@ basic format (example: `20241231T1400Z`).
         the `ERROR` level because it cannot determine whether they represent
         actual errors or harmless repetition (such as trying to start a
         database instance that has already been started).
+
+        For complete details, see the technical article
+        [Idempotence: Doing It More than Once](https://sqlxpert.github.io/2025/05/17/idempotence-doing-it-more-than-once.html).
+
       </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
