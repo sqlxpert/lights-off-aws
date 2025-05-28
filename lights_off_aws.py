@@ -97,7 +97,7 @@ def op_log(event, result, result_type, log_level):
 
 
 def assess_op_msg(op_msg):
-  """Take an operation queue message, return error message and code for log
+  """Take an operation queue message, return error message and type, for log
   """
   result = None
   result_type = None
