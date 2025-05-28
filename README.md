@@ -2,17 +2,18 @@
 
 Ever forget to turn the lights off? Now you can:
 
-- Stop EC2 instances and RDS/Aurora databases overnight by tagging them with
-  cron schedules, to cut AWS costs.
+- Stop EC2 instances and RDS/Aurora databases temporarily by tagging them with
+  cron schedules, to cut AWS costs. Schedules (not references to schedules) go
+  directly in the tags.
 
 - Trigger AWS Backup with cron schedules in resource tags.
 
-- Delete expensive infrastructure overnight by tagging your own CloudFormation
-  stacks with cron schedules.
+- Delete expensive infrastructure temporarily by tagging your own
+  CloudFormation stacks with cron schedules.
 
-- Easily deploy this solution to multiple AWS accounts and regions.
+- Easily deploy this tool to multiple AWS accounts and regions.
 
-_Most of all, this solution is lightweight. Not counting blanks, comments, or
+_Most of all, this tool is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
 has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
@@ -109,13 +110,16 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 #### Stopping an RDS or Aurora Database Longer than 7 Days
 
 <details>
-  <summary>Examples for stopping a database indefinitely...</summary>
+  <summary>Solutions for stopping a database indefinitely...</summary>
 
-RDS and Aurora automatically restart stopped databases after 7 days. A simple
-work-around involves modifying one of the `sched-stop` schedules above, and
-setting a once-a-week `sched-start` schedule that leaves enough time for the
-database to start before it will be stopped again. At minimum, the database
-will be started and stopped one day a week.
+RDS and Aurora automatically start stopped databases after 7 days.
+
+For a work-around, check out
+[github.com/sqlxpert/stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/stay-stopped-aws-rds-aurora/#stay-stopped-rds-and-aurora)
+, or modify of the `sched-stop` schedules above and set a once-a-week
+`sched-start` schedule that leaves enough time for the database to finish
+starting before it will be stopped again. The database will be started, and
+stopped again, at least once every 7 days.
 
 - Change the `sched-start` time to an earlier time if the database routinely
   takes more than 1 hour to start. (You may also have to change the weekday to
@@ -127,8 +131,8 @@ will be started and stopped one day a week.
 - For North America + Europe or North America + Europe + India, if you start
   the database manually, be sure to stop it manually when you are finished
   using it. Elsewhere, it will be stopped at the end of the usual work day.
-- It is a good practice to set a database's maintenance window to a weekday
-  and time of day when the database will be running.
+- To keep up with updates, it is a good practice to set a database's weekly
+  maintenance window to time period when the database will be running.
 
 |Locations|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|
@@ -138,7 +142,7 @@ will be started and stopped one day a week.
 |India|`uTH:M=5T13:00`|`d=_ H:M=14:00`|
 |North America + Europe|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
 |North America + Europe + India|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
-|Europe, India|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
+|Europe + India|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
 
 </details>
 
@@ -632,8 +636,8 @@ offering a simple alternative to
 
 This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
 wonderful colleagues whom Paul has worked with over the years. Thank you to
-Corey for sharing the original version with the AWS user community, and to Lee
-for suggesting the new name.
+Corey for sharing this with the AWS user community, and to Lee for suggesting
+the new name.
 
 ## Licenses
 
