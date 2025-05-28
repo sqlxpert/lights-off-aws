@@ -330,7 +330,7 @@ class AWSRsrcType():  # pylint: disable=too-many-instance-attributes
 
       if op_tags_matched_count == 1:
         op = self.ops[op_tags_matched[0]]
-        op.queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
+        op.msg_send_to_queue(rsrc, cycle_start_str, cycle_cutoff_epoch_str)
       elif op_tags_matched_count > 1:
         log("START", cycle_start_str, logging.ERROR)
         log(
@@ -388,7 +388,7 @@ class AWSOp():
     op_kwargs_out.update(self.kwargs_add)
     return op_kwargs_out
 
-  def queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
+  def msg_send_to_queue(self, rsrc, cycle_start_str, cycle_cutoff_epoch_str):
     """Send 1 operation message to the SQS queue
     """
     op_kwargs = self.op_kwargs(rsrc, cycle_start_str)
