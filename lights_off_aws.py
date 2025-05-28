@@ -56,14 +56,8 @@ ARN_PARTS = BACKUP_ROLE_ARN.split(ARN_DELIM)
 # https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
 ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
 
-# 1. Custom Exceptions #######################################################
 
-
-class SQSMessageTooLong(ValueError):
-  """String of JSON-encoded SQS queue message exceeds QUEUE_MSG_BYTES_MAX
-  """
-
-# 2. Helpers #################################################################
+# 1. Helpers #################################################################
 
 
 def log(entry_type, entry_value, log_level=logging.INFO):
@@ -84,26 +78,45 @@ def log(entry_type, entry_value, log_level=logging.INFO):
   )
 
 
-def sqs_send_log(
-  cycle_start_str,
-  send_kwargs,
-  entry_type,
-  entry_value,
-  log_level=logging.ERROR
+def sqs_send_message_log(
+  cycle_start_str, send_kwargs, result, result_type, log_level
 ):
-  """Log scheduled start time (on error), SQS send_message content, outcome
+  """Log scheduled start (on error), send_message kwargs, and outcome
   """
   if log_level == logging.ERROR:
     log("START", cycle_start_str, log_level)
-  log("SQS_SEND", send_kwargs, log_level)
-  log(entry_type, entry_value, log_level)
+  log("KWARGS_SQS_SEND_MESSAGE", send_kwargs, log_level)
+  log(result_type, result, log_level)
 
 
-def op_log(event, entry_type, result, log_level):
-  """Log Lambda event, entry type and result of operation, at log_level
+def op_log(event, result, result_type, log_level):
+  """Log Lambda event and operation outcome
   """
   log("LAMBDA_EVENT", event, log_level)
-  log(entry_type, result, log_level)
+  log(result_type, result, log_level)
+
+
+def assess_op_msg(op_msg):
+  """Take an operation queue message, return error message and code for log
+  """
+  result = None
+  result_type = None
+
+  if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
+    result = "Unrecognized operation queue message format"
+    result_type = "WRONG_QUEUE_MSG_FMT"
+
+  elif (
+    int(msg_attr_str_decode(op_msg, "expires"))
+    < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+  ):
+    result = (
+      "Schedule fewer operations per 10-minute cycle or "
+      "increase DoLambdaFnMaximumConcurrency in CloudFormation"
+    )
+    result_type = "EXPIRED_OP"
+
+  return (result, result_type)
 
 
 def assess_op_except(svc, op_method_name, misc_except):
@@ -185,17 +198,6 @@ def msg_attr_str_decode(msg, attr_name):
   return msg["messageAttributes"][attr_name]["stringValue"]
 
 
-def msg_body_encode(msg_in):
-  """Take an SQS queue message body dict, convert to JSON and check length
-  """
-  msg_out = json.dumps(msg_in)
-  msg_out_len = len(bytes(msg_out, "utf-8"))
-  if msg_out_len > QUEUE_MSG_BYTES_MAX:
-    log("QUEUE_MSG", msg_out, logging.ERROR)
-    raise SQSMessageTooLong()
-  return msg_out
-
-
 svc_clients = {}
 
 
@@ -217,7 +219,7 @@ def svc_client_get(svc):
   return svc_clients[svc]
 
 
-# 3. Custom Classes ##########################################################
+# 2. Custom Classes ##########################################################
 
 # See rsrc_types_init() for usage examples.
 
@@ -401,27 +403,38 @@ class AWSOp():
           ("op_method_name", self.method_name),
         )),
       }
+
+      result = None
+      result_type = None
+      raise_except = None
+
+      log_level = logging.ERROR
+
       try:
-        send_kwargs.update({"MessageBody": msg_body_encode(op_kwargs)})
-        sqs_resp = svc_client_get("sqs").send_message(**send_kwargs)
-      except SQSMessageTooLong:
-        sqs_send_log(
-          cycle_start_str,
-          send_kwargs,
-          "QUEUE_MSG_TOO_LONG",
-          "Increase QueueMessageBytesMax in CloudFormation",
-        )
-      except Exception as misc_except:
-        sqs_send_log(cycle_start_str, send_kwargs, "EXCEPTION", misc_except)
-        raise  # In error cases other than this, log 1 failed send but move on
-      else:
-        sqs_send_log(
-          cycle_start_str,
-          send_kwargs,
-          "AWS_RESPONSE",
-          sqs_resp,
-          log_level=logging.INFO
-        )
+        msg_body = json.dumps(op_kwargs)
+        send_kwargs.update({"MessageBody": msg_body})
+
+        if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
+          result = "Increase QueueMessageBytesMax in CloudFormation"
+          result_type = "QUEUE_MSG_TOO_LONG"
+          # Continue to next message (likely to be shorter)
+
+        else:
+          result = svc_client_get("sqs").send_message(**send_kwargs)
+          result_type = "AWS_RESPONSE"
+          log_level = logging.INFO
+
+      except Exception as misc_except:  # pylint: disable=broad-exception-caught
+        result = misc_except
+        result_type = "EXCEPTION"
+        raise_except = misc_except
+        # Do not continue to next message (likely to fill log with same error)
+
+      sqs_send_message_log(
+        cycle_start_str, send_kwargs, result, result_type, log_level
+      )
+      if raise_except:
+        raise raise_except
 
   def __str__(self):
     return " ".join([
@@ -506,7 +519,11 @@ class AWSOpUpdateStack(AWSOp):
         params_out.append(param_out)
 
     else:
-      log("ERROR", "STACK_STATUS_IRREGULAR", logging.ERROR)
+      log(
+        "STACK_STATUS_IRREGULAR",
+        "Fix manually until UPDATE_COMPLETE",
+        logging.ERROR
+      )
       log("AWS_RESPONSE_PART", rsrc, logging.ERROR)
 
     return op_kwargs_out
@@ -566,7 +583,7 @@ class AWSOpBackUp(AWSOp):
     return op_kwargs_out
 
 
-# 4. Data-Driven Specifications ##############################################
+# 3. Data-Driven Specifications ##############################################
 
 
 def rsrc_types_init():
@@ -637,7 +654,7 @@ def rsrc_types_init():
     )
 
 
-# 5. Find Resources Lambda Function Handler ##################################
+# 4. Find Resources Lambda Function Handler ##################################
 
 
 def lambda_handler_find(event, context):  # pylint: disable=unused-argument
@@ -663,54 +680,42 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
       sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
     )
 
-# 6. "Do" Operations Lambda Function Handler #################################
+# 5. "Do" Operations Lambda Function Handler #################################
 
 
 def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
-  for msg in event.get("Records", []):  # 0 or 1 messages expected
-    log_level = logging.ERROR
-
+  for op_msg in event.get("Records", []):  # 0 or 1 messages expected
     result = None
-    log_entry_type = None
+    result_type = None
     raise_except = None
 
-    try:
-      if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
-        result = "Unrecognized operation queue message format"
-        log_entry_type = "WRONG_QUEUE_MSG_FMT"
-        raise_except = RuntimeError()
+    log_level = logging.ERROR
 
-      elif (
-        int(msg_attr_str_decode(msg, "expires"))
-        < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-      ):
-        result = (
-          "Schedule fewer operations per 10-minute cycle or "
-          "increase DoLambdaFnMaximumConcurrency in CloudFormation"
-        )
-        log_entry_type = "EXPIRED_OP"
+    try:
+      (result, result_type) = assess_op_msg(op_msg)
+      if result_type:
         raise_except = RuntimeError()
 
       else:
-        svc = msg_attr_str_decode(msg, "svc")
-        op_method_name = msg_attr_str_decode(msg, "op_method_name")
-        op_kwargs = json.loads(msg["body"])
+        svc = msg_attr_str_decode(op_msg, "svc")
+        op_method_name = msg_attr_str_decode(op_msg, "op_method_name")
+        op_kwargs = json.loads(op_msg["body"])
         op_method = getattr(svc_client_get(svc), op_method_name)
         result = op_method(**op_kwargs)
-        log_entry_type = "AWS_RESPONSE"
+        result_type = "AWS_RESPONSE"
         log_level = logging.INFO
 
     except Exception as misc_except:  # pylint: disable=broad-exception-caught
       result = misc_except
-      log_entry_type = "EXCEPTION"
+      result_type = "EXCEPTION"
       (log_level, recoverable) = assess_op_except(
         svc, op_method_name, misc_except
       )
       if not recoverable:
         raise_except = misc_except
 
-    op_log(event, log_entry_type, result, log_level)
+    op_log(event, result, result_type, log_level)
     if raise_except:
       raise raise_except
