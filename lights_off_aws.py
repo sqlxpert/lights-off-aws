@@ -99,16 +99,11 @@ def sqs_send_log(
   log(entry_type, entry_value, log_level)
 
 
-def op_log(
-  event, entry_type="", entry_value="", resp=None, log_level=logging.ERROR
-):
-  """Log Lambda function event, optional error, optional boto3 response
+def op_log(event, entry_type, result, log_level):
+  """Log Lambda event, entry type and result of operation, at log_level
   """
   log("LAMBDA_EVENT", event, log_level)
-  if resp is not None:
-    log("AWS_RESPONSE", resp, log_level)
-  if entry_type:
-    log(entry_type, entry_value, log_level)
+  log(entry_type, result, log_level)
 
 
 def assess_op_except(svc, op_method_name, misc_except):
@@ -385,8 +380,7 @@ class AWSOp():
     """
     return {self.kwarg_rsrc_id_key: self.rsrc_id(rsrc)}
 
-  # pylint: disable=unused-argument
-  def op_kwargs(self, rsrc, cycle_start_str):
+  def op_kwargs(self, rsrc, cycle_start_str):  # pylint: disable=unused-argument
     """Take a describe_ result, return another method's kwargs
     """
     op_kwargs_out = self.kwarg_rsrc_id(rsrc)
@@ -676,42 +670,47 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
   for msg in event.get("Records", []):  # 0 or 1 messages expected
-    if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
-      op_log(
-        event,
-        entry_type="WRONG_QUEUE_MSG_FMT",
-        entry_value="Unrecognized operation queue message format"
-      )
-      raise RuntimeError()
-    if (
-      int(msg_attr_str_decode(msg, "expires"))
-      < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-    ):
-      op_log(
-        event,
-        entry_type="EXPIRED_OP",
-        entry_value="Schedule fewer operations per 10-minute cycle or "
-        "increase DoLambdaFnMaximumConcurrency in CloudFormation"
-      )
-      raise RuntimeError()
+    log_level = logging.ERROR
 
-    svc = msg_attr_str_decode(msg, "svc")
-    op_method_name = msg_attr_str_decode(msg, "op_method_name")
+    result = None
+    log_entry_type = None
+    raise_except = None
+
     try:
-      op_kwargs = json.loads(msg["body"])
-      op_method = getattr(svc_client_get(svc), op_method_name)
-      resp = op_method(**op_kwargs)
+      if msg_attr_str_decode(msg, "version") != QUEUE_MSG_FMT_VERSION:
+        result = "Unrecognized operation queue message format"
+        log_entry_type = "WRONG_QUEUE_MSG_FMT"
+        raise_except = RuntimeError()
+
+      elif (
+        int(msg_attr_str_decode(msg, "expires"))
+        < int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+      ):
+        result = (
+          "Schedule fewer operations per 10-minute cycle or "
+          "increase DoLambdaFnMaximumConcurrency in CloudFormation"
+        )
+        log_entry_type = "EXPIRED_OP"
+        raise_except = RuntimeError()
+
+      else:
+        svc = msg_attr_str_decode(msg, "svc")
+        op_method_name = msg_attr_str_decode(msg, "op_method_name")
+        op_kwargs = json.loads(msg["body"])
+        op_method = getattr(svc_client_get(svc), op_method_name)
+        result = op_method(**op_kwargs)
+        log_entry_type = "AWS_RESPONSE"
+        log_level = logging.INFO
+
     except Exception as misc_except:  # pylint: disable=broad-exception-caught
+      result = misc_except
+      log_entry_type = "EXCEPTION"
       (log_level, recoverable) = assess_op_except(
         svc, op_method_name, misc_except
       )
-      op_log(
-        event,
-        entry_type="EXCEPTION",
-        entry_value=misc_except,
-        log_level=log_level
-      )
       if not recoverable:
-        raise
-    else:
-      op_log(event, resp=resp, log_level=logging.INFO)
+        raise_except = misc_except
+
+    op_log(event, log_entry_type, result, log_level)
+    if raise_except:
+      raise raise_except
