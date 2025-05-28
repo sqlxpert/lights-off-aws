@@ -416,7 +416,7 @@ class AWSOp():
         if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
           result = "Increase QueueMessageBytesMax in CloudFormation"
           result_type = "QUEUE_MSG_TOO_LONG"
-          # Continue to next message (likely to be shorter)
+          # Allow continue to next message (likely to be shorter)
 
         else:
           result = svc_client_get("sqs").send_message(**send_kwargs)
@@ -675,9 +675,13 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
   log("SCHED_REGEXP_VERBOSE", sched_regexp.pattern, logging.DEBUG)
   rsrc_types_init()
   for rsrc_type in AWSRsrcType.members.values():
-    rsrc_type.rsrcs_find(
-      sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
-    )
+    try:
+      rsrc_type.rsrcs_find(
+        sched_regexp, cycle_start_str, cycle_cutoff_epoch_str
+      )
+    except Exception as misc_except:  # pylint: disable=broad-exception-caught
+      log("EXCEPTION", misc_except, logging.ERROR)
+      # Allow continue to next describe_ call (likely that permissions differ)
 
 # 5. "Do" Operations Lambda Function Handler #################################
 
