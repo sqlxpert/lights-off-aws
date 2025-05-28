@@ -224,8 +224,7 @@ def svc_client_get(svc):
 # See rsrc_types_init() for usage examples.
 
 
-# pylint: disable=too-many-instance-attributes
-class AWSRsrcType():
+class AWSRsrcType():  # pylint: disable=too-many-instance-attributes
   """AWS resource type, with identification properties and various operations
   """
   members = {}
