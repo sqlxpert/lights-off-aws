@@ -117,6 +117,7 @@ def assess_op_msg(op_msg):
       "increase DoLambdaFnMaximumConcurrency in CloudFormation"
     )
     result_type = "EXPIRED_OP"
+    raise_except = RuntimeError()
 
   return (result, result_type, raise_except)
 
