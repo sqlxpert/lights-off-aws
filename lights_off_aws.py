@@ -100,7 +100,7 @@ def assess_op_msg(op_msg):
   """Take an operation queue message, return error message, type, exception
   """
   result = None
-  result_type = None
+  result_type = ""
   raise_except = None
 
   if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
@@ -407,7 +407,7 @@ class AWSOp():
       }
 
       result = None
-      result_type = None
+      result_type = ""
 
       log_level = logging.ERROR
 
@@ -688,7 +688,7 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """
   for op_msg in event.get("Records", []):  # 0 or 1 messages expected
     result = None
-    result_type = None
+    result_type = ""
     raise_except = None
 
     log_level = logging.ERROR
