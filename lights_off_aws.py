@@ -407,7 +407,6 @@ class AWSOp():
 
       result = None
       result_type = None
-      raise_except = None
 
       log_level = logging.ERROR
 
@@ -418,7 +417,6 @@ class AWSOp():
         if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
           result = "Increase QueueMessageBytesMax in CloudFormation"
           result_type = "QUEUE_MSG_TOO_LONG"
-          # Allow continue to next message (likely to be shorter)
 
         else:
           result = svc_client_get("sqs").send_message(**send_kwargs)
@@ -428,14 +426,10 @@ class AWSOp():
       except Exception as misc_except:  # pylint: disable=broad-exception-caught
         result = misc_except
         result_type = "EXCEPTION"
-        raise_except = misc_except
-        # Do not continue to next message (likely to fill log with same error)
 
       sqs_send_message_log(
         cycle_start_str, send_kwargs, result, result_type, log_level
       )
-      if raise_except:
-        raise raise_except
 
   def __str__(self):
     return " ".join([
