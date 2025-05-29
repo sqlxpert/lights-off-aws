@@ -97,14 +97,16 @@ def op_log(event, result, result_type, log_level):
 
 
 def assess_op_msg(op_msg):
-  """Take an operation queue message, return error message and type, for log
+  """Take an operation queue message, return error message, type, exception
   """
   result = None
   result_type = None
+  raise_except = None
 
   if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
     result = "Unrecognized operation queue message format"
     result_type = "WRONG_QUEUE_MSG_FMT"
+    raise_except = RuntimeError()
 
   elif (
     int(msg_attr_str_decode(op_msg, "expires"))
@@ -116,7 +118,7 @@ def assess_op_msg(op_msg):
     )
     result_type = "EXPIRED_OP"
 
-  return (result, result_type)
+  return (result, result_type, raise_except)
 
 
 def assess_op_except(svc, op_method_name, misc_except):
@@ -697,11 +699,8 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
     log_level = logging.ERROR
 
     try:
-      (result, result_type) = assess_op_msg(op_msg)
-      if result_type:
-        raise_except = RuntimeError()
-
-      else:
+      (result, result_type, raise_except) = assess_op_msg(op_msg)
+      if not result_type:
         svc = msg_attr_str_decode(op_msg, "svc")
         op_method_name = msg_attr_str_decode(op_msg, "op_method_name")
         op_kwargs = json.loads(op_msg["body"])
