@@ -346,7 +346,7 @@ basic format (example: `20241231T1400Z`).
   - Scrutinize log entries at the `ERROR` level.
     - Both logs:
       Entries with the `"stackTrace"` key represent unexpected exceptions that
-      require correction.
+      require correction. These are unusual.
     - "Find" log:
       All other entries at the `ERROR` level require correction.
     - "Do" log:
@@ -371,7 +371,7 @@ basic format (example: `20241231T1400Z`).
       </details>
 - Check the `ErrorQueue`
   [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
-  for undeliverable "Find" and "Do" events.
+  for "Find" and "Do" events that were not delivered, or not fully processed.
 - Check CloudTrail for the final stages of `sched-start` and `sched-backup`
   operations.
 
@@ -532,7 +532,9 @@ software at your own risk. You are encouraged to evaluate the source code._
   <summary>Scheduled CloudFormation stack update details...</summary>
 
 Lights Off can delete and recreate many types of expensive AWS infrastructure
-in your own CloudFormation stacks, based on cron schedules in stack tags.
+in your own CloudFormation stacks, based on cron schedules in stack tags. This
+feature is available by default, but it you can disable it by changing the
+`EnableSchedCloudFormationOps` parameter in the LightsOff stack or StackSet.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See

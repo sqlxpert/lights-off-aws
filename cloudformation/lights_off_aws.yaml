@@ -26,6 +26,18 @@ Parameters:
       - "false"
       - "true"
 
+  EnableSchedCloudFormationOps:
+    Type: String
+    Description: >-
+      Whether the feature that performs scheduled stack update operations on
+      your own CloudFormation stacks is enabled. Setting this to "false"
+      reduces permisions for the "Find" and "Do" AWS Lambda functions. See
+      https://github.com/sqlxpert/lights-off-aws#bonus-delete-and-recreate-expensive-resources-on-a-schedule
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+
   PlaceholderAdvancedParameters:
     Type: String
     Default: ""
@@ -119,8 +131,9 @@ Parameters:
   DoLambdaFnReservedConcurrentExecutions:
     Type: Number
     Description: >-
-      How many scheduled operations can definitely be started in parallel. To
-      decline access to AWS Lambda reserved concurrency, set this to -1. See
+      How many batches of scheduled operation messages can definitely be
+      processed in parallel. To decline access to AWS Lambda reserved
+      concurrency, set this to -1. See
       https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
     MinValue: -1
     Default: -1
@@ -128,10 +141,10 @@ Parameters:
   DoLambdaFnMaximumConcurrency:
     Type: Number
     Description: >-
-      How many scheduled operations may be started in parallel. The minimum is
-      2. If you set reserved parallel operations to 2 or more, set this no
-      larger than reserved parallel operations.
-      See
+      How many batches of scheduled operation messages may be processed in
+      parallel. The minimum is 2. If you set
+      DoLambdaFnReservedConcurrentExecutions to 2 or more, set this no larger
+      than DoLambdaFnReservedConcurrentExecutions. See
       https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-scaling.html#events-sqs-max-concurrency
     MinValue: 2
     Default: 5
@@ -168,6 +181,17 @@ Parameters:
       https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
 
+  DoLambdaFnBatchSize:
+    Type: Number
+    Description: >-
+      How many scheduled operation messages to process in a single invokation.
+      Batching is not important for a sporadic and/or low-volume workload.
+      Consider together with QueueMessageBytesMax (for the error queue, which
+      might receive a batch of messages inside an EventBridge Scheduler
+      event), DoLambdaFnMemoryMB and DoLambdaFnTimeoutSecs .
+    MinValue: 1
+    Default: 3
+
   DoLambdaFnMemoryMB:
     Type: Number
     Description: >-
@@ -186,8 +210,8 @@ Parameters:
     Type: Number
     Description: >-
       How many seconds SQS waits for the "Do" AWS Lambda function to accept
-      and process a message representing one scheduled operation. This must be
-      at least DoLambdaFnTimeoutSecs . In case of problems, see
+      and process a scheduled operation message. This must be at least
+      DoLambdaFnTimeoutSecs . In case of problems, see
       https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
     Default: 90
 
@@ -204,7 +228,7 @@ Parameters:
     Description: >-
       How many seconds to keep error queue messages. For consistency with the
       log retention period, and if CloudWatch Logs and SQS allow, set this to
-      LogsRetainDays * 86400 . See MessageRetentionPeriod in
+      LogRetentionInDays * 86400 . See MessageRetentionPeriod in
       https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
     Default: 604800
 
@@ -225,7 +249,7 @@ Parameters:
       primary key itself) must exist in every target region.
     Default: ""
 
-  LogsRetainDays:
+  LogRetentionInDays:
     Type: Number
     Description: >-
       How many days to keep CloudWatch logs from the AWS Lambda functions. See
@@ -276,6 +300,7 @@ Metadata:
           default: Essential
         Parameters:
           - Enable
+          - EnableSchedCloudFormationOps
       - Label:
           default: Advanced...
         Parameters:
@@ -301,6 +326,7 @@ Metadata:
           - DoLambdaFnMaximumConcurrency
           - RequireSameAccountKmsKeyPolicyForEc2StartInstances
           - DoLambdaFnRoleAttachLocalPolicyName
+          - DoLambdaFnBatchSize
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
       - Label:
@@ -313,7 +339,7 @@ Metadata:
       - Label:
           default: Logs
         Parameters:
-          - LogsRetainDays
+          - LogRetentionInDays
           - LogLevel
           - CloudWatchLogsKmsKey
     ParameterLabels:
@@ -323,6 +349,8 @@ Metadata:
         default: Suggested stack name
       Enable:
         default: Enabled?
+      EnableSchedCloudFormationOps:
+        default: Scheduled CloudFormation operations enabled?
       PlaceholderAdvancedParameters:
         default: Do not change the parameters below, unless necessary!
       BackupRoleName:
@@ -342,26 +370,28 @@ Metadata:
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
-        default: Number of reserved parallel operations
+        default: Reserved parallel batches
       DoLambdaFnMaximumConcurrency:
-        default: Maximum number of parallel operations
+        default: Maximum parallel batches
       RequireSameAccountKmsKeyPolicyForEc2StartInstances:
         default: Require same-account KMS key policy for EC2 sched-start
       DoLambdaFnRoleAttachLocalPolicyName:
         default: Name of local policy to attach
+      DoLambdaFnBatchSize:
+        default: Batch size
       DoLambdaFnMemoryMB:
         default: Megabytes of memory
       DoLambdaFnTimeoutSecs:
         default: Seconds before timeout
       OperationQueueVisibilityTimeoutSecs:
-        default: Seconds before message visibility timeout
+        default: Seconds before re-processing a message
       QueueMessageBytesMax:
         default: Maximum bytes in a message
       ErrorQueueMessageRetentionPeriodSecs:
         default: Seconds before deleting an error queue message
       SqsKmsKey:
         default: KMS encryption key
-      LogsRetainDays:
+      LogRetentionInDays:
         default: Days before deleting
       LogLevel:
         default: Message level
@@ -371,6 +401,9 @@ Metadata:
 Conditions:
 
   EnableTrue: !Equals [ !Ref Enable, "true" ]
+
+  EnableSchedCloudFormationOpsTrue:
+    !Equals [ !Ref EnableSchedCloudFormationOps, "true" ]
 
   RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue:
     !Equals [ !Ref RequireSameAccountKmsKeyPolicyForEc2StartInstances, "true" ]
@@ -425,7 +458,15 @@ Resources:
       KmsDataKeyReusePeriodSeconds:
         !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: 720  # seconds (12 minutes)
+
+      MessageRetentionPeriod: 1200  # seconds
+      # 1200 seconds = 20 minutes = 2 cycles
+      # DoLambdaFn code treats a scheduled operation message as expired
+      # 9 minutes after the start of a cycle, logs the error, and consumes the
+      # message.
+      # SQS silently deletes messages that were never consumed during the
+      # retention period; those do not go to the dead-letter queue.
+
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
@@ -499,15 +540,18 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
 
-        - PolicyName: CloudFormationRead
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudformation:ListStacks
-                  - cloudformation:DescribeStacks
-                Resource: "*"
+        - Fn::If:
+            - EnableSchedCloudFormationOpsTrue
+            - PolicyName: CloudFormationRead
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - cloudformation:ListStacks
+                      - cloudformation:DescribeStacks
+                    Resource: "*"
+            - !Ref AWS::NoValue
 
         - Fn::If:
             - SqsKmsKeyCustom
@@ -650,21 +694,6 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
 
-        - PolicyName: CloudFormationWrite
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: cloudformation:UpdateStack
-                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
-              - Effect: Allow
-                Action: cloudformation:UpdateStack
-                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
-
         - PolicyName: BackupWrite
           PolicyDocument:
             Version: "2012-10-17"
@@ -677,6 +706,24 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
                 Condition:
                   StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
+
+        - Fn::If:
+            - EnableSchedCloudFormationOpsTrue
+            - PolicyName: CloudFormationWrite
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action: cloudformation:UpdateStack
+                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                    Condition:
+                      StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
+                  - Effect: Allow
+                    Action: cloudformation:UpdateStack
+                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                    Condition:
+                      StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
+            - !Ref AWS::NoValue
 
         - Fn::If:
             - SqsKmsKeyCustom
@@ -831,7 +878,7 @@ Resources:
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: !Ref LogsRetainDays
+      RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
@@ -868,6 +915,8 @@ Resources:
           "BACKUP_COMPLETE_WINDOW_MINUTES": !Ref BackupCompleteWindowMinutes
           "BACKUP_COLD_STORAGE_AFTER_DAYS": !Ref BackupColdStorageAfterDays
           "BACKUP_DELETE_AFTER_DAYS": !Ref BackupDeleteAfterDays
+          "ENABLE_SCHED_CLOUDFORMATION_OPS":
+            !If [ EnableSchedCloudFormationOpsTrue, "", !Ref AWS::NoValue ]
       Handler: index.lambda_handler_find
       Code:
         ZipFile: |
@@ -1664,7 +1713,7 @@ Resources:
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: !Ref LogsRetainDays
+      RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
@@ -2444,9 +2493,16 @@ Resources:
     DependsOn: DoLambdaFnInvokeLambdaPerm
     Properties:
       EventSourceArn: !GetAtt OperationQueue.Arn
-      MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
-      BatchSize: 1
+
+      BatchSize: !Ref DoLambdaFnBatchSize
+      MaximumBatchingWindowInSeconds: 60
+      # Not much time is available to wait, inside a 10-minute cycle whose
+      # first and last minutes are not used, which leaves only 8 minutes.
+      # Note: >= 20 for long polling (lowest cost)
+
       FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
         MaximumConcurrency: !Ref DoLambdaFnMaximumConcurrency
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
       Enabled: !Ref Enable
