@@ -570,7 +570,13 @@ class AWSOpBackUp(AWSOp):
     """
     op_kwargs_out = super().op_kwargs(rsrc, cycle_start_str)
     op_kwargs_out.update({
-      "IdempotencyToken": cycle_start_str,
+      "IdempotencyToken": f"{cycle_start_str},{self.rsrc_id(rsrc)}",
+      # As of May, 2025, AWS Backup treats calls to back up different
+      # resources as identical so long as IdempotencyToken matches! This is
+      # contrary to the documentation ("otherwise identical calls"). To assure
+      # uniqueness, combine scheduled start time, ARN.
+      # https://docs.aws.amazon.com/aws-backup/latest/devguide/API_StartBackupJob.html#Backup-StartBackupJob-request-IdempotencyToken
+
       "RecoveryPointTags": {tag_key_join(("time", )): cycle_start_str},
     })
     lifecycle = dict(self.lifecycle_base)  # Updatable copy (future need)
