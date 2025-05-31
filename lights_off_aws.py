@@ -61,7 +61,7 @@ ARN_PARTS[3] = os.environ.get("AWS_REGION", os.environ["AWS_DEFAULT_REGION"])
 
 
 def log(entry_type, entry_value, log_level=logging.INFO):
-  """Emit a JSON-format log entry
+  """Take type and value, and emit a JSON-format log entry
   """
   entry_value_out = json.loads(json.dumps(entry_value, default=str))
   # Avoids "Object of type datetime is not JSON serializable" in
@@ -83,30 +83,32 @@ def sqs_send_message_log(
 ):
   """Log scheduled start (on error), send_message kwargs, and outcome
   """
-  if log_level == logging.ERROR:
+  if log_level > logging.INFO:
     log("START", cycle_start_str, log_level)
   log("KWARGS_SQS_SEND_MESSAGE", send_kwargs, log_level)
   log(result_type, result, log_level)
 
 
-def op_log(event, result, result_type, log_level):
-  """Log Lambda event and operation outcome
+def op_log(event, op_msg, result, result_type, log_level):
+  """Log Lambda event (on error), SQS message (operation), and outcome
   """
-  log("LAMBDA_EVENT", event, log_level)
+  if log_level > logging.INFO:
+    log("LAMBDA_EVENT", event, log_level)
+  log("SQS_MESSAGE", op_msg, log_level)
   log(result_type, result, log_level)
 
 
 def assess_op_msg(op_msg):
-  """Take an operation queue message, return error message, type, exception
+  """Take an operation queue message, return error message, type, retry flag
   """
   result = None
   result_type = ""
-  raise_except = None
+  retry = True
 
   if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
     result = "Unrecognized operation queue message format"
     result_type = "WRONG_QUEUE_MSG_FMT"
-    raise_except = RuntimeError()
+    retry = False
 
   elif (
     int(msg_attr_str_decode(op_msg, "expires"))
@@ -117,13 +119,13 @@ def assess_op_msg(op_msg):
       "increase DoLambdaFnMaximumConcurrency in CloudFormation"
     )
     result_type = "EXPIRED_OP"
-    raise_except = RuntimeError()
+    retry = False
 
-  return (result, result_type, raise_except)
+  return (result, result_type, retry)
 
 
 def assess_op_except(svc, op_method_name, misc_except):
-  """Take an operation and an exception, return log level and recoverability
+  """Take an operation and an exception, return retry flag and log level
 
   botocore.exceptions.ClientError is general but statically-defined, making
   comparison easier, in a multi-service context, than for service-specific but
@@ -133,8 +135,8 @@ def assess_op_except(svc, op_method_name, misc_except):
 
   https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
   """
+  retry = True
   log_level = logging.ERROR
-  recoverable = False
 
   if isinstance(misc_except, botocore.exceptions.ClientError):
     verb = op_method_name.split("_")[0]
@@ -146,25 +148,28 @@ def assess_op_except(svc, op_method_name, misc_except):
       case ("cloudformation", "ValidationError") if (
         "No updates are to be performed." == err_msg
       ):
+        retry = False
         log_level = logging.INFO
-        recoverable = True
-        # Recent, identical external update_stack
+        # Idempotent update_stack (after a recent external update)
 
       case ("rds", "InvalidDBClusterStateFault") if (
         ((verb == "start") and "is in available" in err_msg)
         or f"is in {verb}" in err_msg
       ):
+        retry = False
         log_level = logging.INFO
-        recoverable = True
-        # start_db_cluster when "in available[ state]" or "in start[ing state]"
-        # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+        # Idempotent
+        # start_db_cluster "in available[ state]" or "in start[ing state]" or
+        # stop__db_cluster "in stop[ped state]"   or "in stop[ping state]"
 
       case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-        recoverable = True
+        retry = False
         # Can't decide between idempotent start_db_instance / stop_db_instance
-        # or error, because message does not reveal the current, invalid state.
+        # (common) or truly erroneous state (rare), because message does not
+        # mention current, invalid state. Log as potential error, but do not
+        # retry (avoids a duplicate error queue entry).
 
-  return (log_level, recoverable)
+  return (retry, log_level)
 
 
 def tag_key_join(tag_key_words):
@@ -401,9 +406,12 @@ class AWSOp():
         "MessageAttributes": msg_attrs_str_encode((
           ("version", QUEUE_MSG_FMT_VERSION),
           ("expires", cycle_cutoff_epoch_str),
+          ("start", cycle_start_str),
           ("svc", self.svc),
           ("op_method_name", self.method_name),
         )),
+        "MessageBody": op_kwargs,
+        # Raw only for logging in case of an exception during JSON encoding
       }
 
       result = None
@@ -413,7 +421,7 @@ class AWSOp():
 
       try:
         msg_body = json.dumps(op_kwargs)
-        send_kwargs.update({"MessageBody": msg_body})
+        send_kwargs.update({"MessageBody": msg_body, })
 
         if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
           result = "Increase QueueMessageBytesMax in CloudFormation"
@@ -644,16 +652,17 @@ def rsrc_types_init():
       tags_key="TagList",
     )
 
-    AWSRsrcType(
-      "cloudformation",
-      ("Stack", ),
-      {
-        ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
-        ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
-      },
-      rsrc_id_key_suffix="Name",
-      arn_key_suffix="Id",
-    )
+    if "ENABLE_SCHED_CLOUDFORMATION_OPS" in os.environ:
+      AWSRsrcType(
+        "cloudformation",
+        ("Stack", ),
+        {
+          ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
+          ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
+        },
+        rsrc_id_key_suffix="Name",
+        arn_key_suffix="Id",
+      )
 
 
 # 4. Find Resources Lambda Function Handler ##################################
@@ -692,15 +701,20 @@ def lambda_handler_find(event, context):  # pylint: disable=unused-argument
 def lambda_handler_do(event, context):  # pylint: disable=unused-argument
   """Perform a queued operation on an AWS resource
   """
-  for op_msg in event.get("Records", []):  # 0 or 1 messages expected
+  batch_item_failures = []
+
+  for op_msg in event.get("Records", []):
+    sqs_msg_id = ""
+
     result = None
     result_type = ""
-    raise_except = None
+    retry = True
 
     log_level = logging.ERROR
 
     try:
-      (result, result_type, raise_except) = assess_op_msg(op_msg)
+      sqs_msg_id = op_msg["messageId"]
+      (result, result_type, retry) = assess_op_msg(op_msg)
       if not result_type:
         svc = msg_attr_str_decode(op_msg, "svc")
         op_method_name = msg_attr_str_decode(op_msg, "op_method_name")
@@ -708,17 +722,18 @@ def lambda_handler_do(event, context):  # pylint: disable=unused-argument
         op_method = getattr(svc_client_get(svc), op_method_name)
         result = op_method(**op_kwargs)
         result_type = "AWS_RESPONSE"
+        retry = False
         log_level = logging.INFO
 
     except Exception as misc_except:  # pylint: disable=broad-exception-caught
       result = misc_except
       result_type = "EXCEPTION"
-      (log_level, recoverable) = assess_op_except(
-        svc, op_method_name, misc_except
-      )
-      if not recoverable:
-        raise_except = misc_except
+      (retry, log_level) = assess_op_except(svc, op_method_name, misc_except)
 
-    op_log(event, result, result_type, log_level)
-    if raise_except:
-      raise raise_except
+    op_log(event, op_msg, result, result_type, log_level)
+
+    if retry and sqs_msg_id:
+      batch_item_failures.append({"itemIdentifier": sqs_msg_id, })
+
+  # https://repost.aws/knowledge-center/lambda-sqs-report-batch-item-failures
+  return {"batchItemFailures": batch_item_failures, }

@@ -24,10 +24,6 @@ Description: |-
 # AmazonEC2FullAccess policy and check the box to the left of that policy.
 # It is not least-privilege, and is only suitable for testing.
 #
-# For a complete, least-privilege example, see DeploymentRole in
-# lights_off_aws_prereq.yaml . Its custom policies authorize creation of a
-# stack from lights_off_aws.yaml .
-#
 # You MUST select your deployment role when you create a CloudFormation stack
 # from your template. Scroll to the Permissions section and set IAM role -
 # optional . Otherwise, stack updates triggered by Lights Off will fail.
@@ -38,15 +34,7 @@ Description: |-
 # stack tags to more resource types, provide tagging privileges for all of the
 # resource types in your template, even if CloudFormation doesn't yet
 # propagate stack tags to them.
-#
-# For many AWS services, you can achieve a least-privilege design with a
-# policy condition:
-#   "StringLike":
-#     "aws:ResourceTag/aws:cloudformation:stack-name": "*KEYWORD*"
-# where KEYWORD is a string that you will require in the name of all stacks
-# created using your deployment role, and that you will not allow in the
-# names of any other stacks.
-############################################################################
+##############################################################################
 
 Parameters:
 
@@ -198,9 +186,17 @@ Resources:
 # STEP 7 #####################################################################
 #
 # Refer to
-# https://github.com/sqlxpert/lights-off-aws#tag-values-schedules
-# and add schedule tags to your stack:
+# https://github.com/sqlxpert/lights-off-aws#tag-values-schedules .
+#
+# Make sure that the EnableSchedCloudFormationOps is set to "true" in your
+# main  LightsOff CloudFormation stack or StackSet.
+#
+# Add schedule tags to your own stack:
 # - sched-set-Enable-true
 # - sched-set-Enable-false
-# Wait for the scheduled times and check the stack resources.
+#
+# Wait for the scheduled times, then check the list of events for your own
+# CloudFormation stack. In the AWS Console, the Client request token column
+# shows operations ("sched-set-Enable-true" or "sched-set-Enable-false") and
+# scheduled times, in ISO 8601 basic form ("20250115T0730Z", for example).
 ##############################################################################

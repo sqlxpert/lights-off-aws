@@ -26,6 +26,18 @@ Parameters:
       - "false"
       - "true"
 
+  EnableSchedCloudFormationOps:
+    Type: String
+    Description: >-
+      Whether the feature that performs scheduled stack update operations on
+      your own CloudFormation stacks is enabled. Setting this to "false"
+      reduces permisions for the "Find" and "Do" AWS Lambda functions. See
+      https://github.com/sqlxpert/lights-off-aws#bonus-delete-and-recreate-expensive-resources-on-a-schedule
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+
   PlaceholderAdvancedParameters:
     Type: String
     Default: ""
@@ -119,8 +131,9 @@ Parameters:
   DoLambdaFnReservedConcurrentExecutions:
     Type: Number
     Description: >-
-      How many scheduled operations can definitely be started in parallel. To
-      decline access to AWS Lambda reserved concurrency, set this to -1. See
+      How many batches of scheduled operation messages can definitely be
+      processed in parallel. To decline access to AWS Lambda reserved
+      concurrency, set this to -1. See
       https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html#configuration-concurrency-reserved
     MinValue: -1
     Default: -1
@@ -128,10 +141,10 @@ Parameters:
   DoLambdaFnMaximumConcurrency:
     Type: Number
     Description: >-
-      How many scheduled operations may be started in parallel. The minimum is
-      2. If you set reserved parallel operations to 2 or more, set this no
-      larger than reserved parallel operations.
-      See
+      How many batches of scheduled operation messages may be processed in
+      parallel. The minimum is 2. If you set
+      DoLambdaFnReservedConcurrentExecutions to 2 or more, set this no larger
+      than DoLambdaFnReservedConcurrentExecutions. See
       https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-scaling.html#events-sqs-max-concurrency
     MinValue: 2
     Default: 5
@@ -168,6 +181,17 @@ Parameters:
       https://github.com/sqlxpert/lights-off-aws/README.md#security-steps-you-can-take
     Default: ""
 
+  DoLambdaFnBatchSize:
+    Type: Number
+    Description: >-
+      How many scheduled operation messages to process in a single invokation.
+      Batching is not important for a sporadic and/or low-volume workload.
+      Consider together with QueueMessageBytesMax (for the error queue, which
+      might receive a batch of messages inside an EventBridge Scheduler
+      event), DoLambdaFnMemoryMB and DoLambdaFnTimeoutSecs .
+    MinValue: 1
+    Default: 3
+
   DoLambdaFnMemoryMB:
     Type: Number
     Description: >-
@@ -186,8 +210,8 @@ Parameters:
     Type: Number
     Description: >-
       How many seconds SQS waits for the "Do" AWS Lambda function to accept
-      and process a message representing one scheduled operation. This must be
-      at least DoLambdaFnTimeoutSecs . In case of problems, see
+      and process a scheduled operation message. This must be at least
+      DoLambdaFnTimeoutSecs . In case of problems, see
       https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-queueconfig
     Default: 90
 
@@ -204,7 +228,7 @@ Parameters:
     Description: >-
       How many seconds to keep error queue messages. For consistency with the
       log retention period, and if CloudWatch Logs and SQS allow, set this to
-      LogsRetainDays * 86400 . See MessageRetentionPeriod in
+      LogRetentionInDays * 86400 . See MessageRetentionPeriod in
       https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html#API_SetQueueAttributes_RequestParameters
     Default: 604800
 
@@ -225,7 +249,7 @@ Parameters:
       primary key itself) must exist in every target region.
     Default: ""
 
-  LogsRetainDays:
+  LogRetentionInDays:
     Type: Number
     Description: >-
       How many days to keep CloudWatch logs from the AWS Lambda functions. See
@@ -276,6 +300,7 @@ Metadata:
           default: Essential
         Parameters:
           - Enable
+          - EnableSchedCloudFormationOps
       - Label:
           default: Advanced...
         Parameters:
@@ -301,6 +326,7 @@ Metadata:
           - DoLambdaFnMaximumConcurrency
           - RequireSameAccountKmsKeyPolicyForEc2StartInstances
           - DoLambdaFnRoleAttachLocalPolicyName
+          - DoLambdaFnBatchSize
           - DoLambdaFnMemoryMB
           - DoLambdaFnTimeoutSecs
       - Label:
@@ -313,7 +339,7 @@ Metadata:
       - Label:
           default: Logs
         Parameters:
-          - LogsRetainDays
+          - LogRetentionInDays
           - LogLevel
           - CloudWatchLogsKmsKey
     ParameterLabels:
@@ -323,6 +349,8 @@ Metadata:
         default: Suggested stack name
       Enable:
         default: Enabled?
+      EnableSchedCloudFormationOps:
+        default: Scheduled CloudFormation operations enabled?
       PlaceholderAdvancedParameters:
         default: Do not change the parameters below, unless necessary!
       BackupRoleName:
@@ -342,26 +370,28 @@ Metadata:
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
       DoLambdaFnReservedConcurrentExecutions:
-        default: Number of reserved parallel operations
+        default: Reserved parallel batches
       DoLambdaFnMaximumConcurrency:
-        default: Maximum number of parallel operations
+        default: Maximum parallel batches
       RequireSameAccountKmsKeyPolicyForEc2StartInstances:
         default: Require same-account KMS key policy for EC2 sched-start
       DoLambdaFnRoleAttachLocalPolicyName:
         default: Name of local policy to attach
+      DoLambdaFnBatchSize:
+        default: Batch size
       DoLambdaFnMemoryMB:
         default: Megabytes of memory
       DoLambdaFnTimeoutSecs:
         default: Seconds before timeout
       OperationQueueVisibilityTimeoutSecs:
-        default: Seconds before message visibility timeout
+        default: Seconds before re-processing a message
       QueueMessageBytesMax:
         default: Maximum bytes in a message
       ErrorQueueMessageRetentionPeriodSecs:
         default: Seconds before deleting an error queue message
       SqsKmsKey:
         default: KMS encryption key
-      LogsRetainDays:
+      LogRetentionInDays:
         default: Days before deleting
       LogLevel:
         default: Message level
@@ -371,6 +401,9 @@ Metadata:
 Conditions:
 
   EnableTrue: !Equals [ !Ref Enable, "true" ]
+
+  EnableSchedCloudFormationOpsTrue:
+    !Equals [ !Ref EnableSchedCloudFormationOps, "true" ]
 
   RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue:
     !Equals [ !Ref RequireSameAccountKmsKeyPolicyForEc2StartInstances, "true" ]
@@ -425,7 +458,15 @@ Resources:
       KmsDataKeyReusePeriodSeconds:
         !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
-      MessageRetentionPeriod: 720  # seconds (12 minutes)
+
+      MessageRetentionPeriod: 1200  # seconds
+      # 1200 seconds = 20 minutes = 2 cycles
+      # DoLambdaFn code treats a scheduled operation message as expired
+      # 9 minutes after the start of a cycle, logs the error, and consumes the
+      # message.
+      # SQS silently deletes messages that were never consumed during the
+      # retention period; those do not go to the dead-letter queue.
+
       ReceiveMessageWaitTimeSeconds: 20  # long polling (lowest cost)
       VisibilityTimeout: !Ref OperationQueueVisibilityTimeoutSecs
       RedrivePolicy:
@@ -499,15 +540,18 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
 
-        - PolicyName: CloudFormationRead
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudformation:ListStacks
-                  - cloudformation:DescribeStacks
-                Resource: "*"
+        - Fn::If:
+            - EnableSchedCloudFormationOpsTrue
+            - PolicyName: CloudFormationRead
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - cloudformation:ListStacks
+                      - cloudformation:DescribeStacks
+                    Resource: "*"
+            - !Ref AWS::NoValue
 
         - Fn::If:
             - SqsKmsKeyCustom
@@ -650,21 +694,6 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:snapshot:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster-snapshot:*"
 
-        - PolicyName: CloudFormationWrite
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: cloudformation:UpdateStack
-                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
-              - Effect: Allow
-                Action: cloudformation:UpdateStack
-                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                Condition:
-                  StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
-
         - PolicyName: BackupWrite
           PolicyDocument:
             Version: "2012-10-17"
@@ -677,6 +706,24 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
                 Condition:
                   StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
+
+        - Fn::If:
+            - EnableSchedCloudFormationOpsTrue
+            - PolicyName: CloudFormationWrite
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action: cloudformation:UpdateStack
+                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                    Condition:
+                      StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
+                  - Effect: Allow
+                    Action: cloudformation:UpdateStack
+                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                    Condition:
+                      StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
+            - !Ref AWS::NoValue
 
         - Fn::If:
             - SqsKmsKeyCustom
@@ -831,7 +878,7 @@ Resources:
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: !Ref LogsRetainDays
+      RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
@@ -868,6 +915,8 @@ Resources:
           "BACKUP_COMPLETE_WINDOW_MINUTES": !Ref BackupCompleteWindowMinutes
           "BACKUP_COLD_STORAGE_AFTER_DAYS": !Ref BackupColdStorageAfterDays
           "BACKUP_DELETE_AFTER_DAYS": !Ref BackupDeleteAfterDays
+          "ENABLE_SCHED_CLOUDFORMATION_OPS":
+            !If [ EnableSchedCloudFormationOpsTrue, "", !Ref AWS::NoValue ]
       Handler: index.lambda_handler_find
       Code:
         ZipFile: |
@@ -934,7 +983,7 @@ Resources:
 
 
           def log(entry_type, entry_value, log_level=logging.INFO):
-            """Emit a JSON-format log entry
+            """Take type and value, and emit a JSON-format log entry
             """
             entry_value_out = json.loads(json.dumps(entry_value, default=str))
             # Avoids "Object of type datetime is not JSON serializable" in
@@ -956,30 +1005,32 @@ Resources:
           ):
             """Log scheduled start (on error), send_message kwargs, and outcome
             """
-            if log_level == logging.ERROR:
+            if log_level > logging.INFO:
               log("START", cycle_start_str, log_level)
             log("KWARGS_SQS_SEND_MESSAGE", send_kwargs, log_level)
             log(result_type, result, log_level)
 
 
-          def op_log(event, result, result_type, log_level):
-            """Log Lambda event and operation outcome
+          def op_log(event, op_msg, result, result_type, log_level):
+            """Log Lambda event (on error), SQS message (operation), and outcome
             """
-            log("LAMBDA_EVENT", event, log_level)
+            if log_level > logging.INFO:
+              log("LAMBDA_EVENT", event, log_level)
+            log("SQS_MESSAGE", op_msg, log_level)
             log(result_type, result, log_level)
 
 
           def assess_op_msg(op_msg):
-            """Take an operation queue message, return error message, type, exception
+            """Take an operation queue message, return error message, type, retry flag
             """
             result = None
             result_type = ""
-            raise_except = None
+            retry = True
 
             if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
               result = "Unrecognized operation queue message format"
               result_type = "WRONG_QUEUE_MSG_FMT"
-              raise_except = RuntimeError()
+              retry = False
 
             elif (
               int(msg_attr_str_decode(op_msg, "expires"))
@@ -990,13 +1041,13 @@ Resources:
                 "increase DoLambdaFnMaximumConcurrency in CloudFormation"
               )
               result_type = "EXPIRED_OP"
-              raise_except = RuntimeError()
+              retry = False
 
-            return (result, result_type, raise_except)
+            return (result, result_type, retry)
 
 
           def assess_op_except(svc, op_method_name, misc_except):
-            """Take an operation and an exception, return log level and recoverability
+            """Take an operation and an exception, return retry flag and log level
 
             botocore.exceptions.ClientError is general but statically-defined, making
             comparison easier, in a multi-service context, than for service-specific but
@@ -1006,8 +1057,8 @@ Resources:
 
             https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
             """
+            retry = True
             log_level = logging.ERROR
-            recoverable = False
 
             if isinstance(misc_except, botocore.exceptions.ClientError):
               verb = op_method_name.split("_")[0]
@@ -1019,25 +1070,28 @@ Resources:
                 case ("cloudformation", "ValidationError") if (
                   "No updates are to be performed." == err_msg
                 ):
+                  retry = False
                   log_level = logging.INFO
-                  recoverable = True
-                  # Recent, identical external update_stack
+                  # Idempotent update_stack (after a recent external update)
 
                 case ("rds", "InvalidDBClusterStateFault") if (
                   ((verb == "start") and "is in available" in err_msg)
                   or f"is in {verb}" in err_msg
                 ):
+                  retry = False
                   log_level = logging.INFO
-                  recoverable = True
-                  # start_db_cluster when "in available[ state]" or "in start[ing state]"
-                  # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+                  # Idempotent
+                  # start_db_cluster "in available[ state]" or "in start[ing state]" or
+                  # stop__db_cluster "in stop[ped state]"   or "in stop[ping state]"
 
                 case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-                  recoverable = True
+                  retry = False
                   # Can't decide between idempotent start_db_instance / stop_db_instance
-                  # or error, because message does not reveal the current, invalid state.
+                  # (common) or truly erroneous state (rare), because message does not
+                  # mention current, invalid state. Log as potential error, but do not
+                  # retry (avoids a duplicate error queue entry).
 
-            return (log_level, recoverable)
+            return (retry, log_level)
 
 
           def tag_key_join(tag_key_words):
@@ -1274,9 +1328,12 @@ Resources:
                   "MessageAttributes": msg_attrs_str_encode((
                     ("version", QUEUE_MSG_FMT_VERSION),
                     ("expires", cycle_cutoff_epoch_str),
+                    ("start", cycle_start_str),
                     ("svc", self.svc),
                     ("op_method_name", self.method_name),
                   )),
+                  "MessageBody": op_kwargs,
+                  # Raw only for logging in case of an exception during JSON encoding
                 }
 
                 result = None
@@ -1286,7 +1343,7 @@ Resources:
 
                 try:
                   msg_body = json.dumps(op_kwargs)
-                  send_kwargs.update({"MessageBody": msg_body})
+                  send_kwargs.update({"MessageBody": msg_body, })
 
                   if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
                     result = "Increase QueueMessageBytesMax in CloudFormation"
@@ -1517,16 +1574,17 @@ Resources:
                 tags_key="TagList",
               )
 
-              AWSRsrcType(
-                "cloudformation",
-                ("Stack", ),
-                {
-                  ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
-                  ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
-                },
-                rsrc_id_key_suffix="Name",
-                arn_key_suffix="Id",
-              )
+              if "ENABLE_SCHED_CLOUDFORMATION_OPS" in os.environ:
+                AWSRsrcType(
+                  "cloudformation",
+                  ("Stack", ),
+                  {
+                    ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
+                    ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
+                  },
+                  rsrc_id_key_suffix="Name",
+                  arn_key_suffix="Id",
+                )
 
 
           # 4. Find Resources Lambda Function Handler ##################################
@@ -1565,15 +1623,20 @@ Resources:
           def lambda_handler_do(event, context):  # pylint: disable=unused-argument
             """Perform a queued operation on an AWS resource
             """
-            for op_msg in event.get("Records", []):  # 0 or 1 messages expected
+            batch_item_failures = []
+
+            for op_msg in event.get("Records", []):
+              sqs_msg_id = ""
+
               result = None
               result_type = ""
-              raise_except = None
+              retry = True
 
               log_level = logging.ERROR
 
               try:
-                (result, result_type, raise_except) = assess_op_msg(op_msg)
+                sqs_msg_id = op_msg["messageId"]
+                (result, result_type, retry) = assess_op_msg(op_msg)
                 if not result_type:
                   svc = msg_attr_str_decode(op_msg, "svc")
                   op_method_name = msg_attr_str_decode(op_msg, "op_method_name")
@@ -1581,20 +1644,21 @@ Resources:
                   op_method = getattr(svc_client_get(svc), op_method_name)
                   result = op_method(**op_kwargs)
                   result_type = "AWS_RESPONSE"
+                  retry = False
                   log_level = logging.INFO
 
               except Exception as misc_except:  # pylint: disable=broad-exception-caught
                 result = misc_except
                 result_type = "EXCEPTION"
-                (log_level, recoverable) = assess_op_except(
-                  svc, op_method_name, misc_except
-                )
-                if not recoverable:
-                  raise_except = misc_except
+                (retry, log_level) = assess_op_except(svc, op_method_name, misc_except)
 
-              op_log(event, result, result_type, log_level)
-              if raise_except:
-                raise raise_except
+              op_log(event, op_msg, result, result_type, log_level)
+
+              if retry and sqs_msg_id:
+                batch_item_failures.append({"itemIdentifier": sqs_msg_id, })
+
+            # https://repost.aws/knowledge-center/lambda-sqs-report-batch-item-failures
+            return {"batchItemFailures": batch_item_failures, }
         # ZIPFILE_END
 
   FindLambdaFnSchedGrp:
@@ -1664,7 +1728,7 @@ Resources:
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: !Ref LogsRetainDays
+      RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
         Fn::If:
           - CloudWatchLogsKmsKeyBlank
@@ -1766,7 +1830,7 @@ Resources:
 
 
           def log(entry_type, entry_value, log_level=logging.INFO):
-            """Emit a JSON-format log entry
+            """Take type and value, and emit a JSON-format log entry
             """
             entry_value_out = json.loads(json.dumps(entry_value, default=str))
             # Avoids "Object of type datetime is not JSON serializable" in
@@ -1788,30 +1852,32 @@ Resources:
           ):
             """Log scheduled start (on error), send_message kwargs, and outcome
             """
-            if log_level == logging.ERROR:
+            if log_level > logging.INFO:
               log("START", cycle_start_str, log_level)
             log("KWARGS_SQS_SEND_MESSAGE", send_kwargs, log_level)
             log(result_type, result, log_level)
 
 
-          def op_log(event, result, result_type, log_level):
-            """Log Lambda event and operation outcome
+          def op_log(event, op_msg, result, result_type, log_level):
+            """Log Lambda event (on error), SQS message (operation), and outcome
             """
-            log("LAMBDA_EVENT", event, log_level)
+            if log_level > logging.INFO:
+              log("LAMBDA_EVENT", event, log_level)
+            log("SQS_MESSAGE", op_msg, log_level)
             log(result_type, result, log_level)
 
 
           def assess_op_msg(op_msg):
-            """Take an operation queue message, return error message, type, exception
+            """Take an operation queue message, return error message, type, retry flag
             """
             result = None
             result_type = ""
-            raise_except = None
+            retry = True
 
             if msg_attr_str_decode(op_msg, "version") != QUEUE_MSG_FMT_VERSION:
               result = "Unrecognized operation queue message format"
               result_type = "WRONG_QUEUE_MSG_FMT"
-              raise_except = RuntimeError()
+              retry = False
 
             elif (
               int(msg_attr_str_decode(op_msg, "expires"))
@@ -1822,13 +1888,13 @@ Resources:
                 "increase DoLambdaFnMaximumConcurrency in CloudFormation"
               )
               result_type = "EXPIRED_OP"
-              raise_except = RuntimeError()
+              retry = False
 
-            return (result, result_type, raise_except)
+            return (result, result_type, retry)
 
 
           def assess_op_except(svc, op_method_name, misc_except):
-            """Take an operation and an exception, return log level and recoverability
+            """Take an operation and an exception, return retry flag and log level
 
             botocore.exceptions.ClientError is general but statically-defined, making
             comparison easier, in a multi-service context, than for service-specific but
@@ -1838,8 +1904,8 @@ Resources:
 
             https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html#parsing-error-responses-and-catching-exceptions-from-aws-services
             """
+            retry = True
             log_level = logging.ERROR
-            recoverable = False
 
             if isinstance(misc_except, botocore.exceptions.ClientError):
               verb = op_method_name.split("_")[0]
@@ -1851,25 +1917,28 @@ Resources:
                 case ("cloudformation", "ValidationError") if (
                   "No updates are to be performed." == err_msg
                 ):
+                  retry = False
                   log_level = logging.INFO
-                  recoverable = True
-                  # Recent, identical external update_stack
+                  # Idempotent update_stack (after a recent external update)
 
                 case ("rds", "InvalidDBClusterStateFault") if (
                   ((verb == "start") and "is in available" in err_msg)
                   or f"is in {verb}" in err_msg
                 ):
+                  retry = False
                   log_level = logging.INFO
-                  recoverable = True
-                  # start_db_cluster when "in available[ state]" or "in start[ing state]"
-                  # stop__db_cluster when "in stop[ped state]"   or "in stop[ping state]"
+                  # Idempotent
+                  # start_db_cluster "in available[ state]" or "in start[ing state]" or
+                  # stop__db_cluster "in stop[ped state]"   or "in stop[ping state]"
 
                 case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-                  recoverable = True
+                  retry = False
                   # Can't decide between idempotent start_db_instance / stop_db_instance
-                  # or error, because message does not reveal the current, invalid state.
+                  # (common) or truly erroneous state (rare), because message does not
+                  # mention current, invalid state. Log as potential error, but do not
+                  # retry (avoids a duplicate error queue entry).
 
-            return (log_level, recoverable)
+            return (retry, log_level)
 
 
           def tag_key_join(tag_key_words):
@@ -2106,9 +2175,12 @@ Resources:
                   "MessageAttributes": msg_attrs_str_encode((
                     ("version", QUEUE_MSG_FMT_VERSION),
                     ("expires", cycle_cutoff_epoch_str),
+                    ("start", cycle_start_str),
                     ("svc", self.svc),
                     ("op_method_name", self.method_name),
                   )),
+                  "MessageBody": op_kwargs,
+                  # Raw only for logging in case of an exception during JSON encoding
                 }
 
                 result = None
@@ -2118,7 +2190,7 @@ Resources:
 
                 try:
                   msg_body = json.dumps(op_kwargs)
-                  send_kwargs.update({"MessageBody": msg_body})
+                  send_kwargs.update({"MessageBody": msg_body, })
 
                   if QUEUE_MSG_BYTES_MAX < len(bytes(msg_body, "utf-8")):
                     result = "Increase QueueMessageBytesMax in CloudFormation"
@@ -2349,16 +2421,17 @@ Resources:
                 tags_key="TagList",
               )
 
-              AWSRsrcType(
-                "cloudformation",
-                ("Stack", ),
-                {
-                  ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
-                  ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
-                },
-                rsrc_id_key_suffix="Name",
-                arn_key_suffix="Id",
-              )
+              if "ENABLE_SCHED_CLOUDFORMATION_OPS" in os.environ:
+                AWSRsrcType(
+                  "cloudformation",
+                  ("Stack", ),
+                  {
+                    ("set", "Enable", "true"): {"class": AWSOpUpdateStack},
+                    ("set", "Enable", "false"): {"class": AWSOpUpdateStack},
+                  },
+                  rsrc_id_key_suffix="Name",
+                  arn_key_suffix="Id",
+                )
 
 
           # 4. Find Resources Lambda Function Handler ##################################
@@ -2397,15 +2470,20 @@ Resources:
           def lambda_handler_do(event, context):  # pylint: disable=unused-argument
             """Perform a queued operation on an AWS resource
             """
-            for op_msg in event.get("Records", []):  # 0 or 1 messages expected
+            batch_item_failures = []
+
+            for op_msg in event.get("Records", []):
+              sqs_msg_id = ""
+
               result = None
               result_type = ""
-              raise_except = None
+              retry = True
 
               log_level = logging.ERROR
 
               try:
-                (result, result_type, raise_except) = assess_op_msg(op_msg)
+                sqs_msg_id = op_msg["messageId"]
+                (result, result_type, retry) = assess_op_msg(op_msg)
                 if not result_type:
                   svc = msg_attr_str_decode(op_msg, "svc")
                   op_method_name = msg_attr_str_decode(op_msg, "op_method_name")
@@ -2413,20 +2491,21 @@ Resources:
                   op_method = getattr(svc_client_get(svc), op_method_name)
                   result = op_method(**op_kwargs)
                   result_type = "AWS_RESPONSE"
+                  retry = False
                   log_level = logging.INFO
 
               except Exception as misc_except:  # pylint: disable=broad-exception-caught
                 result = misc_except
                 result_type = "EXCEPTION"
-                (log_level, recoverable) = assess_op_except(
-                  svc, op_method_name, misc_except
-                )
-                if not recoverable:
-                  raise_except = misc_except
+                (retry, log_level) = assess_op_except(svc, op_method_name, misc_except)
 
-              op_log(event, result, result_type, log_level)
-              if raise_except:
-                raise raise_except
+              op_log(event, op_msg, result, result_type, log_level)
+
+              if retry and sqs_msg_id:
+                batch_item_failures.append({"itemIdentifier": sqs_msg_id, })
+
+            # https://repost.aws/knowledge-center/lambda-sqs-report-batch-item-failures
+            return {"batchItemFailures": batch_item_failures, }
         # ZIPFILE_END
 
   # Administrator should block other invocation of this AWS Lambda function
@@ -2444,9 +2523,16 @@ Resources:
     DependsOn: DoLambdaFnInvokeLambdaPerm
     Properties:
       EventSourceArn: !GetAtt OperationQueue.Arn
-      MaximumBatchingWindowInSeconds: 20  # long polling (lowest cost)
-      BatchSize: 1
+
+      BatchSize: !Ref DoLambdaFnBatchSize
+      MaximumBatchingWindowInSeconds: 60
+      # Not much time is available to wait, inside a 10-minute cycle whose
+      # first and last minutes are not used, which leaves only 8 minutes.
+      # Note: >= 20 for long polling (lowest cost)
+
       FunctionName: !GetAtt DoLambdaFn.Arn
       ScalingConfig:
         MaximumConcurrency: !Ref DoLambdaFnMaximumConcurrency
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
       Enabled: !Ref Enable
