@@ -163,9 +163,11 @@ def assess_op_except(svc, op_method_name, misc_except):
         # stop__db_cluster "in stop[ped state]"   or "in stop[ping state]"
 
       case ("rds", "InvalidDBInstanceState"):  # Fault suffix is missing here!
-        retry = True
+        retry = False
         # Can't decide between idempotent start_db_instance / stop_db_instance
-        # or error, because message does not reveal the current, invalid state.
+        # (common) or truly erroneous state (rare), because message does not
+        # mention current, invalid state. Log as potential error, but do not
+        # retry (avoids a duplicate error queue entry).
 
   return (retry, log_level)
 
@@ -404,10 +406,10 @@ class AWSOp():
         "MessageAttributes": msg_attrs_str_encode((
           ("version", QUEUE_MSG_FMT_VERSION),
           ("expires", cycle_cutoff_epoch_str),
+          ("start", cycle_start_str),
           ("svc", self.svc),
           ("op_method_name", self.method_name),
         )),
-
         "MessageBody": op_kwargs,
         # Raw only for logging in case of an exception during JSON encoding
       }
