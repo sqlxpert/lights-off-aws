@@ -642,7 +642,7 @@ Corey for sharing this with the AWS user community in _Last Week in AWS_
 newsletter issues
 [286 (October 3, 2022)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
 and
-424 (May 27, 2022),
+424 (May 27, 2025),
 and to Lee for suggesting the new name.
 
 ## Licenses
