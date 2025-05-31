@@ -132,7 +132,7 @@ stopped again, at least once every 7 days.
   the database manually, be sure to stop it manually when you are finished
   using it. Elsewhere, it will be stopped at the end of the usual work day.
 - To keep up with updates, it is a good practice to set a database's weekly
-  maintenance window to time period when the database will be running.
+  maintenance window to a time period when the database will be running.
 
 |Locations|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|
