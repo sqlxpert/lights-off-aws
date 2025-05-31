@@ -630,9 +630,9 @@ offering a simple alternative to
 
 |Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
 |:---:|:---:|:---:|
-|2017|&asymp; 775|&asymp; 2,140|
-|2022|630|800 &check;|
-|2025|600 &check;|940|
+|2017|&asymp;775|&asymp;2,140|
+|2022|630|800&check;|
+|2025|610&check;|960|
 
 ## Dedication
 
