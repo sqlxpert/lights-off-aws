@@ -13,6 +13,10 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this tool to multiple AWS accounts and regions.
 
+Click to view the architecture diagram:
+
+[<img src="media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls AWS application programming interface methods to describe resources, checks the resources for tag keys such as 'sched-start', then uses regular expressions to check the tag values for day of month or day of week, hour, and minute terms. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the AWS API method indicated by the message attributes, passing the message body for the parameters. If the request is successful or an exception occurs and it is not okay to re-try, the function is done. If an exception occurs and it is okay to re-try, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." width="144" />](media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
+
 _Most of all, this tool is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
@@ -99,13 +103,13 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
-|USA Mainland|52%|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
-|North America (Hawaii to Newfoundland)|42%|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
-|Europe|55%|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
-|India|64%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=14:00`|
-|North America + Europe|28%|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
-|North America + Europe + India|26%|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
-|Europe + India|48%|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|USA Mainland|**> 50%**|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
+|North America (Hawaii to Newfoundland)|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
+|Europe|**> 50%**|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|India|**> 60%**|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=14:00`|
+|North America + Europe|**> 20%**|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
+|North America + Europe + India|**> 20%**|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
+|Europe + India|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 
 #### Stopping an RDS or Aurora Database Longer than 7 Days
 
