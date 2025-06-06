@@ -17,11 +17,11 @@ Click to view the architecture diagram:
 
 [<img src="media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls AWS application programming interface methods to describe resources, checks the resources for tag keys such as 'sched-start', then uses regular expressions to check the tag values for day of month or day of week, hour, and minute terms. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the AWS API method indicated by the message attributes, passing the message body for the parameters. If the request is successful or an exception occurs and it is not okay to re-try, the function is done. If an exception occurs and it is okay to re-try, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." width="144" />](media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
 
-_Most of all, this tool is lightweight. Not counting blanks, comments, or
+> Most of all, this tool is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
 has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
-easy to understand, maintain, and extend._
+easy to understand, maintain, and extend.
 
 Jump to:
 [Quick Start](#quick-start)
@@ -90,8 +90,8 @@ Jump to:
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html)||&rarr; Snapshot|
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-cluster-stop-start.html)||&rarr; Snapshot|
 
-- Whether a database operation is at the cluster or instance level depends on
-  your choice of Aurora or RDS, and for RDS, on the database's configuration.
+> Whether a database operation is at the cluster or instance level depends on
+  your choice of Aurora or RDS, and for RDS, on your database's configuration.
 
 ## Tag Values (Schedules)
 
@@ -241,8 +241,8 @@ instances, you must add a statement like the following to the key policies:
   Lights Off. `/*` at the end of this organization path stands for child OUs,
   if any. Do not use a path less specific than `"o-ORG_ID/*"` .
 
-If an EC2 instance does not start as scheduled, a KMS key permissions error is
-possible.
+> If an EC2 instance does not start as scheduled, a KMS key permissions error
+is possible.
 
 </details>
 
@@ -307,8 +307,8 @@ you must address the following AWS Backup requirements:
    and
    [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
 
-If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
-problem is likely.
+> If no backup jobs appear in AWS Backup, or if jobs do not start, a
+permissions problem is likely.
 
 </details>
 
@@ -438,22 +438,23 @@ role policy attachment to all target AWS accounts.
 
 ### Installation with Terraform
 
-Terraform users often wrap a CloudFormation stack in HashiCorp Configuration
-Language, because AWS and other vendors supply software as CloudFormation
-templates. See
+Terraform users are often willing to wrap a CloudFormation stack in HashiCorp
+Configuration Language, because AWS supplies tools in the form of
+CloudFormation templates. See
 [aws_cloudformation_stack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack)
 .
 
-Wrapping a CloudFormation StackSet in HCL is a relatively easy way to deploy
-software to multiple AWS accounts and/or regions. See
+Wrapping a CloudFormation StackSet in HCL is much easier than configuring and
+using Terraform to deploy and maintain identical resources in multiple regions
+and/or AWS accounts. See
 [aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)
 .
 
 ## Security
 
-_In accordance with the software license, nothing in this section creates a
+> In accordance with the software license, nothing in this section creates a
 warranty, an indemnification, an assumption of liability, etc. Use this
-software at your own risk. You are encouraged to evaluate the source code._
+software at your own risk. You are encouraged to evaluate the source code.
 
 <details>
   <summary>Security details...</summary>
@@ -536,9 +537,7 @@ software at your own risk. You are encouraged to evaluate the source code._
   <summary>Scheduled CloudFormation stack update details...</summary>
 
 Lights Off can delete and recreate many types of expensive AWS infrastructure
-in your own CloudFormation stacks, based on cron schedules in stack tags. This
-feature is available by default, but you can disable it by changing the
-`EnableSchedCloudFormationOps` parameter in the LightsOff stack or StackSet.
+in your own CloudFormation stacks, based on cron schedules in stack tags.
 
 Deleting AWS Client VPN resources overnight, while developers are asleep, is
 a sample use case. See
@@ -555,9 +554,12 @@ do not cost anything. The VPN attachments can be deleted and recreated with no
 need to reconfigure VPN clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
-your own CloudFormation stack. At the scheduled times, Lights Off will perform
-a stack update, toggling the value of the `Enable` parameter to `true` or
-`false`. (Capitalize **E**nable in the tag keys, to match the parameter name.)
+your own CloudFormation stack and make sure that the
+`EnableSchedCloudFormationOps` parameter of the _LightsOff stack or StackSet_
+is set to `true` (the default). At the scheduled times, Lights Off will
+perform a stack update, toggling the value of the `Enable` parameter to `true`
+or `false`. (Capitalize **E**nable in the tag keys, to match the parameter
+name.)
 
 If your stack's status is other than `CREATE_COMPLETE` or `UPDATE_COMPLETE` at
 the scheduled time, Lights Off logs an error of `"type"`
