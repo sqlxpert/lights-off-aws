@@ -644,7 +644,7 @@ offering a simple alternative to
 
 This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
 wonderful colleagues whom Paul has worked with over the years. Thank you to
-Corey for sharing this with the AWS user community in _Last Week in AWS_
+Corey for sharing it with the AWS user community in _Last Week in AWS_
 newsletter issues
 [286 (October 3, 2022)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
 and
