@@ -580,8 +580,9 @@ successfully complete one manual stack update.
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
-resource types, and operations is easy. For example, supporting RDS database
-_clusters_ (RDS database _instances_ were already supported) required adding:
+resource types, and operations is easy. For example, supporting Aurora
+database _clusters_ (RDS database _instances_ were already supported) required
+adding:
 
 ```python
     AWSRsrcType(
