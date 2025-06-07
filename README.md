@@ -341,43 +341,47 @@ basic format (example: `20241231T1400Z`).
 
 ## Logging
 
-- Check the
-  [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
-  - Log entries are JSON objects.
-    - Lights Off includes `"level"` , `"type"` and `"value"` keys.
-    - Other software components may use different keys.
-  - For more data, change the `LogLevel` in CloudFormation.
-  - Scrutinize log entries at the `ERROR` level.
-    - Both logs:
-      Entries with the `"stackTrace"` key represent unexpected exceptions that
-      require correction. These are unusual.
-    - "Find" log:
-      All other entries at the `ERROR` level require correction.
-    - "Do" log:
-      Some other entries at the `ERROR` level do not require correction.
-      <details>
-        <summary>What to consider when evaluating errors...</summary>
+ 1. Check the
+    [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
+    - Log entries are JSON objects.
+      - Lights Off includes `"level"` , `"type"` and `"value"` keys.
+      - Other software components may use different keys.
+    - For more data, change the `LogLevel` in CloudFormation.
+    - Scrutinize log entries at the `ERROR` level.
+      - Both logs:
+        Entries with the `"stackTrace"` key represent unexpected exceptions
+        that require correction. These are unusual.
+      - "Find" log:
+        All other entries at the `ERROR` level require correction.
+      - "Do" log:
+        Some other entries at the `ERROR` level do not require correction.
 
-        The state of an AWS resource might change between the "Find" and "Do"
-        steps; this sequence is fundamentally non-atomic. An operation might
-        also be repeated due to queue message delivery logic; operations are
-        idempotent. If a state change is favorable or an operation is repeated,
-        Lights Off logs success responses or expected exceptions (depending on
-        the AWS service) at the `INFO` level. For RDS database _instance_
-        start/stop operations, however, Lights Off logs expected exceptions at
-        the `ERROR` level because it cannot determine whether they represent
-        actual errors or harmless repetition (such as trying to start a
-        database instance that has already been started).
+        <details>
+          <summary>What to consider when evaluating errors...</summary>
 
-        For complete details, see the technical article
-        [Idempotence: Doing It More than Once](https://sqlxpert.github.io/2025/05/17/idempotence-doing-it-more-than-once.html).
+          The state of an AWS resource might change between the "Find" and "Do"
+          steps; this sequence is fundamentally non-atomic. An operation might
+          also be repeated due to queue message delivery logic; operations are
+          idempotent. If a state change is favorable or an operation is
+          repeated, Lights Off logs success responses or expected exceptions
+          (depending on the AWS service) at the `INFO` level. For RDS database
+          _instance_ start/stop operations, however, Lights Off logs expected
+          exceptions at the `ERROR` level because it cannot determine whether
+          they represent actual errors or harmless repetition (such as trying
+          to start a database instance that has already been started).
 
-      </details>
-- Check the `ErrorQueue`
-  [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
-  for "Find" and "Do" events that were not delivered, or not fully processed.
-- Check CloudTrail for the final stages of `sched-start` and `sched-backup`
-  operations.
+          For complete details, see the technical article
+          [Idempotence: Doing It More than Once](https://sqlxpert.github.io/2025/05/17/idempotence-doing-it-more-than-once.html).
+
+        </details>
+
+ 2. Check the `ErrorQueue`
+    [SQS queue](https://console.aws.amazon.com/sqs/v3/home#/queues)
+    for "Find" and "Do" events that were not delivered, or not fully
+    processed.
+
+ 3. Check CloudTrail for the final stages of `sched-start` and `sched-backup`
+    operations.
 
 ## Advanced Installation
 
@@ -576,8 +580,9 @@ successfully complete one manual stack update.
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
-resource types, and operations is easy. For example, supporting RDS database
-_clusters_ (RDS database _instances_ were already supported) required adding:
+resource types, and operations is easy. For example, supporting Aurora
+database _clusters_ (RDS database _instances_ were already supported) required
+adding:
 
 ```python
     AWSRsrcType(
