@@ -117,9 +117,8 @@ Conditions:
   # Review
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
   # and add this condition to your template:
-  EnableTrue:
-    !Equals [!Ref Enable, "true"]
-    ##########################################################################
+  EnableTrue: !Equals [!Ref Enable, "true"]
+  ############################################################################
 
 Resources:
 
@@ -162,12 +161,11 @@ Resources:
           CidrIp: 8.8.8.8/32
         # STEP 5 #############################################################
         #
-        # If you need to conditionally set a resource property or
-        # conditionally add or remove a list item, use:
+        # To conditionally specify a resource property or a list item, use:
         # Fn::If: [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
         #
-        # If a resource property is to be omitted entirely when Enable is
-        # false, specify !Ref AWS::NoValue for VALUE_IF_NOT_ENABLED .
+        # !Ref AWS::NoValue omits a resource property entirely.
+        #
         # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
         - Fn::If:
             - EnableTrue
@@ -188,8 +186,8 @@ Resources:
 # Refer to
 # https://github.com/sqlxpert/lights-off-aws#tag-values-schedules .
 #
-# Make sure that the EnableSchedCloudFormationOps is set to "true" in your
-# main  LightsOff CloudFormation stack or StackSet.
+# Make sure that the EnableSchedCloudFormationOps is set to "true" in the
+# main LightsOff CloudFormation stack or StackSet.
 #
 # Add schedule tags to your own stack:
 # - sched-set-Enable-true
