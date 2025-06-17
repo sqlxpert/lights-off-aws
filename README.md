@@ -653,7 +653,7 @@ Corey for sharing it with the AWS user community in _Last Week in AWS_
 newsletter issues
 [286 (October 3, 2022)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
 and
-424 (May 27, 2025),
+[424 (May 27, 2025)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools),
 and to Lee for suggesting the new name.
 
 ## Licenses
