@@ -456,7 +456,7 @@ and/or AWS accounts. See
 
 ## Security
 
-> In accordance with the software license, nothing in this section creates a
+> In accordance with the software license, nothing in this document creates a
 warranty, an indemnification, an assumption of liability, etc. Use this
 software at your own risk. You are encouraged to evaluate the source code.
 
