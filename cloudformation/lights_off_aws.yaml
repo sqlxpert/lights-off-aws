@@ -12,6 +12,10 @@ Parameters:
     Type: String
     Default: "LightsOff"
 
+  PlaceholderSuggestedStackPolicyBody:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws/blob/main/cloudformation/lights_off_aws_policy.json?raw=true"
+
   PlaceholderHelp:
     Type: String
     Default: "github.com/sqlxpert/lights-off-aws#quick-start"
@@ -295,6 +299,7 @@ Metadata:
           default: For Reference
         Parameters:
           - PlaceholderSuggestedStackName
+          - PlaceholderSuggestedStackPolicyBody
           - PlaceholderHelp
       - Label:
           default: Essential
@@ -343,10 +348,12 @@ Metadata:
           - LogLevel
           - CloudWatchLogsKmsKey
     ParameterLabels:
-      PlaceholderHelp:
-        default: For help with this stack, see
       PlaceholderSuggestedStackName:
         default: Suggested stack name
+      PlaceholderSuggestedStackPolicyBody:
+        default: Copy suggested stack policy from
+      PlaceholderHelp:
+        default: For help with this stack, see
       Enable:
         default: Enabled?
       EnableSchedCloudFormationOps:
