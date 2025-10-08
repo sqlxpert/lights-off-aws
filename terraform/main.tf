@@ -101,7 +101,7 @@ locals {
 
 
 resource "aws_cloudformation_stack" "lights_off_prereq" {
-  name          = "LightsOffPrereq"
+  name          = "LightsOffPrereq${var.lights_off_stack_name_suffix}"
   template_body = file("${path.module}/../cloudformation/lights_off_aws_prereq.yaml")
 
   capabilities = ["CAPABILITY_IAM"]
@@ -170,7 +170,7 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 }
 
 resource "aws_cloudformation_stack" "lights_off" {
-  name         = "LightsOff"
+  name         = "LightsOff${var.lights_off_stack_name_suffix}"
   template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
 
   capabilities = ["CAPABILITY_IAM"]
