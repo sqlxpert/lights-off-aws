@@ -62,7 +62,7 @@ Jump to:
 
      ```terraform
        module "lights_off" {
-         source = "git::https://github.com/sqlxpert/lights-off-aws.git?ref=vTAG"
+         source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=vTAG"
        }
      ```
 
