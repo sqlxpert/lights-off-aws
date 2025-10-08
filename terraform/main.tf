@@ -1,53 +1,5 @@
-# Start, stop and back up AWS resources tagged with cron schedules.
+# Start, stop and back up AWS resources tagged with cron schedules
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
-
-
-
-# Intended for use in the root module or as a child module. You may wish to
-# eliminate the variables and refine the data source arguments, or to
-# eliminate the data sources as well, and refer directly to a VPC, subnets and
-# other resources. I do not want to prescribe a child module whose interface
-# might not fit users' approaches to module composition! Instead, I offer an
-# example for you to modify. For the same reason, I have not split this into
-# main.tf and other separate files. To guide you:
-#
-# https://developer.hashicorp.com/terraform/language/modules/develop/structure
-#
-# https://developer.hashicorp.com/terraform/language/modules/develop/composition
-
-
-
-terraform {
-  required_version = "~> 1.13.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.14.0"
-    }
-  }
-}
-
-
-
-variable "lights_off_params" {
-  type        = map(any)
-  description = "Nested map."
-
-  default = {
-    Enable = true
-
-    EnableSchedCloudFormationOps = true
-
-    BackupRoleName  = "service-role/AWSBackupDefaultServiceRole"
-    BackupVaultName = "Default"
-
-    DoLambdaFnRoleAttachLocalPolicyName = ""
-
-    SqsKmsKey            = ""
-    CloudWatchLogsKmsKey = ""
-  }
-}
 
 
 
