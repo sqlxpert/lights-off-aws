@@ -10,10 +10,10 @@ locals {
 
   partition = local.caller_arn_parts["partition"]
 
-  region = try(
-    data.aws_region.current.region, # Added in AWS provider v6.0.0
-    data.aws_region.current.name    # Marked deprecated in AWS provider v6.0.0
-  )
+  region = data.aws_region.current.region
+  # data.aws_region.region added,
+  # data.aws_region.name marked deprecated
+  # in Terraform AWS provider v6.0.0
 
   account_id = local.caller_arn_parts["account_id"]
 }
