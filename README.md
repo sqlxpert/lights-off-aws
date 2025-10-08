@@ -46,9 +46,12 @@ Jump to:
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
      20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
-3. Create resources using CloudFormation or Terraform.
+3. Create resources using either CloudFormation or Terraform.
 
-   - **CloudFormation**: Create a
+   - **CloudFormation**
+
+     <br/>
+     Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
      Select Upload a template file, then select Choose file and navigate to a
      locally-saved copy of
@@ -57,8 +60,10 @@ Jump to:
 
      - Stack name: `LightsOff`
 
-   - **Terraform**: Add the following child module reference to your root
-     Terraform module.
+   - **Terraform**
+
+     <br/>
+     Add the following child module to your root Terraform module.
 
      ```terraform
        module "lights_off" {
@@ -68,7 +73,7 @@ Jump to:
 
      Replace _TAG_ with a specific version number from
      [Releases](https://github.com/sqlxpert/lights-off-aws/releases).
-     Always reference a specific version &#9888;.
+     &#9888; Always reference a specific version.
 
      Before proceeding, have Terraform download the module's source code:
 
@@ -92,12 +97,14 @@ Jump to:
        - List, describe, get tags for, create, tag, update and delete IAM roles
          and their in-line policies
        - Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
+       - Create, tag, describe, update and delete `arn:aws:s3:::terraform-*` S3
+         buckets and put, list and delete `arn:aws:s3:::terraform-*/*` objects.
        - List, describe, and get tags for, all of the `data` sources in
          [terraform/main.tf](/terraform/main.tf)&nbsp;.
          For a list, run:
 
          ```shell
-           grep 'data "' terraform/main.tf
+         grep 'data "' terraform/main.tf
          ```
 
        Open the
@@ -109,6 +116,7 @@ Jump to:
        - `AWS Identity and Access Management (IAM)`
        - `AWS Security Token Service`
        - `AWS Backup`
+       - `Amazon S3`
        - `AWS Key Management Service` (if you encrypt the SQS queue or the
           CloudWatch log group with a KMS key)
 
