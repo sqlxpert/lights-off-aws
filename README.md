@@ -50,7 +50,6 @@ Jump to:
 
    - **CloudFormation**
 
-     <br/>
      Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
      Select Upload a template file, then select Choose file and navigate to a
@@ -62,7 +61,6 @@ Jump to:
 
    - **Terraform**
 
-     <br/>
      Add the following child module to your root Terraform module.
 
      ```terraform
