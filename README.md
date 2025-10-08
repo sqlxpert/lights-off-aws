@@ -96,7 +96,8 @@ Jump to:
          and their in-line policies
        - Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
        - Create, tag, describe, update and delete `arn:aws:s3:::terraform-*` S3
-         buckets and put, list and delete `arn:aws:s3:::terraform-*/*` objects.
+         buckets and put, list, get and delete `arn:aws:s3:::terraform-*/*`
+         S3 objects.
        - List, describe, and get tags for, all of the `data` sources in
          [terraform/main.tf](/terraform/main.tf)&nbsp;.
          For a list, run:
