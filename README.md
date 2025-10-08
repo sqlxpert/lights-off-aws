@@ -48,7 +48,7 @@ Jump to:
 
 3. Create resources using either CloudFormation or Terraform.
 
-   - **CloudFormation**
+   - **CloudFormation** _No prior setup required!_
 
      Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
@@ -59,7 +59,7 @@ Jump to:
 
      - Stack name: `LightsOff`
 
-   - **Terraform**
+   - **Terraform** _Prior setup required._
 
      Add the following child module to your root Terraform module.
 
