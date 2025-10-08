@@ -44,7 +44,7 @@ data "aws_kms_alias" "aws_sqs" {
 }
 
 data "aws_kms_key" "lights_off_sqs" {
-  count = try(contains(["", "alias/aws/sqs"], var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
+  count = contains(["", "alias/aws/sqs"], try(var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
 
   key_id = provider::aws::arn_build(
     local.caller_arn_parts["partition"],
@@ -75,11 +75,11 @@ locals {
   lights_off_params = merge(
     var.lights_off_params,
     {
-      BackupRoleName  = try(data.aws_iam_role.lights_off_backup.name, null)
-      BackupVaultName = try(data.aws_backup_vault.lights_off.name, null)
+      BackupRoleName  = try(data.aws_iam_role.lights_off_backup[0].name, null)
+      BackupVaultName = try(data.aws_backup_vault.lights_off[0].name, null)
 
       DoLambdaFnRoleAttachLocalPolicyName = try(
-        data.aws_iam_policy.lights_off_do_role_attach.name,
+        data.aws_iam_policy.lights_off_do_role_attach[0].name,
         null
       )
 
@@ -114,9 +114,26 @@ data "aws_iam_role" "lights_off_deploy" {
 
 
 
+resource "aws_s3_bucket" "lights_off_cloudformation" {
+  force_destroy = true
+
+  tags = {
+    readme = "https://github.com/sqlxpert/lights-off-aws/blob/main/terraform/main.tf"
+  }
+}
+
+resource "aws_s3_object" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+
+  key = "lights_off_aws.yaml"
+
+  source = "${path.module}/../cloudformation/lights_off_aws.yaml"
+  etag   = filemd5("${path.module}/../cloudformation/lights_off_aws.yaml")
+}
+
 resource "aws_cloudformation_stack" "lights_off" {
-  name          = "LightsOff"
-  template_body = file("${path.module}/../cloudformation/lights_off_aws.yaml")
+  name         = "LightsOff"
+  template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
 
   capabilities = ["CAPABILITY_IAM"]
   iam_role_arn = data.aws_iam_role.lights_off_deploy.arn

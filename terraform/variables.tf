@@ -10,7 +10,7 @@ variable "lights_off_params" {
 
     EnableSchedCloudFormationOps = true
 
-    BackupRoleName  = "service-role/AWSBackupDefaultServiceRole"
+    BackupRoleName  = "AWSBackupDefaultServiceRole"
     BackupVaultName = "Default"
 
     DoLambdaFnRoleAttachLocalPolicyName = ""

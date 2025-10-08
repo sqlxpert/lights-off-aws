@@ -76,10 +76,10 @@ Jump to:
      terraform init
      ```
 
-     <br>
      <details>
        <summary>If you run Terraform with least-privilege permissions...</summary>
 
+       <br>
        Most people do not need to read this section, because most Terraform
        users grant full AWS administrative permissions to Terraform.
 
@@ -108,7 +108,7 @@ Jump to:
        - `CloudFormation`
        - `AWS Identity and Access Management (IAM)`
        - `AWS Security Token Service`
-       - `AWS Systems Manager`
+       - `AWS Backup`
        - `AWS Key Management Service` (if you encrypt the SQS queue or the
           CloudWatch log group with a KMS key)
 
@@ -118,13 +118,14 @@ Jump to:
 
      </details>
 
-   <br>
    <details>
      <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
 
+   <br>
+
    Request that
    [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
-   be increased. The default is `1000` .
+   be increased. The default is `1000`&nbsp;.
 
    Lights Off needs 1 unit for a time-critical function. New AWS accounts
    start with a quota of 10, but Lambda always holds back 10, which leaves 0
@@ -302,7 +303,7 @@ instances, you must add a statement like the following to the key policies:
   and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
   organization root, and the organizational unit in which you have installed
   Lights Off. `/*` at the end of this organization path stands for child OUs,
-  if any. Do not use a path less specific than `"o-ORG_ID/*"` .
+  if any. Do not use a path less specific than `"o-ORG_ID/*"`&nbsp;.
 
 > If an EC2 instance does not start as scheduled, a KMS key permissions error
 is possible.
@@ -335,8 +336,8 @@ you must address the following AWS Backup requirements:
    and
    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
    or
-   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)
-   . Update the `BackupVaultName` CloudFormation stack parameter if necessary.
+   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)&nbsp;.
+   Update the `BackupVaultName` CloudFormation stack parameter if necessary.
 
 2. Vault policy
 
@@ -490,7 +491,7 @@ create the `LightsOffPrereq` stack from
 [lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
 . Next, when you create the `LightsOff` stack from
 [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) , set IAM
-role - optional to `LightsOffPrereq-DeploymentRole` . If your own privileges
+role - optional to `LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges
 are limited, you might need permission to pass the deployment role to
 CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
 policy for an example.
@@ -667,7 +668,7 @@ method name are derived mechanically.
 
 If an operation method takes more than just the resource identifier, add a
 dictionary of static keyword arguments. For complex arguments, sub-class the
-`AWSOp` class and override `op_kwargs` .
+`AWSOp` class and override `op_kwargs`&nbsp;.
 
 The `start_backup_job` method takes an Amazon Resource Name (ARN), whose
 format is consistent for all resource types. As long as AWS Backup supports
