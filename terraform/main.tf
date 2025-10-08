@@ -108,6 +108,8 @@ resource "aws_cloudformation_stack" "lights_off_prereq" {
   policy_body = file(
     "${path.module}/../cloudformation/lights_off_aws_prereq_policy.json"
   )
+
+  tags = local.lights_off_tags
 }
 
 data "aws_iam_role" "lights_off_deploy" {
@@ -119,9 +121,7 @@ data "aws_iam_role" "lights_off_deploy" {
 resource "aws_s3_bucket" "lights_off_cloudformation" {
   force_destroy = true
 
-  tags = {
-    source = "https://github.com/sqlxpert/lights-off-aws/blob/main/terraform/main.tf"
-  }
+  tags = local.lights_off_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
@@ -165,6 +165,8 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 
   source = "${path.module}/../cloudformation/lights_off_aws.yaml"
   etag   = filemd5("${path.module}/../cloudformation/lights_off_aws.yaml")
+
+  tags = local.lights_off_tags
 }
 
 resource "aws_cloudformation_stack" "lights_off" {
@@ -176,4 +178,6 @@ resource "aws_cloudformation_stack" "lights_off" {
   policy_body  = file("${path.module}/../cloudformation/lights_off_aws_policy.json")
 
   parameters = local.lights_off_params
+
+  tags = local.lights_off_tags
 }

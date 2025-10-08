@@ -16,4 +16,12 @@ locals {
   # in Terraform AWS provider v6.0.0
 
   account_id = local.caller_arn_parts["account_id"]
+
+  lights_off_tags = merge(
+    {
+      terraform = ""
+      source    = "https://github.com/sqlxpert/lights-off-aws/blob/main/terraform"
+    },
+    var.tags,
+  )
 }
