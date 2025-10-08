@@ -3,16 +3,6 @@
 
 
 
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-locals {
-  caller_arn_parts = provider::aws::arn_parse(data.aws_caller_identity.current.arn)
-  account_id       = local.caller_arn_parts["account_id"]
-  region           = data.aws_region.current.region
-}
-
-
-
 data "aws_iam_role" "lights_off_backup" {
   count = try(var.lights_off_params["BackupRoleName"], "") == "" ? 0 : 1
 
@@ -29,7 +19,7 @@ data "aws_backup_vault" "lights_off" {
 
 
 
-data "aws_iam_policy" "lights_off_do_role_attach" {
+data "aws_iam_policy" "lights_off_do_role_local" {
   count = try(var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"], "") == "" ? 0 : 1
 
   name = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
@@ -47,7 +37,7 @@ data "aws_kms_key" "lights_off_sqs" {
   count = contains(["", "alias/aws/sqs"], try(var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
 
   key_id = provider::aws::arn_build(
-    local.caller_arn_parts["partition"],
+    local.partition,
     "kms", # service
     local.region,
     split(":", var.lights_off_params["SqsKmsKey"])[0], # account
@@ -61,7 +51,7 @@ data "aws_kms_key" "lights_off_cloudwatch_logs" {
   count = try(var.lights_off_params["CloudWatchLogsKmsKey"], "") == "" ? 0 : 1
 
   key_id = provider::aws::arn_build(
-    local.caller_arn_parts["partition"],
+    local.partition,
     "kms", # service
     local.region,
     split(":", var.lights_off_params["CloudWatchLogsKmsKey"])[0], # account
@@ -85,17 +75,23 @@ locals {
       BackupVaultName = try(data.aws_backup_vault.lights_off[0].name, null)
 
       DoLambdaFnRoleAttachLocalPolicyName = try(
-        data.aws_iam_policy.lights_off_do_role_attach[0].name,
+        data.aws_iam_policy.lights_off_do_role_local[0].name,
         null
       )
 
       SqsKmsKey = try(
         data.aws_kms_alias.aws_sqs[0].name,
-        data.aws_kms_key.lights_off_sqs[0].arn,
+        join(":", [
+          provider::aws::arn_parse(data.aws_kms_key.lights_off_sqs[0].arn)["account_id"],
+          provider::aws::arn_parse(data.aws_kms_key.lights_off_sqs[0].arn)["resource"],
+        ]),
         null
       )
       CloudWatchLogsKmsKey = try(
-        data.aws_kms_key.lights_off_cloudwatch_logs[0].arn,
+        join(":", [
+          provider::aws::arn_parse(data.aws_kms_key.lights_off_cloudwatch_logs[0].arn)["account_id"],
+          provider::aws::arn_parse(data.aws_kms_key.lights_off_cloudwatch_logs[0].arn)["resource"],
+        ]),
         null
       )
     }
