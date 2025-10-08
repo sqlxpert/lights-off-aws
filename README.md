@@ -46,14 +46,77 @@ Jump to:
      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
      20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
-3. Create a
-   [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Select Upload a template file, then select Choose file and navigate to a
-   locally-saved copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   [right-click to save as...]. On the next page, set:
+3. Create resources using CloudFormation or Terraform.
 
-   - Stack name: `LightsOff`
+   - **CloudFormation**: Create a
+     [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
+     Select Upload a template file, then select Choose file and navigate to a
+     locally-saved copy of
+     [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+     [right-click to save as...]. On the next page, set:
+
+     - Stack name: `LightsOff`
+
+   - **Terraform**: Add the following child module reference to your root
+     Terraform module.
+
+     ```terraform
+       module "lights_off" {
+         source = "git::https://github.com/sqlxpert/lights-off-aws.git?ref=vTAG"
+       }
+     ```
+
+     Replace _TAG_ with a specific version number from
+     [Releases](https://github.com/sqlxpert/lights-off-aws/releases).
+     Always reference a specific version &#9888;.
+
+     Before proceeding, have Terraform download the module's source code:
+
+     ```shell
+     terraform init
+     ```
+
+     <br>
+     <details>
+       <summary>If you run Terraform with least-privilege permissions...</summary>
+
+       Most people do not need to read this section, because most Terraform
+       users grant full AWS administrative permissions to Terraform.
+
+       If, given the serious security risks associated with the typical
+       approach, you instead follow the principle of least privilege for
+       Terraform, you must give Terraform permission to:
+
+       - List, describe, create, update and delete CloudFormation stacks
+       - Set and get CloudFormation stack policies
+       - List, describe, get tags for, create, tag, update and delete IAM roles
+         and their in-line policies
+       - Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
+       - List, describe, and get tags for, all of the `data` sources in
+         [terraform/main.tf](/terraform/main.tf)&nbsp;.
+         For a list, run:
+
+         ```shell
+           grep 'data "' terraform/main.tf
+         ```
+
+       Open the
+       [AWS Service Authorization Reference](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html#actions_table),
+       go through the list of services on the left, and consult the "Actions"
+       table for each of:
+
+       - `CloudFormation`
+       - `AWS Identity and Access Management (IAM)`
+       - `AWS Security Token Service`
+       - `AWS Systems Manager`
+       - `AWS Key Management Service` (if you encrypt the SQS queue or the
+          CloudWatch log group with a KMS key)
+
+       The deployment role defined in the `LightsOffPrereq` stack gives
+       CloudFormation the permissions it needs to create the `LightsOff` stack.
+       Terraform itself does not need the deployment role's permissions.
+
+     </details>
 
    <br>
    <details>
