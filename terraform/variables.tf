@@ -24,7 +24,7 @@ variable "lights_off_params" {
 
 variable "lights_off_tags" {
   type        = map(any)
-  description = "Lights Off CloudFormation stack tag map. Keys, all optional, are tag keys. Values are tag values. This map takes precedence over the Terraform AWS provider's tag_keys map, if the same tag key appears in both. Warning: CloudFormation propagates stack tags to AWS resources, and each AWS service may have different restrictions on tag key and tag value lengths, allowed characters, and disallowed prefixes."
+  description = "Lights Off CloudFormation stack tag map. Keys, all optional, are tag keys. Values are tag values. This takes precedence over the Terraform AWS provider's tag_keys and over tags attributes defined by the module, if the same tag key appears here. To remove tags defined by the module, set terraform and source to null . Warning: CloudFormation propagates stack tags to stack resources, and each AWS service may have different rules for tag key and tag value lengths, characters, and disallowed tag key or tag name contents."
 
   default = {}
 }
