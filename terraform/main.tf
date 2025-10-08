@@ -75,6 +75,14 @@ locals {
   lights_off_params = merge(
     var.lights_off_params,
     {
+      BackupRoleName  = try(data.aws_iam_role.lights_off_backup.name, null)
+      BackupVaultName = try(data.aws_backup_vault.lights_off.name, null)
+
+      DoLambdaFnRoleAttachLocalPolicyName = try(
+        data.aws_iam_policy.lights_off_do_role_attach.name,
+        null
+      )
+
       SqsKmsKey = try(
         data.aws_kms_alias.aws_sqs[0].name,
         data.aws_kms_key.lights_off_sqs[0].arn,
@@ -95,7 +103,6 @@ resource "aws_cloudformation_stack" "lights_off_prereq" {
   template_body = file("${path.module}/../cloudformation/lights_off_aws_prereq.yaml")
 
   capabilities = ["CAPABILITY_IAM"]
-
   policy_body = file(
     "${path.module}/../cloudformation/lights_off_aws_prereq_policy.json"
   )
@@ -111,9 +118,9 @@ resource "aws_cloudformation_stack" "lights_off" {
   name          = "LightsOff"
   template_body = file("${path.module}/../cloudformation/lights_off_aws.yaml")
 
-  policy_body = file("${path.module}/../cloudformation/lights_off_aws_policy.json")
-
+  capabilities = ["CAPABILITY_IAM"]
   iam_role_arn = data.aws_iam_role.lights_off_deploy.arn
+  policy_body  = file("${path.module}/../cloudformation/lights_off_aws_policy.json")
 
   parameters = local.lights_off_params
 }
