@@ -52,8 +52,8 @@ Jump to:
 
      Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-     Select Upload a template file, then select Choose file and navigate to a
-     locally-saved copy of
+     Select "Upload a template file", then select "Choose file" and navigate to
+     a locally-saved copy of
      [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
      [right-click to save as...]. On the next page, set:
 
@@ -474,15 +474,15 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 4. In the management AWS account (or a delegated administrator account),
    create a
    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
-   Select Upload a template file, then select Choose file and upload a
+   Select "Upload a template file", then select "Choose file" and upload a
    locally-saved copy of
    [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
    [right-click to save as...]. On the next page, set:
 
    - StackSet name: `LightsOff`
 
-5. Two pages later, under Deployment targets, select Deploy to Organizational
-   Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
+5. Two pages later, under Deployment targets, select "Deploy to Organizational
+   Units (OUs)". Enter the AWS OU ID of the target Organizational Unit. Lights
    Off will be deployed to all AWS accounts within this Organizational Unit.
    Toward the bottom of the page, specify the target regions.
 

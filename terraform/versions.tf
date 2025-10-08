@@ -2,12 +2,12 @@
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
 terraform {
-  required_version = "~> 1.13.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 6.14.0"
+      version = ">= 5.0.0"
     }
   }
 }
