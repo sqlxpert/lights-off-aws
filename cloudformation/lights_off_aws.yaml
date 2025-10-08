@@ -52,9 +52,10 @@ Parameters:
     Type: String
     Description: >-
       The IAM role that the AWS Backup service will assume when creating
-      backups. Specify only the name, not the ARN. For a StackSet, the role
-      must exist, and have the same name, in every target AWS account. Roles
-      are account-wide, not regional. AWS Backup creates
+      backups. Remove the leading (or the only) slash from the role's path and
+      append the role's name; do not specify the full ARN. For a StackSet, the
+      role must exist, and have the same name, in every target AWS account.
+      Roles are account-wide, not regional. AWS Backup creates
       "service-role/AWSBackupDefaultServiceRole" the first time you start an
       on-demand backup in the AWS Console. Otherwise, if you want to use this
       role, you must create it explicitly. See

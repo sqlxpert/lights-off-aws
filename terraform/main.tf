@@ -75,7 +75,13 @@ locals {
   lights_off_params = merge(
     var.lights_off_params,
     {
-      BackupRoleName  = try(data.aws_iam_role.lights_off_backup[0].name, null)
+      BackupRoleName = try(
+        join("", [
+          trimprefix(data.aws_iam_role.lights_off_backup[0].path, "/"),
+          data.aws_iam_role.lights_off_backup[0].name
+        ]),
+        null
+      )
       BackupVaultName = try(data.aws_backup_vault.lights_off[0].name, null)
 
       DoLambdaFnRoleAttachLocalPolicyName = try(
@@ -118,7 +124,7 @@ resource "aws_s3_bucket" "lights_off_cloudformation" {
   force_destroy = true
 
   tags = {
-    readme = "https://github.com/sqlxpert/lights-off-aws/blob/main/terraform/main.tf"
+    source = "https://github.com/sqlxpert/lights-off-aws/blob/main/terraform/main.tf"
   }
 }
 
