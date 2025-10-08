@@ -128,8 +128,42 @@ resource "aws_s3_bucket" "lights_off_cloudformation" {
   }
 }
 
+resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+
+  ignore_public_acls = true
+  block_public_acls  = true
+
+  restrict_public_buckets = true
+  block_public_policy     = true
+}
+
+resource "aws_s3_bucket_ownership_controls" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+
+  rule {
+    object_ownership = "BucketOwnerEnforced" # Disable S3 ACLs
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256" # S3-managed keys
+    }
+  }
+}
+
 resource "aws_s3_object" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+
+  depends_on = [
+    aws_s3_bucket_public_access_block.lights_off_cloudformation,
+    aws_s3_bucket_ownership_controls.lights_off_cloudformation,
+    aws_s3_bucket_server_side_encryption_configuration.lights_off_cloudformation,
+  ]
 
   key = "lights_off_aws.yaml"
 
