@@ -461,7 +461,7 @@ Step&nbsp;3 includes the option to install Lights Off as a Terraform child
 module. The instructions cover installation in one region, in one AWS account.
 
 [Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
-in v6.0.0 of the Terraform AWS provider, makes it possible to deploy the same
+in v6.0.0 of the Terraform AWS provider makes it possible to deploy the same
 module in multiple regions without defining a separate provider for each
 region. You can add a `for_each` loop over a set of AWS region codes to the
 `module` block and set `region = each.key`&nbsp;. This is still only suitable
