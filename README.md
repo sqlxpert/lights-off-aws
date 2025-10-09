@@ -46,7 +46,7 @@ Jump to:
       [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
       20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
- 3. Create resources using either CloudFormation or Terraform.
+ 3. Install Lights Off using CloudFormation or Terraform.
 
     - **CloudFormation** _Easy!_
 
@@ -65,22 +65,20 @@ Jump to:
 
     - **Terraform**
 
-      The minimum versions are:
+      Check that you have at least:
 
       - [Terraform v1.10.0 (2024-11-27)](https://github.com/hashicorp/terraform/releases/tag/v1.10.0)
       - [Terraform AWS provider v6.0.0 (2025-06-18)](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.0.0)
 
-      Add the following child module to your existing Terraform root module:
+      Add the following child module to your existing root module:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=vTAG"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+        # Always reference a specific version!
+        # https://github.com/sqlxpert/lights-off-aws/releases
       }
       ```
-
-      Replace _vTAG_ with a specific version tag, `v3.0.0` or newer, from
-      [Releases](https://github.com/sqlxpert/lights-off-aws/releases).
-      &#9888; Always reference a specific version.
 
       Have Terraform download the module's source code. Review the plan before
       typing `yes` to allow Terraform to proceed with applying the changes.
@@ -91,7 +89,7 @@ Jump to:
       ```
 
     <details>
-      <summary>If stack creation fails with an "UnreservedConcurrentExecution" error...</summary>
+      <summary>If there is an "UnreservedConcurrentExecution" error...</summary>
 
     <br/>
 
@@ -428,7 +426,7 @@ For reliability, Lights Off works completely independently in each (region, AWS
 account) pair. To deploy to multiple regions and/or AWS accounts,
 
  1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
-    accounts and regions.
+    accounts and regions, including any instances of the Terraform module.
 
  2. Complete the prerequisites for creating a _StackSet_ with
     [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
