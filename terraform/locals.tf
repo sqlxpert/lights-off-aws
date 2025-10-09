@@ -10,7 +10,11 @@ locals {
 
   partition = local.caller_arn_parts["partition"]
 
-  region = data.aws_region.current.region
+  region = (
+    var.lights_off_region == ""
+    ? data.aws_region.current.region
+    : var.lights_off_region
+  )
   # data.aws_region.region added,
   # data.aws_region.name marked deprecated
   # in Terraform AWS provider v6.0.0

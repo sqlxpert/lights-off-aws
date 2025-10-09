@@ -6,7 +6,8 @@
 data "aws_iam_role" "lights_off_backup" {
   count = try(var.lights_off_params["BackupRoleName"], "") == "" ? 0 : 1
 
-  name = var.lights_off_params["BackupRoleName"]
+  region = local.region
+  name   = var.lights_off_params["BackupRoleName"]
 }
 
 
@@ -14,7 +15,8 @@ data "aws_iam_role" "lights_off_backup" {
 data "aws_backup_vault" "lights_off" {
   count = try(var.lights_off_params["BackupVaultName"], "") == "" ? 0 : 1
 
-  name = var.lights_off_params["BackupVaultName"]
+  region = local.region
+  name   = var.lights_off_params["BackupVaultName"]
 }
 
 
@@ -22,7 +24,8 @@ data "aws_backup_vault" "lights_off" {
 data "aws_iam_policy" "lights_off_do_role_local" {
   count = try(var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"], "") == "" ? 0 : 1
 
-  name = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
+  region = local.region
+  name   = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
 }
 
 
@@ -30,14 +33,14 @@ data "aws_iam_policy" "lights_off_do_role_local" {
 data "aws_kms_alias" "aws_sqs" {
   count = try(var.lights_off_params["SqsKmsKey"], "") == "alias/aws/sqs" ? 1 : 0
 
-  name = "alias/aws/sqs"
+  region = local.region
+  name   = "alias/aws/sqs"
 }
 
 data "aws_kms_key" "lights_off_sqs" {
   count = contains(["", "alias/aws/sqs"], try(var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
 
-  # Provider functions added in Terraform v1.8.0
-  # arn_build added in Terraform AWS provider v5.40.0
+  region = local.region
   key_id = provider::aws::arn_build(
     local.partition,
     "kms", # service
@@ -45,6 +48,8 @@ data "aws_kms_key" "lights_off_sqs" {
     split(":", var.lights_off_params["SqsKmsKey"])[0], # account
     split(":", var.lights_off_params["SqsKmsKey"])[1]  # resource (key/KEY_ID)
   )
+  # Provider functions added in Terraform v1.8.0
+  # arn_build added in Terraform AWS provider v5.40.0
 }
 
 
@@ -52,8 +57,7 @@ data "aws_kms_key" "lights_off_sqs" {
 data "aws_kms_key" "lights_off_cloudwatch_logs" {
   count = try(var.lights_off_params["CloudWatchLogsKmsKey"], "") == "" ? 0 : 1
 
-  # Provider functions added in Terraform v1.8.0
-  # arn_build added in Terraform AWS provider v5.40.0
+  region = local.region
   key_id = provider::aws::arn_build(
     local.partition,
     "kms", # service
@@ -108,6 +112,8 @@ resource "aws_cloudformation_stack" "lights_off_prereq" {
   name          = "LightsOffPrereq${var.lights_off_stack_name_suffix}"
   template_body = file("${path.module}/../cloudformation/lights_off_aws_prereq.yaml")
 
+  region = local.region
+
   capabilities = ["CAPABILITY_IAM"]
   policy_body = file(
     "${path.module}/../cloudformation/lights_off_aws_prereq_policy.json"
@@ -117,7 +123,8 @@ resource "aws_cloudformation_stack" "lights_off_prereq" {
 }
 
 data "aws_iam_role" "lights_off_deploy" {
-  name = aws_cloudformation_stack.lights_off_prereq.outputs["DeploymentRoleName"]
+  region = local.region
+  name   = aws_cloudformation_stack.lights_off_prereq.outputs["DeploymentRoleName"]
 }
 
 
@@ -125,11 +132,14 @@ data "aws_iam_role" "lights_off_deploy" {
 resource "aws_s3_bucket" "lights_off_cloudformation" {
   force_destroy = true
 
+  region = local.region
+
   tags = local.lights_off_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
 
   ignore_public_acls = true
   block_public_acls  = true
@@ -140,6 +150,7 @@ resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
 
 resource "aws_s3_bucket_ownership_controls" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
 
   rule {
     object_ownership = "BucketOwnerEnforced" # Disable S3 ACLs
@@ -148,6 +159,7 @@ resource "aws_s3_bucket_ownership_controls" "lights_off_cloudformation" {
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
 
   rule {
     apply_server_side_encryption_by_default {
@@ -158,6 +170,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lights_off_cloudf
 
 resource "aws_s3_object" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
 
   depends_on = [
     aws_s3_bucket_public_access_block.lights_off_cloudformation,
@@ -176,6 +189,8 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 resource "aws_cloudformation_stack" "lights_off" {
   name         = "LightsOff${var.lights_off_stack_name_suffix}"
   template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
+
+  region = local.region
 
   capabilities = ["CAPABILITY_IAM"]
   iam_role_arn = data.aws_iam_role.lights_off_deploy.arn
