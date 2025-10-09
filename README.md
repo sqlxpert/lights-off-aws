@@ -78,8 +78,7 @@ Jump to:
       }
       ```
 
-      Replace _vTAG_ with a specific version number, &nbsp;`v3.0.0` or newer,
-      from
+      Replace _vTAG_ with a specific version tag, `v3.0.0` or newer, from
       [Releases](https://github.com/sqlxpert/lights-off-aws/releases).
       &#9888; Always reference a specific version.
 
