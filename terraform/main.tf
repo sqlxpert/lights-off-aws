@@ -6,8 +6,7 @@
 data "aws_iam_role" "lights_off_backup" {
   count = try(var.lights_off_params["BackupRoleName"], "") == "" ? 0 : 1
 
-  region = local.region
-  name   = var.lights_off_params["BackupRoleName"]
+  name = var.lights_off_params["BackupRoleName"]
 }
 
 
@@ -24,8 +23,7 @@ data "aws_backup_vault" "lights_off" {
 data "aws_iam_policy" "lights_off_do_role_local" {
   count = try(var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"], "") == "" ? 0 : 1
 
-  region = local.region
-  name   = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
+  name = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
 }
 
 
@@ -123,8 +121,7 @@ resource "aws_cloudformation_stack" "lights_off_prereq" {
 }
 
 data "aws_iam_role" "lights_off_deploy" {
-  region = local.region
-  name   = aws_cloudformation_stack.lights_off_prereq.outputs["DeploymentRoleName"]
+  name = aws_cloudformation_stack.lights_off_prereq.outputs["DeploymentRoleName"]
 }
 
 
