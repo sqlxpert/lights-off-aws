@@ -433,8 +433,8 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
     [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
  3. Make sure that the AWS Lambda `Concurrent executions` quota is sufficient
-    in every target AWS account, in every target region. See the note at the
-    end of [Quick Start](#quick-start) Step&nbsp;3.
+    in every target AWS account, in every target region. See the note in
+    [Quick Start](#quick-start) Step&nbsp;4.
 
  4. In the management AWS account (or a delegated administrator account),
     create a
