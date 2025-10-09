@@ -454,18 +454,33 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
 [Quick Start](#quick-start)
 Step&nbsp;3 includes the option to install Lights Off as a Terraform module in
-one AWS account, in one region.
+one region in one AWS account.
 
 [Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
-in v6.0.0 of the Terraform AWS provider makes it possible to deploy the same
-module in multiple regions without defining a separate provider for each
-region. You can add a `for_each` loop over a set of AWS region codes to the
-`module` block and set `region = each.key`&nbsp;. This is still only suitable
-for one AWS account.
+in v6.0.0 of the Terraform AWS provider makes it possible to deploy AWS
+resources in multiple regions _in one AWS account_ without defining a separate
+provider for each region. Lights Off is compatible because the Terraform module
+was written for AWS provider v6.0.0, the underlying CloudFormation templates
+have always let
+[CloudFormation assign unique physical names](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-physical-id)
+to account-wide, non-regional resources like IAM roles, and the CloudFormation
+parameters have always been non-region-specific. Your module block will
+resemble:
 
-For installation in multiple AWS accounts, wrapping a CloudFormation StackSet
-in HashiCorp Configuration Language remains much easier than configuring
-Terraform to deploy identical resources in multiple AWS accounts. See
+```terraform
+module "lights_off" {
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+  # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+
+  for_each          = toset(["us-east-1", "us-west-2"])
+  lights_off_region = each.key
+}
+```
+
+For installation in multiple AWS accounts (regardless of the number of
+regions), wrapping a CloudFormation _StackSet_ in HashiCorp Configuration
+Language remains much easier than configuring Terraform to deploy identical
+resources in multiple AWS accounts. See
 [aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;.
 Instructions will be provided in a future update.
 
