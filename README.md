@@ -73,9 +73,9 @@ Jump to:
       Add the following child module to your existing Terraform root module:
 
       ```terraform
-        module "lights_off" {
-          source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=vTAG"
-        }
+      module "lights_off" {
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=vTAG"
+      }
       ```
 
       Replace _vTAG_ with a specific version number, &nbsp;`v3.0.0` or newer,
