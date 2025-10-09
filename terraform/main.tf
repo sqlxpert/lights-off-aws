@@ -36,6 +36,8 @@ data "aws_kms_alias" "aws_sqs" {
 data "aws_kms_key" "lights_off_sqs" {
   count = contains(["", "alias/aws/sqs"], try(var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
 
+  # Provider functions added in Terraform v1.8.0
+  # arn_build added in Terraform AWS provider v5.40.0
   key_id = provider::aws::arn_build(
     local.partition,
     "kms", # service
@@ -50,6 +52,8 @@ data "aws_kms_key" "lights_off_sqs" {
 data "aws_kms_key" "lights_off_cloudwatch_logs" {
   count = try(var.lights_off_params["CloudWatchLogsKmsKey"], "") == "" ? 0 : 1
 
+  # Provider functions added in Terraform v1.8.0
+  # arn_build added in Terraform AWS provider v5.40.0
   key_id = provider::aws::arn_build(
     local.partition,
     "kms", # service
