@@ -48,7 +48,7 @@ Jump to:
 
 3. Create resources using either CloudFormation or Terraform.
 
-   - **CloudFormation** _(No setup needed!)_
+   - **CloudFormation** _(Easier!)_
 
      Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
@@ -60,9 +60,6 @@ Jump to:
      - Stack name: `LightsOff`
 
    - **Terraform**
-
-     > Setting up Terraform itself is beyond the scope of these instructions.
-     For an alternative, use CloudFormation.
 
      Add the following child module to your existing Terraform root module:
 
@@ -139,7 +136,7 @@ Jump to:
      ```
 
    <details>
-     <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
+     <summary>If stack creation fails with an "UnreservedConcurrentExecution" error...</summary>
 
    <br/>
 
