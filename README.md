@@ -446,11 +446,10 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
     - StackSet name: `LightsOff`
 
- 5. Two pages later, under "Deployment targets", select "Deploy to
-    Organizational Units (OUs)". Enter the AWS OU ID of the target
-    Organizational Unit. Lights Off will be deployed to all AWS accounts within
-    this Organizational Unit. Toward the bottom of the page, specify the target
-    regions.
+ 5. On the "Set deployment options" page, under "Accounts", select "Deploy
+    stacks in organizational units". Enter the `ou-` ID. Lights Off will be
+    deployed to all AWS accounts within this Organizational Unit. Next,
+    "Specify Regions".
 
 ### Installation with Terraform
 
