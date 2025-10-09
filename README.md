@@ -48,7 +48,7 @@ Jump to:
 
 3. Create resources using either CloudFormation or Terraform.
 
-   - **CloudFormation** _No prior setup required!_
+   - **CloudFormation** _(No setup needed!)_
 
      Create a
      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
@@ -59,9 +59,12 @@ Jump to:
 
      - Stack name: `LightsOff`
 
-   - **Terraform** _Prior setup required._
+   - **Terraform**
 
-     Add the following child module to your root Terraform module.
+     > Setting up Terraform itself is beyond the scope of these instructions.
+     For an alternative, use CloudFormation.
+
+     Add the following child module to your existing Terraform root module:
 
      ```terraform
        module "lights_off" {
@@ -73,16 +76,10 @@ Jump to:
      [Releases](https://github.com/sqlxpert/lights-off-aws/releases).
      &#9888; Always reference a specific version.
 
-     Before proceeding, have Terraform download the module's source code:
-
-     ```shell
-     terraform init
-     ```
-
      <details>
        <summary>If you run Terraform with least-privilege permissions...</summary>
 
-       <br>
+       <br/>
        Most people do not need to read this section, because most Terraform
        users grant full AWS administrative permissions to Terraform.
 
@@ -90,20 +87,22 @@ Jump to:
        approach, you instead follow the principle of least privilege for
        Terraform, you must give Terraform permission to:
 
-       - List, describe, create, update and delete CloudFormation stacks
+       - List, describe, get tags for, create, tag, update, untag and delete
+         IAM roles, update the "assume role" (role trust or "resource-based")
+         policy, and put and delete in-line policies
+       - Create, tag, describe, update, untag and delete
+         `arn:aws:s3:::terraform-*` S3 buckets
+         and put, tag, list, get, untag and delete
+         `arn:aws:s3:::terraform-*/*` S3 objects
+       - List, describe, create, tag, update, untag, and delete CloudFormation
+         stacks
        - Set and get CloudFormation stack policies
-       - List, describe, get tags for, create, tag, update and delete IAM roles
-         and their in-line policies
        - Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
-       - Create, tag, describe, update and delete `arn:aws:s3:::terraform-*` S3
-         buckets and put, list, get and delete `arn:aws:s3:::terraform-*/*`
-         S3 objects.
        - List, describe, and get tags for, all of the `data` sources in
-         [terraform/main.tf](/terraform/main.tf)&nbsp;.
-         For a list, run:
+         `/terraform/*.tf`&nbsp;. For a list, run:
 
          ```shell
-         grep 'data "' terraform/main.tf
+         grep 'data "' terraform/*.tf
          ```
 
        Open the
@@ -111,13 +110,24 @@ Jump to:
        go through the list of services on the left, and consult the "Actions"
        table for each of:
 
-       - `CloudFormation`
        - `AWS Identity and Access Management (IAM)`
-       - `AWS Security Token Service`
-       - `AWS Backup`
        - `Amazon S3`
-       - `AWS Key Management Service` (if you encrypt the SQS queue or the
-          CloudWatch log group with a KMS key)
+       - `CloudFormation`
+       - `AWS Security Token Service`
+       - `AWS Backup` (if you use the `sched-backup` tag)
+       - `AWS Key Management Service` (if you encrypt SQS queues and/or
+          CloudWatch log groups with KMS keys)
+
+       In most cases, you can scope Terraform's permissions to one workload by
+       regulating resource naming and tagging, and then by using:
+
+       - [ARN patterns in `Resource` lists](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html#reference_policies_elements_resource_wildcards)
+       - [ARN patterns in `Condition` entries](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html#Conditions_ARN)
+       - [Request tag and then resource tag `Condition` entries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html)
+
+       Check Service and Resource Control Policies (SCPs and RCPs), as well as
+       resource policies (such as AWS Backup vault policies and KMS key
+       policies).
 
        The deployment role defined in the `LightsOffPrereq` stack gives
        CloudFormation the permissions it needs to create the `LightsOff` stack.
@@ -125,10 +135,18 @@ Jump to:
 
      </details>
 
+     Have Terraform download the module's source code. Review the plan before
+     typing `yes` to allow Terraform to proceed with applying the changes.
+
+     ```shell
+     terraform init
+     terraform apply
+     ```
+
    <details>
      <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
 
-   <br>
+   <br/>
 
    Request that
    [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
@@ -493,37 +511,54 @@ account+region combination. To deploy to multiple regions and/or AWS accounts,
 
 You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
-to delegate only the privileges needed to create the Lights Off stack. First,
-create the `LightsOffPrereq` stack from
-[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
-. Next, when you create the `LightsOff` stack from
-[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) , set IAM
-role - optional to `LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges
-are limited, you might need permission to pass the deployment role to
-CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
-policy for an example.
+to delegate only the privileges needed to create the `LightsOff` stack. (This
+is done for you if you use Terraform at Step&nbsp;3 of the
+[Quick Start](#quick-start).)
 
-For a CloudFormation StackSet, you can use
+First, create the `LightsOffPrereq` stack from
+[cloudformation/lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
+
+Under "Additional settings" &rarr; "Stack policy - optional", you can "Upload a
+file" and select a locally-saved copy of
+[cloudformation/lights_off_aws_prereq_policy.json](/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
+The stack policy prevents inadvertent replacement or deletion of the deployment
+role during stack updates, but it cannot prevent deletion of the entire
+`LightsOffPrereq` stack.
+
+Next, when you create the `LightsOff` stack from
+[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
+set "Permissions - optional" &rarr; "IAM role - optional" to
+`LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges are limited, you
+might need permission to pass the deployment role to CloudFormation. See the
+`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
+
+For a CloudFormation _StackSet_, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
 by copying the inline IAM policy of `LightsOffPrereq-DeploymentRole` to a
 customer-managed IAM policy, attaching your policy to
 `AWSCloudFormationStackSetExecutionRole` and propagating the policy and the
 role policy attachment to all target AWS accounts.
+
 </details>
 
 ### Installation with Terraform
 
-Terraform users are often willing to wrap a CloudFormation stack in HashiCorp
-Configuration Language, because AWS supplies tools in the form of
-CloudFormation templates. See
-[aws_cloudformation_stack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack)
-.
+[Quick Start](#quick-start)
+Step&nbsp;3 includes the option to install Lights Off as a Terraform child
+module. The instructions cover installation in one region, in one AWS account.
 
-Wrapping a CloudFormation StackSet in HCL is much easier than configuring and
-using Terraform to deploy and maintain identical resources in multiple regions
-and/or AWS accounts. See
-[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)
-.
+[Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
+in v6.0.0 of the Terraform AWS provider, released in June, 2025, makes it
+possible to deploy the same module in multiple regions without defining a
+separate provider for each region. You can add a `for_each` loop over a set
+of AWS region codes to the `module` block and set `region = each.key`&nbsp;.
+This is still only suitable for one AWS account.
+
+For installation in multiple AWS accounts, wrapping a CloudFormation StackSet
+in HashiCorp Configuration Language remains much easier than configuring
+Terraform to deploy identical resources in multiple AWS accounts. See
+[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;. Instructions will be
+provided in the future.
 
 ## Security
 
@@ -588,6 +623,14 @@ software at your own risk. You are encouraged to evaluate the source code.
   "Do" function's role, denying authority to stop production resources (
   `AttachLocalPolicy` in CloudFormation).
 
+- If you use Terraform, do not use it with an AWS access key and do not give it
+  full AWS administrative privileges. Instead, follow AWS's
+  [Best practices for using the Terraform AWS Provider: Security best practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/security.html).
+  Do the extra work of defining a least-privilege IAM role for each workload.
+  Configure Terraform to assume workload-specific roles. The CloudFormation
+  service role is one element, but achieving least-privilege also requires
+  limiting Terraform's own privileges.
+
 </details>
 
 ## Advice
@@ -642,6 +685,7 @@ the scheduled time, Lights Off logs an error of `"type"`
 an update that is likely to fail and require a rollback. To resume scheduled
 stack updates, resolve the underlying template error or permissions error and
 successfully complete one manual stack update.
+
 </details>
 
 ## Extensibility
@@ -696,6 +740,7 @@ to describe (list) resources.
 
 What capabilities would you like to add? Submit a
 [pull request](https://github.com/sqlxpert/lights-off-aws/pulls) today!
+
 </details>
 
 ## Progress
