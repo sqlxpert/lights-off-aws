@@ -87,6 +87,8 @@ Jump to:
       terraform apply
       ```
 
+ 4. Wait for resource creation to complete.
+
     <details>
       <summary>If there is an "UnreservedConcurrentExecution" error...</summary>
 
@@ -103,7 +105,7 @@ Jump to:
 
     </details>
 
- 4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
+ 5. After about 20 minutes, check whether the EC2 instance is stopped. Restart
     it and delete the `sched-stop` tag.
 
 Jump to:
