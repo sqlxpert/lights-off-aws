@@ -641,10 +641,10 @@ software at your own risk. You are encouraged to evaluate the source code.
 - If you use Terraform, do not use it with an AWS access key and do not give it
   full AWS administrative privileges. Instead, follow AWS's
   [Best practices for using the Terraform AWS Provider: Security best practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/security.html).
-  Do the extra work of defining a least-privilege IAM role for each workload.
-  Configure Terraform to assume workload-specific roles. The CloudFormation
-  service role is one element, but achieving least-privilege also requires
-  limiting Terraform's own privileges.
+  Do the extra work of defining a least-privilege IAM role for deploying each
+  workload. Configure Terraform to assume workload-specific roles. The
+  CloudFormation service role is one element, but achieving least-privilege
+  also requires limiting Terraform's privileges.
 
 </details>
 
