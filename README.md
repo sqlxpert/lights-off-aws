@@ -36,42 +36,77 @@ Jump to:
 
 ## Quick Start
 
-1. Log in to the AWS Console as an administrator.
+ 1. Log in to the AWS Console as an administrator.
 
-2. Tag a running, non-essential
-   [EC2 instance](https://console.aws.amazon.com/ec2/home#Instances)
-   with:
+ 2. Tag a running, non-essential
+    [EC2 instance](https://console.aws.amazon.com/ec2/home#Instances)
+    with:
 
-   - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
-     [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
-     20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
+    - `sched-stop` : `d=_ H:M=11:30` , replacing 11:30 with the
+      [current UTC time](https://www.timeanddate.com/worldclock/timezone/utc) +
+      20 minutes, rounded upward to :00, :10, :20, :30, :40, or :50.
 
-3. Create a
-   [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
-   Select Upload a template file, then select Choose file and navigate to a
-   locally-saved copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   [right-click to save as...]. On the next page, set:
+ 3. Install Lights Off using CloudFormation or Terraform.
 
-   - Stack name: `LightsOff`
+    - **CloudFormation** _Easy!_
 
-   <br>
-   <details>
-     <summary>If stack creation fails with an UnreservedConcurrentExecution error...</summary>
+      Create a
+      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home)
+      "With new resources (standard)".
 
-   Request that
-   [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
-   be increased. The default is `1000` .
+      Select "Upload a template file", then select "Choose file" and navigate
+      to a locally-saved copy of
+      [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+      [right-click to save as...].
 
-   Lights Off needs 1 unit for a time-critical function. New AWS accounts
-   start with a quota of 10, but Lambda always holds back 10, which leaves 0
-   available! Within a given AWS account, the quota is set separately for
-   each region.
+      On the next page, set:
 
-   </details>
+      - Stack name: `LightsOff`
 
-4. After about 20 minutes, check whether the EC2 instance is stopped. Restart
-   it and delete the `sched-stop` tag.
+    - **Terraform**
+
+      Check that you have at least:
+
+      - [Terraform v1.10.0 (2024-11-27)](https://github.com/hashicorp/terraform/releases/tag/v1.10.0)
+      - [Terraform AWS provider v6.0.0 (2025-06-18)](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.0.0)
+
+      Add the following child module to your existing root module:
+
+      ```terraform
+      module "lights_off" {
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+        # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+      }
+      ```
+
+      Have Terraform download the module's source code. Review the plan before
+      typing `yes` to allow Terraform to proceed with applying the changes.
+
+      ```shell
+      terraform init
+      terraform apply
+      ```
+
+ 4. Wait for resource creation to complete.
+
+    <details>
+      <summary>If there is an "UnreservedConcurrentExecution" error...</summary>
+
+    <br/>
+
+    Request that
+    [Service Quotas &rarr; AWS services  &rarr; AWS Lambda &rarr; Concurrent executions](https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384)
+    be increased. The default is `1000`&nbsp;.
+
+    Lights Off needs 1&nbsp;unit for a time-critical function. New AWS accounts
+    start with a quota of 10, but Lambda always holds back 10, which leaves 0
+    available! Within a given AWS account, the quota is set separately for
+    each region.
+
+    </details>
+
+ 5. After about 20 minutes, check whether the EC2 instance is stopped. Restart
+    it and delete the `sched-stop` tag.
 
 Jump to:
 [Extra Setup](#extra-setup)
@@ -239,7 +274,7 @@ instances, you must add a statement like the following to the key policies:
   and _ou-PARENT_ORG_UNIT_ID_ with the identifiers of your organization, your
   organization root, and the organizational unit in which you have installed
   Lights Off. `/*` at the end of this organization path stands for child OUs,
-  if any. Do not use a path less specific than `"o-ORG_ID/*"` .
+  if any. Do not use a path less specific than `"o-ORG_ID/*"`&nbsp;.
 
 > If an EC2 instance does not start as scheduled, a KMS key permissions error
 is possible.
@@ -263,49 +298,50 @@ them.
 Because you want to use the `sched-backup` tag in a complex AWS environment,
 you must address the following AWS Backup requirements:
 
-1. Vault
+ 1. Vault
 
-   AWS Backup creates the `Default` vault the first time you open the
-   [list of vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
-   in a given AWS account and region, using the AWS Console. Otherwise, see
-   [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html)
-   and
-   [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
-   or
-   [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)
-   . Update the `BackupVaultName` CloudFormation stack parameter if necessary.
+    AWS Backup creates the `Default` vault the first time you open the
+    [list of vaults](https://console.aws.amazon.com/backup/home#/backupvaults)
+    in a given AWS account and region, using the AWS Console. Otherwise, see
+    [Backup vault creation](https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html)
+    and
+    [AWS::Backup::BackupVault](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-backup-backupvault.html)
+    or
+    [aws_backup_vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_vault)&nbsp;.
+    Update the `BackupVaultName` CloudFormation stack parameter if necessary.
 
-2. Vault policy
+ 2. Vault policy
 
-   If you have added `"Deny"` statements, be sure that `DoLambdaFnRole` still
-   has access.
+    If you have added `"Deny"` statements, be sure that `DoLambdaFnRole` still
+    has access.
 
-3. Backup role
+ 3. Backup role
 
-   AWS Backup creates `AWSBackupDefaultServiceRole` the first time you make a
-   backup in a given AWS account using the AWS Console
-   ([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My
-   account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
-   [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
-   Update `BackupRoleName` in CloudFormation if necessary.
+    AWS Backup creates `AWSBackupDefaultServiceRole` the first time you make a
+    backup in a given AWS account using the AWS Console
+    ([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My
+    account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
+    [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
+    Update `BackupRoleName` in CloudFormation if necessary.
 
-4. KMS key policies
+ 4. KMS key policies
 
-   `AWSBackupDefaultServiceRole` works if:
+    `AWSBackupDefaultServiceRole` works if:
 
-   - Your EBS volumes and RDS/Aurora databases are unencrypted, or
-   - You use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys, or
-   - You use custom keys in the same AWS account as each disk and database,
-     the key policies contain the default `"Enable IAM User Permissions"`
-     statement, and they do not contain `"Deny"` statements.
+    - Your EBS volumes and RDS/Aurora databases are unencrypted, or
+    - You use the default, AWS-managed `aws/ebs` and `aws/rds` encryption keys,
+      or
+    - You use custom keys in the same AWS account as each disk and database,
+      the key policies contain the default `"Enable IAM User Permissions"`
+      statement, and they do not contain `"Deny"` statements.
 
-   If your custom keys are in a different AWS account than your disks and
-   databases, you must modify the key policies. See
-   [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
-   [How EBS uses KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
-   [Overview of encrypting RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview),
-   and
-   [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
+    If your custom keys are in a different AWS account than your disks and
+    databases, you must modify the key policies. See
+    [Encryption for backups in AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/encryption.html),
+    [How EBS uses KMS](https://docs.aws.amazon.com/kms/latest/developerguide/services-ebs.html),
+    [Overview of encrypting RDS resources](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html#Overview.Encryption.Overview),
+    and
+    [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
 
 > If no backup jobs appear in AWS Backup, or if jobs do not start, a
 permissions problem is likely.
@@ -387,72 +423,158 @@ basic format (example: `20241231T1400Z`).
 
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
-For reliability, Lights Off works completely independently in each AWS
-account+region combination. To deploy to multiple regions and/or AWS accounts,
+For reliability, Lights Off works completely independently in each (region, AWS
+account) pair. To deploy to multiple regions and/or AWS accounts,
 
-1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
-   accounts and regions.
+ 1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
+    accounts and regions, including any instances of the Terraform module.
 
-2. Complete the prerequisites for creating a _StackSet_ with
-   [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
+ 2. Complete the prerequisites for creating a _StackSet_ with
+    [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
 
-3. Make sure that the AWS Lambda `Concurrent executions` quota is sufficient
-   in every target AWS account, in every target region. See the note at the
-   end of [Quick Start](#quick-start) Step 3.
+ 3. Make sure that the AWS Lambda `Concurrent executions` quota is sufficient
+    in every target AWS account, in every target region. See the note at the
+    end of [Quick Start](#quick-start) Step&nbsp;3.
 
-4. In the management AWS account (or a delegated administrator account),
-   create a
-   [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
-   Select Upload a template file, then select Choose file and upload a
-   locally-saved copy of
-   [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-   [right-click to save as...]. On the next page, set:
+ 4. In the management AWS account (or a delegated administrator account),
+    create a
+    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
+    Select "Upload a template file", then select "Choose file" and upload a
+    locally-saved copy of
+    [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+    [right-click to save as...]. On the next page, set:
 
-   - StackSet name: `LightsOff`
+    - StackSet name: `LightsOff`
 
-5. Two pages later, under Deployment targets, select Deploy to Organizational
-   Units (OUs). Enter the AWS OU ID of the target Organizational Unit. Lights
-   Off will be deployed to all AWS accounts within this Organizational Unit.
-   Toward the bottom of the page, specify the target regions.
+ 5. On the "Set deployment options" page, under "Accounts", select "Deploy
+    stacks in organizational units". Enter the `ou-` ID. Lights Off will be
+    deployed to all AWS accounts within this Organizational Unit. Next,
+    "Specify Regions".
+
+### Installation with Terraform
+
+[Quick Start](#quick-start)
+Step&nbsp;3 includes the option to install Lights Off as a Terraform module in
+one region in one AWS account.
+
+[Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
+in v6.0.0 of the Terraform AWS provider makes it possible to deploy AWS
+resources in multiple regions _in one AWS account_ without defining a separate
+provider for each region. Lights Off is compatible because the Terraform module
+was written for AWS provider v6.0.0, the underlying CloudFormation templates
+have always let
+[CloudFormation assign unique physical names](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-physical-id)
+to account-wide, non-regional resources like IAM roles, and the CloudFormation
+parameters have always been non-region-specific. Your module block will
+resemble:
+
+```terraform
+module "lights_off" {
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+  # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+
+  for_each          = toset(["us-east-1", "us-west-2", ])
+  lights_off_region = each.key
+}
+```
+
+For installation in multiple AWS accounts (regardless of the number of
+regions), wrapping a CloudFormation _StackSet_ in HashiCorp Configuration
+Language remains much easier than configuring Terraform to deploy identical
+resources in multiple AWS accounts. See
+[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;.
+Instructions will be provided in a future update.
 
 ### Least-Privilege Installation
 
 <details>
   <summary>Least-privilege installation details...</summary>
 
+#### CloudFormation Stack
+
 You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
-to delegate only the privileges needed to create the Lights Off stack. First,
-create the `LightsOffPrereq` stack from
-[lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)
-. Next, when you create the `LightsOff` stack from
-[lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true) , set IAM
-role - optional to `LightsOffPrereq-DeploymentRole` . If your own privileges
-are limited, you might need permission to pass the deployment role to
-CloudFormation. See the `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM
-policy for an example.
+to delegate only the privileges needed to create the `LightsOff` stack. (This
+is done for you if you use Terraform at Step&nbsp;3 of the
+[Quick Start](#quick-start).)
 
-For a CloudFormation StackSet, you can use
+First, create the `LightsOffPrereq` stack from
+[cloudformation/lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
+
+Under "Additional settings" &rarr; "Stack policy - optional", you can "Upload a
+file" and select a locally-saved copy of
+[cloudformation/lights_off_aws_prereq_policy.json](/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
+The stack policy prevents inadvertent replacement or deletion of the deployment
+role during stack updates, but it cannot prevent deletion of the entire
+`LightsOffPrereq` stack.
+
+Next, when you create the `LightsOff` stack from
+[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
+set "Permissions - optional" &rarr; "IAM role - optional" to
+`LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges are limited, you
+might need permission to pass the deployment role to CloudFormation. See the
+`LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
+
+#### CloudFormation StackSet
+
+For a CloudFormation _StackSet_, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
 by copying the inline IAM policy of `LightsOffPrereq-DeploymentRole` to a
 customer-managed IAM policy, attaching your policy to
 `AWSCloudFormationStackSetExecutionRole` and propagating the policy and the
 role policy attachment to all target AWS accounts.
+
+#### Terraform Module
+
+If you do not give Terraform full AWS administrative permissions, you must give
+it permission to:
+
+- List, describe, get tags for, create, tag, update, untag and delete
+  IAM roles, update the "assume role" (role trust or "resource-based")
+  policy, and put and delete in-line policies
+- Create, tag, describe, update, untag and delete
+  `arn:aws:s3:::terraform-*` S3 buckets
+  and put, tag, list, get, untag and delete
+  `arn:aws:s3:::terraform-*/*` S3 objects
+- List, describe, create, tag, update, untag, and delete CloudFormation
+  stacks
+- Set and get CloudFormation stack policies
+- Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
+- List, describe, and get tags for, all `data` sources. For a list, run:
+
+  ```shell
+  grep 'data "' terraform/*.tf
+  ```
+
+Open the
+[AWS Service Authorization Reference](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html#actions_table),
+go through the list of services on the left, and consult the "Actions"
+table for each of:
+
+- `AWS Identity and Access Management (IAM)`
+- `Amazon S3`
+- `CloudFormation`
+- `AWS Security Token Service`
+- `AWS Backup` (if you use the `sched-backup` tag)
+- `AWS Key Management Service` (if you encrypt SQS queues and/or CloudWatch log
+  groups with KMS keys)
+
+In most cases, you can scope Terraform's permissions to one workload by
+regulating resource naming and tagging, and then by using:
+
+- [ARN patterns in `Resource` lists](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html#reference_policies_elements_resource_wildcards)
+- [ARN patterns in `Condition` entries](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html#Conditions_ARN)
+- [Request tag and then resource tag `Condition` entries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html)
+
+Check Service and Resource Control Policies (SCPs and RCPs), as well as
+resource policies (such as AWS Backup vault policies and KMS key
+policies).
+
+The deployment role defined in the `LightsOffPrereq` stack gives
+CloudFormation the permissions it needs to create the `LightsOff` stack.
+Terraform itself does not need the deployment role's permissions.
+
 </details>
-
-### Installation with Terraform
-
-Terraform users are often willing to wrap a CloudFormation stack in HashiCorp
-Configuration Language, because AWS supplies tools in the form of
-CloudFormation templates. See
-[aws_cloudformation_stack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack)
-.
-
-Wrapping a CloudFormation StackSet in HCL is much easier than configuring and
-using Terraform to deploy and maintain identical resources in multiple regions
-and/or AWS accounts. See
-[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)
-.
 
 ## Security
 
@@ -517,6 +639,14 @@ software at your own risk. You are encouraged to evaluate the source code.
   "Do" function's role, denying authority to stop production resources (
   `AttachLocalPolicy` in CloudFormation).
 
+- If you use Terraform, do not use it with an AWS access key and do not give it
+  full AWS administrative privileges. Instead, follow AWS's
+  [Best practices for using the Terraform AWS Provider: Security best practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/security.html).
+  Do the extra work of defining a least-privilege IAM role for deploying each
+  workload. Configure Terraform to assume workload-specific roles. The
+  CloudFormation service role is one element, but achieving least-privilege
+  also requires limiting Terraform's privileges.
+
 </details>
 
 ## Advice
@@ -548,7 +678,7 @@ a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
 To make your own CloudFormation template compatible, see
-[lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
+[cloudformation/lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
 .
 
 Not every resource needs to be deleted and recreated; condition the creation
@@ -571,6 +701,7 @@ the scheduled time, Lights Off logs an error of `"type"`
 an update that is likely to fail and require a rollback. To resume scheduled
 stack updates, resolve the underlying template error or permissions error and
 successfully complete one manual stack update.
+
 </details>
 
 ## Extensibility
@@ -604,7 +735,7 @@ method name are derived mechanically.
 
 If an operation method takes more than just the resource identifier, add a
 dictionary of static keyword arguments. For complex arguments, sub-class the
-`AWSOp` class and override `op_kwargs` .
+`AWSOp` class and override `op_kwargs`&nbsp;.
 
 The `start_backup_job` method takes an Amazon Resource Name (ARN), whose
 format is consistent for all resource types. As long as AWS Backup supports
@@ -625,6 +756,7 @@ to describe (list) resources.
 
 What capabilities would you like to add? Submit a
 [pull request](https://github.com/sqlxpert/lights-off-aws/pulls) today!
+
 </details>
 
 ## Progress
@@ -639,11 +771,11 @@ management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 
-|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|
-|:---:|:---:|:---:|
-|2017|&asymp; 775|&asymp; 2,140|
-|2022|630|800 &check;|
-|2025|610 &check;|980|
+|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Terraform HCL Lines|
+|:---:|:---:|:---:|:---:|
+|2017|&asymp; 775|&asymp; 2,140||
+|2022|630|800 &check;||
+|2025|610 &check;|990|220|
 
 ## Dedication
 
@@ -651,9 +783,9 @@ This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
 wonderful colleagues whom Paul has worked with over the years. Thank you to
 Corey for sharing it with the AWS user community in _Last Week in AWS_
 newsletter issues
-[286 (October 3, 2022)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
+[286 (2022-10-03)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
 and
-[424 (May 27, 2025)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools),
+[424 (2025-05-27)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools),
 and to Lee for suggesting the new name.
 
 ## Licenses

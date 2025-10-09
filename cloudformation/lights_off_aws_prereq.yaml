@@ -12,6 +12,10 @@ Parameters:
     Type: String
     Default: "LightsOffPrereq"
 
+  PlaceholderSuggestedStackPolicyBody:
+    Type: String
+    Default: "https://github.com/sqlxpert/lights-off-aws/blob/main/cloudformation/lights_off_aws_prereq_policy.json?raw=true"
+
   PlaceholderHelp:
     Type: String
     Default: "github.com/sqlxpert/lights-off-aws#least-privilege-installation"
@@ -42,6 +46,7 @@ Metadata:
           default: For Reference
         Parameters:
           - PlaceholderSuggestedStackName
+          - PlaceholderSuggestedStackPolicyBody
           - PlaceholderHelp
       - Label:
           default: Advanced Options
@@ -52,10 +57,12 @@ Metadata:
         Parameters:
           - StackNameLike
     ParameterLabels:
-      PlaceholderHelp:
-        default: For help with this stack, see
       PlaceholderSuggestedStackName:
         default: Suggested stack name
+      PlaceholderSuggestedStackPolicyBody:
+        default: Copy suggested stack policy from
+      PlaceholderHelp:
+        default: For help with this stack, see
       PlaceholderAdvancedParameters:
         default: Do not change parameters below, unless necessary!
       StackNameLike:
@@ -280,3 +287,11 @@ Resources:
           - Effect: Allow
             Action: "iam:PassRole"
             Resource: !GetAtt DeploymentRole.Arn
+
+Outputs:
+
+  DeploymentRoleName:
+    Description: >-
+      Name (not ARN) of the service role (deployment role) that will be used to
+      deploy the Lights Off CloudFormation stack.
+    Value: !Ref DeploymentRole

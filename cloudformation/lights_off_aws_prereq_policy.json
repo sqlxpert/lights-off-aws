@@ -1,0 +1,26 @@
+{
+  "Statement": [
+    {
+      "Principal": "*",
+      "Effect": "Allow",
+      "Action": "Update:*",
+      "Resource": "*"
+    },
+    {
+      "Principal": "*",
+      "Effect": "Deny",
+      "Action": [
+        "Update:Replace",
+        "Update:Delete"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "ResourceType": [
+            "AWS::IAM::Role"
+          ]
+        }
+      }
+    }
+  ]
+}
