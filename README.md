@@ -51,11 +51,15 @@ Jump to:
    - **CloudFormation** _(Easier!)_
 
      Create a
-     [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home).
+     [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home)
+     "With new resources (standard)".
+
      Select "Upload a template file", then select "Choose file" and navigate to
      a locally-saved copy of
      [lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-     [right-click to save as...]. On the next page, set:
+     [right-click to save as...].
+
+     On the next page, set:
 
      - Stack name: `LightsOff`
 
