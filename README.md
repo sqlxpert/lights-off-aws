@@ -432,7 +432,7 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
  3. Make sure that the AWS Lambda `Concurrent executions` quota is sufficient
     in every target AWS account, in every target region. See the note at the
-    end of [Quick Start](#quick-start) Step 3.
+    end of [Quick Start](#quick-start) Step&nbsp;3.
 
  4. In the management AWS account (or a delegated administrator account),
     create a
