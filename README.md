@@ -80,12 +80,8 @@ Jump to:
        <summary>If you run Terraform with least-privilege permissions...</summary>
 
        <br/>
-       Most people do not need to read this section, because most Terraform
-       users grant full AWS administrative permissions to Terraform.
-
-       If, given the serious security risks associated with the typical
-       approach, you instead follow the principle of least privilege for
-       Terraform, you must give Terraform permission to:
+       If you do not give Terraform full AWS administrative permissions, you
+       must give it permission to:
 
        - List, describe, get tags for, create, tag, update, untag and delete
          IAM roles, update the "assume role" (role trust or "resource-based")
@@ -98,8 +94,7 @@ Jump to:
          stacks
        - Set and get CloudFormation stack policies
        - Pass `LightsOffPrereq-DeploymentRole-*` to CloudFormation
-       - List, describe, and get tags for, all of the `data` sources in
-         `/terraform/*.tf`&nbsp;. For a list, run:
+       - List, describe, and get tags for, all `data` sources. For a list, run:
 
          ```shell
          grep 'data "' terraform/*.tf
