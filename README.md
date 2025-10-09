@@ -75,8 +75,7 @@ Jump to:
       ```terraform
       module "lights_off" {
         source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
-        # Always reference a specific version!
-        # https://github.com/sqlxpert/lights-off-aws/releases
+        # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
 
