@@ -19,8 +19,6 @@ locals {
   # data.aws_region.name marked deprecated
   # in Terraform AWS provider v6.0.0
 
-  account_id = local.caller_arn_parts["account_id"]
-
   lights_off_tags = merge(
     {
       terraform = "1"
