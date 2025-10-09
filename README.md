@@ -473,7 +473,7 @@ module "lights_off" {
   source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
-  for_each          = toset(["us-east-1", "us-west-2"])
+  for_each          = toset(["us-east-1", "us-west-2", ])
   lights_off_region = each.key
 }
 ```
@@ -775,7 +775,7 @@ offering a simple alternative to
 |:---:|:---:|:---:|:---:|
 |2017|&asymp; 775|&asymp; 2,140||
 |2022|630|800 &check;||
-|2025|610 &check;|990|200|
+|2025|610 &check;|990|220|
 
 ## Dedication
 
