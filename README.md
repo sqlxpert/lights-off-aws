@@ -453,8 +453,8 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 ### Installation with Terraform
 
 [Quick Start](#quick-start)
-Step&nbsp;3 includes the option to install Lights Off as a Terraform child
-module. The instructions cover installation in one region, in one AWS account.
+Step&nbsp;3 includes the option to install Lights Off as a Terraform module in
+one AWS account, in one region.
 
 [Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
 in v6.0.0 of the Terraform AWS provider makes it possible to deploy the same
@@ -466,8 +466,8 @@ for one AWS account.
 For installation in multiple AWS accounts, wrapping a CloudFormation StackSet
 in HashiCorp Configuration Language remains much easier than configuring
 Terraform to deploy identical resources in multiple AWS accounts. See
-[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;. Instructions will be
-provided in a future update.
+[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;.
+Instructions will be provided in a future update.
 
 ### Least-Privilege Installation
 
