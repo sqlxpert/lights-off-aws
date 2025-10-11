@@ -4,7 +4,17 @@
 
 
 data "aws_iam_role" "lights_off_backup" {
-  count = try(var.lights_off_params["BackupRoleName"], "") == "" ? 0 : 1
+  count = var.lights_off_params["BackupRoleName"] == "" ? 0 : 1
+
+  # As of 2026-10, path is an attribute (can be returned) but not an argument
+  # (cannot be searched for).
+  # https://registry.terraform.io/providers/hashicorp/aws/6.16.0/docs/data-sources/iam_role#argument-reference
+
+  # data.aws_iam_roleS has a path_prefix filter, but no attribute that returns
+  # paths by themselves. If roles with the same name but different paths are
+  # common, it will be necessary to extract path and the role name from
+  # one(data.aws_iam_roleS.arns)
+  # https://registry.terraform.io/providers/hashicorp/aws/6.16.0/docs/data-sources/iam_roles#roles-filtered-by-path-prefix
 
   name = var.lights_off_params["BackupRoleName"]
 }
@@ -12,7 +22,7 @@ data "aws_iam_role" "lights_off_backup" {
 
 
 data "aws_backup_vault" "lights_off" {
-  count = try(var.lights_off_params["BackupVaultName"], "") == "" ? 0 : 1
+  count = var.lights_off_params["BackupVaultName"] == "" ? 0 : 1
 
   region = local.region
   name   = var.lights_off_params["BackupVaultName"]
@@ -21,7 +31,7 @@ data "aws_backup_vault" "lights_off" {
 
 
 data "aws_iam_policy" "lights_off_do_role_local" {
-  count = try(var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"], "") == "" ? 0 : 1
+  count = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"] == "" ? 0 : 1
 
   name = var.lights_off_params["DoLambdaFnRoleAttachLocalPolicyName"]
 }
@@ -29,14 +39,14 @@ data "aws_iam_policy" "lights_off_do_role_local" {
 
 
 data "aws_kms_alias" "aws_sqs" {
-  count = try(var.lights_off_params["SqsKmsKey"], "") == "alias/aws/sqs" ? 1 : 0
+  count = var.lights_off_params["SqsKmsKey"] == "alias/aws/sqs" ? 1 : 0
 
   region = local.region
   name   = "alias/aws/sqs"
 }
 
 data "aws_kms_key" "lights_off_sqs" {
-  count = contains(["", "alias/aws/sqs"], try(var.lights_off_params["SqsKmsKey"], "")) ? 0 : 1
+  count = contains(["", "alias/aws/sqs"], var.lights_off_params["SqsKmsKey"]) ? 0 : 1
 
   region = local.region
   key_id = provider::aws::arn_build(
@@ -53,7 +63,7 @@ data "aws_kms_key" "lights_off_sqs" {
 
 
 data "aws_kms_key" "lights_off_cloudwatch_logs" {
-  count = try(var.lights_off_params["CloudWatchLogsKmsKey"], "") == "" ? 0 : 1
+  count = var.lights_off_params["CloudWatchLogsKmsKey"] == "" ? 0 : 1
 
   region = local.region
   key_id = provider::aws::arn_build(
@@ -76,13 +86,13 @@ locals {
           trimprefix(data.aws_iam_role.lights_off_backup[0].path, "/"),
           data.aws_iam_role.lights_off_backup[0].name
         ]),
-        null
+        ""
       )
-      BackupVaultName = try(data.aws_backup_vault.lights_off[0].name, null)
+      BackupVaultName = try(data.aws_backup_vault.lights_off[0].name, "")
 
       DoLambdaFnRoleAttachLocalPolicyName = try(
         data.aws_iam_policy.lights_off_do_role_local[0].name,
-        null
+        ""
       )
 
       SqsKmsKey = try(
@@ -91,14 +101,14 @@ locals {
           provider::aws::arn_parse(data.aws_kms_key.lights_off_sqs[0].arn)["account_id"],
           provider::aws::arn_parse(data.aws_kms_key.lights_off_sqs[0].arn)["resource"],
         ]),
-        null
+        ""
       )
       CloudWatchLogsKmsKey = try(
         join(":", [
           provider::aws::arn_parse(data.aws_kms_key.lights_off_cloudwatch_logs[0].arn)["account_id"],
           provider::aws::arn_parse(data.aws_kms_key.lights_off_cloudwatch_logs[0].arn)["resource"],
         ]),
-        null
+        ""
       )
     }
   )
