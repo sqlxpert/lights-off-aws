@@ -74,7 +74,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -470,7 +470,7 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.0.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
   for_each          = toset(["us-east-1", "us-west-2", ])
