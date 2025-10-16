@@ -436,20 +436,51 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
     in every target AWS account, in every target region. See the note in
     [Quick Start](#quick-start) Step&nbsp;4.
 
- 4. In the management AWS account (or a delegated administrator account),
-    create a
-    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
-    Select "Upload a template file", then select "Choose file" and upload a
-    locally-saved copy of
-    [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-    [right-click to save as...]. On the next page, set:
+ 4. Install Lights Off using CloudFormation or Terraform. The management AWS
+    account, or the IAM of a delegated administrator, must be used.
 
-    - StackSet name: `LightsOff`
+    - **CloudFormation** _Easy!_
 
- 5. On the "Set deployment options" page, under "Accounts", select "Deploy
-    stacks in organizational units". Enter the `ou-` ID. Lights Off will be
-    deployed to all AWS accounts within this Organizational Unit. Next,
-    "Specify Regions".
+      Create a
+      [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
+      Select "Upload a template file", then select "Choose file" and upload a
+      locally-saved copy of
+      [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+      [right-click to save as...]. On the next page, set:
+
+      - StackSet name: `LightsOff`
+
+      On the "Set deployment options" page, under "Accounts", select "Deploy
+      stacks in organizational units". Enter the `ou-` ID. Lights Off will be
+      deployed to all AWS accounts within this Organizational Unit. Next,
+      "Specify Regions".
+
+    - **Terraform**
+
+      Check that you have at least:
+
+      - [Terraform v1.10.0 (2024-11-27)](https://github.com/hashicorp/terraform/releases/tag/v1.10.0)
+      - [Terraform AWS provider v6.0.0 (2025-06-18)](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.0.0)
+
+      Add a child module like the following to your existing root module:
+
+      ```terraform
+      module "lights_off_stackset" {
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.2.0"
+        # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+
+        lights_off_stackset_regions = ["us-west-2", ]
+        lights_off_stackset_organizational_unit_names = ["MyOrganizationalUnit", ]
+      }
+      ```
+
+      Have Terraform download the module's source code. Review the plan before
+      typing `yes` to allow Terraform to proceed with applying the changes.
+
+      ```shell
+      terraform init
+      terraform apply
+      ```
 
 ### Installation with Terraform
 
@@ -481,9 +512,9 @@ module "lights_off" {
 For installation in multiple AWS accounts (regardless of the number of
 regions), wrapping a CloudFormation _StackSet_ in HashiCorp Configuration
 Language remains much easier than configuring Terraform to deploy identical
-resources in multiple AWS accounts. See
-[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;.
-Instructions will be provided in a future update.
+resources in multiple AWS accounts. The
+[Multi-Account, Multi-Region (CloudFormation StackSet)](#multi-account-multi-region-cloud-formation-stackset)
+installation instructions explain how, in Step&nbsp;4.
 
 ### Least-Privilege Installation
 
@@ -524,7 +555,7 @@ customer-managed IAM policy, attaching your policy to
 `AWSCloudFormationStackSetExecutionRole` and propagating the policy and the
 role policy attachment to all target AWS accounts.
 
-#### Terraform Module
+#### Terraform
 
 If you do not give Terraform full AWS administrative permissions, you must give
 it permission to:
@@ -543,7 +574,7 @@ it permission to:
 - List, describe, and get tags for, all `data` sources. For a list, run:
 
   ```shell
-  grep 'data "' terraform/*.tf
+  grep 'data "' terraform*/*.tf | cut --delimiter=' ' --fields='1,2' | uniq
   ```
 
 Open the
