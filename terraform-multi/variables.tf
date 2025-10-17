@@ -116,7 +116,7 @@ variable "lights_off_tags" {
 
 variable "lights_off_stackset_regions" {
   type        = list(string)
-  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use the default region configured for the Terraform AWS provider. Deployments will always proceed in alphabetical order by region code."
+  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Deployments will always proceed in alphabetical order by region code."
 
   default = []
 }

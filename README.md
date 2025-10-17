@@ -74,7 +74,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -427,7 +427,8 @@ For reliability, Lights Off works completely independently in each (region, AWS
 account) pair. To deploy to multiple regions and/or AWS accounts,
 
  1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
-    accounts and regions, including any instances of the Terraform module.
+    accounts and regions, including any instances of the basic `//terraform`
+    module.
 
  2. Complete the prerequisites for creating a _StackSet_ with
     [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
@@ -436,8 +437,9 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
     in every target AWS account, in every target region. See the note in
     [Quick Start](#quick-start) Step&nbsp;4.
 
- 4. Install Lights Off using CloudFormation or Terraform. The management AWS
-    account, or the IAM of a delegated administrator, must be used.
+ 4. Install Lights Off as a StackSet, using CloudFormation or Terraform. The
+    management AWS account, or the IAM role of a delegated administrator, must
+    be used.
 
     - **CloudFormation** _Easy!_
 
@@ -457,30 +459,20 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
     - **Terraform**
 
-      Check that you have at least:
-
-      - [Terraform v1.10.0 (2024-11-27)](https://github.com/hashicorp/terraform/releases/tag/v1.10.0)
-      - [Terraform AWS provider v6.0.0 (2025-06-18)](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.0.0)
-
-      Add a child module like the following to your existing root module:
+      Your module block will resemble:
 
       ```terraform
       module "lights_off_stackset" {
         source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.2.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
-        lights_off_stackset_regions = ["us-west-2", ]
+        lights_off_stackset_regions = ["us-east-1", "us-west-2", ]
         lights_off_stackset_organizational_unit_names = ["MyOrganizationalUnit", ]
       }
       ```
 
-      Have Terraform download the module's source code. Review the plan before
-      typing `yes` to allow Terraform to proceed with applying the changes.
-
-      ```shell
-      terraform init
-      terraform apply
-      ```
+      Specify the _name(s)_ of the target organization unit(s), not the `ou-`
+      ID(s).
 
 ### Installation with Terraform
 
@@ -501,7 +493,7 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
   for_each          = toset(["us-east-1", "us-west-2", ])
