@@ -88,6 +88,10 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 
 
 
+# Both aws_cloudformation_stack_set_instance and aws_cloudformation_stack_set
+# need operation_preferences . Updating aws_cloudformation_stack_set.parameters
+# affects all StackSet instances.
+
 resource "aws_cloudformation_stack_set" "lights_off" {
   name         = "LightsOff${var.lights_off_stackset_name_suffix}"
   template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
@@ -104,6 +108,7 @@ resource "aws_cloudformation_stack_set" "lights_off" {
     max_concurrent_count    = 2
     failure_tolerance_count = 2
   }
+
   auto_deployment {
     enabled = false
   }
@@ -111,6 +116,10 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   parameters = var.lights_off_stackset_params
 
   tags = local.lights_off_tags
+
+  timeouts {
+    update = "4h"
+  }
 
   lifecycle {
     ignore_changes = [
@@ -143,6 +152,12 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
     ])
   }
   retain_stack = false
+
+  timeouts {
+    create = "4h"
+    update = "4h"
+    delete = "4h"
+  }
 
   lifecycle {
     ignore_changes = [
