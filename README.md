@@ -155,8 +155,8 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 
 RDS and Aurora automatically start stopped databases after 7&nbsp;days. Install
 [github.com/sqlxpert/step-stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora#get-started)
-to re-stop RDS and Aurora databases automatically, _or_ set a once-a-week
-`sched-start` and add as many days as possible to `sched-stop`&nbsp;:
+to re-stop them automatically, _or_ set a once-a-week `sched-start` and add
+days to `sched-stop`&nbsp;:
 
 |Locations|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|
