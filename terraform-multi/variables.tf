@@ -26,7 +26,7 @@ locals {
 
 variable "lights_off_stackset_call_as" {
   type        = string
-  description = "String indicating whether the CloudFormation StackSet is being created from the management AWS account (\"SELF\") or by a delegated administrator in a different AWS account (\"DELEGATED_ADMIN\")."
+  description = "The purpose of the AWS account from which the CloudFormation StackSet is being created: DELEGATED_ADMIN , or SELF for the management account."
 
   default = "SELF"
 
@@ -114,22 +114,28 @@ variable "lights_off_tags" {
 
 
 
-variable "lights_off_stackset_regions" {
-  type        = list(string)
-  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Deployments will always proceed in alphabetical order by region code."
-
-  default = []
-}
+# You may wish to customize this interface. Beyond simply targeting a list of
+# organizational units and a list of regions, CloudFormation supports a rich
+# set of inputs for determining which AWS accounts to exclude and include. See
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStackInstances.html
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html
 
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
-  description = "List of the names (not the IDs) of organization units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name)."
+  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name)."
 
   validation {
     error_message = "At least one organizational unit name is required."
 
     condition = length(var.lights_off_stackset_organizational_unit_names) >= 1
   }
+}
+
+variable "lights_off_stackset_regions" {
+  type        = list(string)
+  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment will proceed in alphabetical order by region code."
+
+  default = []
 }
 
 
