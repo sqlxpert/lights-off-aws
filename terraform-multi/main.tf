@@ -3,7 +3,7 @@
 
 
 
-local {
+locals {
   lights_off_stackset_regions = (
     length(var.lights_off_stackset_regions) == 0
     ? [local.region]
@@ -23,7 +23,7 @@ data "aws_organizations_organization" "current" {}
 data "aws_organizations_organizational_unit" "lights_off_stackset" {
   for_each = toset(var.lights_off_stackset_organizational_unit_names)
 
-  parent_id = data.aws_organizations_organization.org.roots[0].id
+  parent_id = data.aws_organizations_organization.current.roots[0].id
   name      = each.key
 }
 
@@ -99,6 +99,7 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
+    region_order            = sort(local.lights_off_stackset_regions)
     region_concurrency_type = "PARALLEL"
     max_concurrent_count    = 2
     failure_tolerance_count = 2
@@ -110,10 +111,17 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   parameters = var.lights_off_stackset_params
 
   tags = local.lights_off_tags
+
+  lifecycle {
+    ignore_changes = [
+      administration_role_arn,
+      operation_preferences[0].region_order,
+    ]
+  }
 }
 
 resource "aws_cloudformation_stack_set_instance" "lights_off" {
-  for_each = toset(data.aws_region.lights_off_stackset[*].region)
+  for_each = data.aws_region.lights_off_stackset
 
   stack_set_name = aws_cloudformation_stack_set.lights_off.name
 
@@ -126,11 +134,19 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
     failure_tolerance_count = 2
   }
 
-  stack_set_instance_region = each.key
+  stack_set_instance_region = each.value.region
   deployment_targets {
-    organizational_unit_ids = sort(
-      data.aws_organizations_organizational_unit.lights_off_stackset[*].id
-    )
+    organizational_unit_ids = sort([
+      for organizational_unit_key, organizational_unit
+      in data.aws_organizations_organizational_unit.lights_off_stackset
+      : organizational_unit.id
+    ])
   }
   retain_stack = false
+
+  lifecycle {
+    ignore_changes = [
+      operation_preferences[0].region_order,
+    ]
+  }
 }

@@ -23,6 +23,7 @@ variable "lights_off_params" {
     BackupStartWindowMinutes    = optional(number, 60)
     BackupCompleteWindowMinutes = optional(number, 360)
     BackupColdStorageAfterDays  = optional(number, -1)
+    BackupDeleteAfterDays       = optional(number, -1)
 
     FindLambdaFnMemoryMB    = optional(number, 128)
     FindLambdaFnTimeoutSecs = optional(number, 60)

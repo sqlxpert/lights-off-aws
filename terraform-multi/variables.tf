@@ -14,7 +14,7 @@ variable "lights_off_stackset_name_suffix" {
 
 locals {
   lights_off_stackset_call_as_values = [
-    "SELF", # Module default
+    "SELF",
     "DELEGATED_ADMIN"
   ]
 
@@ -26,15 +26,15 @@ locals {
 
 variable "lights_off_stackset_call_as" {
   type        = string
-  description = "String indicating whether the CloudFormation StackSet is being created from the management AWS account or by a delegated administrator in a different AWS account. The value must be one of: ${local.lights_off_stackset_call_as_values_string} ."
+  description = "String indicating whether the CloudFormation StackSet is being created from the management AWS account (\"SELF\") or by a delegated administrator in a different AWS account (\"DELEGATED_ADMIN\")."
 
-  default = local.lights_off_stackset_call_as_values[0]
+  default = "SELF"
 
   validation {
     error_message = "value must be one of: ${local.lights_off_stackset_call_as_values_string} ."
 
     condition = contains(
-      lights_off_stackset_call_as_values,
+      local.lights_off_stackset_call_as_values,
       var.lights_off_stackset_call_as
     )
   }
@@ -56,6 +56,7 @@ variable "lights_off_stackset_params" {
     BackupStartWindowMinutes    = optional(number, 60)
     BackupCompleteWindowMinutes = optional(number, 360)
     BackupColdStorageAfterDays  = optional(number, -1)
+    BackupDeleteAfterDays       = optional(number, -1)
 
     FindLambdaFnMemoryMB    = optional(number, 128)
     FindLambdaFnTimeoutSecs = optional(number, 60)
