@@ -116,9 +116,11 @@ variable "lights_off_tags" {
 
 # You may wish to customize this interface. Beyond simply targeting a list of
 # organizational units and a list of regions, CloudFormation supports a rich
-# set of inputs for determining which AWS accounts to exclude and include. See
+# set of inputs for determining which AWS accounts to exclude and include, and
+# lets you override StackSet parameters as necessary. See
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStackInstances.html
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#parameter_overrides-1
 
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
