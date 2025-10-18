@@ -118,13 +118,13 @@ locals {
 
 resource "aws_cloudformation_stack" "lights_off_prereq" {
   name          = "LightsOffPrereq${var.lights_off_stack_name_suffix}"
-  template_body = file("${path.module}/../cloudformation/lights_off_aws_prereq.yaml")
+  template_body = file("${local.cloudformation_path}/lights_off_aws_prereq.yaml")
 
   region = local.region
 
   capabilities = ["CAPABILITY_IAM"]
   policy_body = file(
-    "${path.module}/../cloudformation/lights_off_aws_prereq_policy.json"
+    "${local.cloudformation_path}/lights_off_aws_prereq_policy.json"
   )
 
   tags = local.lights_off_tags
@@ -197,7 +197,7 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 
   key = "lights_off_aws.yaml"
 
-  source = "${path.module}/../cloudformation/lights_off_aws.yaml"
+  source = "${local.cloudformation_path}/lights_off_aws.yaml"
 
   tags = local.lights_off_tags
 }
@@ -215,7 +215,7 @@ resource "aws_cloudformation_stack" "lights_off" {
 
   capabilities = ["CAPABILITY_IAM"]
   iam_role_arn = data.aws_iam_role.lights_off_deploy.arn
-  policy_body  = file("${path.module}/../cloudformation/lights_off_aws_policy.json")
+  policy_body  = file("${local.cloudformation_path}/lights_off_aws_policy.json")
 
   parameters = local.lights_off_params
 
