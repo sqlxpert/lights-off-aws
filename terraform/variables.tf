@@ -1,12 +1,20 @@
 # Start, stop and back up AWS resources tagged with cron schedules
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
+
+
 variable "lights_off_stack_name_suffix" {
   type        = string
   description = "Optional CloudFormation stack name suffix, for blue/green deployments or other scenarios in which multiple stacks created from the same template are needed in the same region, in the same AWS account."
 
   default = ""
 }
+
+
+
+# You may wish to customize this interface, for example by omitting IAM role
+# and policy names, the AWS Backup vault name, and KMS key identifiers in
+# favor of looking up those resources based on tags.
 
 variable "lights_off_params" {
   type = object({
@@ -23,6 +31,7 @@ variable "lights_off_params" {
     BackupStartWindowMinutes    = optional(number, 60)
     BackupCompleteWindowMinutes = optional(number, 360)
     BackupColdStorageAfterDays  = optional(number, -1)
+    BackupDeleteAfterDays       = optional(number, -1)
 
     FindLambdaFnMemoryMB    = optional(number, 128)
     FindLambdaFnTimeoutSecs = optional(number, 60)
@@ -49,6 +58,8 @@ variable "lights_off_params" {
   default = {}
 }
 
+
+
 variable "lights_off_tags" {
   type        = map(string)
   description = "Tag map for CloudFormation stacks and other AWS resources. Keys, all optional, are tag keys. Values are tag values. This takes precedence over the Terraform AWS provider's default_tags and over tags attributes defined by the module. To remove tags defined by the module, set the terraform and source tags to null . Warnings: Each AWS service may have different rules for tag key and tag value lengths, characters, and disallowed tag key or tag value contents. CloudFormation propagates stack tags to stack resources. CloudFormation requires stack tag values to be at least 1 character long; empty tag values are not allowed."
@@ -69,6 +80,8 @@ variable "lights_off_tags" {
     # https://github.com/hashicorp/hcl/pull/713
   }
 }
+
+
 
 variable "lights_off_region" {
   type        = string

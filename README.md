@@ -20,7 +20,7 @@ Click to view the architecture diagram:
 > Most of all, this tool is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
+has over 9,500 lines of Python! At about 620 lines of Python, Lights Off is
 easy to understand, maintain, and extend.
 
 Jump to:
@@ -48,7 +48,7 @@ Jump to:
 
  3. Install Lights Off using CloudFormation or Terraform.
 
-    - **CloudFormation** _Easy!_
+    - **CloudFormation**<br/>_Easy_ &check;
 
       Create a
       [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home)
@@ -74,7 +74,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -139,49 +139,47 @@ These cover Monday to Friday daytime work hours, 07:30 to 19:30, year-round
 |Locations|Hours Saved|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|:---:|
 |USA Mainland|**> 50%**|`u=1 u=2 u=3 u=4 u=5 H:M=11:30`|`u=2 u=3 u=4 u=5 u=6 H:M=03:30`|
-|North America (Hawaii to Newfoundland)|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
+|North America<br/>(from&nbsp;Hawaii<br/>to&nbsp;Newfoundland)|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=10:00`|`u=2 u=3 u=4 u=5 u=6 H:M=05:30`|
 |Europe|**> 50%**|`u=1 u=2 u=3 u=4 u=5 H:M=04:30`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 |India|**> 60%**|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=14:00`|
-|North America + Europe|**> 20%**|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
-|North America + Europe + India|**> 20%**|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
-|Europe + India|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
+|North America<br/>+&nbsp;Europe|**> 20%**|`u=1 H:M=04:30`|`u=6 H:M=05:30`|
+|North America<br/>+&nbsp;Europe<br/>+&nbsp;India|**> 20%**|`u=1 H:M=02:00`|`u=6 H:M=05:30`|
+|Europe<br/>+&nbsp;India|**> 40%**|`u=1 u=2 u=3 u=4 u=5 H:M=02:00`|`u=1 u=2 u=3 u=4 u=5 H:M=19:30`|
 
 #### Stopping an RDS or Aurora Database Longer than 7 Days
 
 <details>
-  <summary>Solutions for stopping a database indefinitely...</summary>
+  <summary>To stop a database indefinitely...</summary>
 
-RDS and Aurora automatically start stopped databases after 7 days.
+<br/>
 
-For a work-around, check out
-[github.com/sqlxpert/stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/stay-stopped-aws-rds-aurora/#stay-stopped-rds-and-aurora)
-, or modify of the `sched-stop` schedules above and set a once-a-week
-`sched-start` schedule that leaves enough time for the database to finish
-starting before it will be stopped again. The database will be started, and
-stopped again, at least once every 7 days.
-
-- Change the `sched-start` time to an earlier time if the database routinely
-  takes more than 1 hour to start. (You may also have to change the weekday to
-  be 1 day earlier.)
-- One or two days are added to `sched-stop` so that a slow-starting database
-  will receive an extra stop attempt 24 hours after the first attempt (and,
-  where possible, 48 hours after, as well). Stopping a database that has
-  already been stopped is harmless.
-- For North America + Europe or North America + Europe + India, if you start
-  the database manually, be sure to stop it manually when you are finished
-  using it. Elsewhere, it will be stopped at the end of the usual work day.
-- To keep up with updates, it is a good practice to set a database's weekly
-  maintenance window to a time period when the database will be running.
+RDS and Aurora automatically start stopped databases after 7&nbsp;days. Install
+[github.com/sqlxpert/step-stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora#get-started)
+to re-stop them automatically, _or_ set a once-a-week `sched-start` and add
+days to `sched-stop`&nbsp;:
 
 |Locations|`sched-start`|`sched-stop`|
 |:---|:---:|:---:|
 |USA Mainland|`uTH:M=6T02:30`|`d=_ H:M=03:30`|
-|North America (Hawaii to Newfoundland)|`uTH:M=6T04:30`|`d=_ H:M=05:30`|
+|North America (from&nbsp;Hawaii to&nbsp;Newfoundland)|`uTH:M=6T04:30`|`d=_ H:M=05:30`|
 |Europe|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
 |India|`uTH:M=5T13:00`|`d=_ H:M=14:00`|
-|North America + Europe|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
-|North America + Europe + India|`uTH:M=6T04:30`|`u=6 u=7 H:M=05:30`|
-|Europe + India|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
+|North America +&nbsp;Europe|`uTH:M=6T04:30`|&#9888;&nbsp;`u=6 u=7 H:M=05:30`|
+|North America +&nbsp;Europe +&nbsp;India|`uTH:M=6T04:30`|&#9888;&nbsp;`u=6 u=7 H:M=05:30`|
+|Europe +&nbsp;India|`uTH:M=5T18:30`|`d=_ H:M=19:30`|
+
+- If the database usually takes longer than 1&nbsp;hour to start, change
+  `sched-start` to an earlier time (and to the preceding weekday, if
+  necessary).
+- For most time zone combinations, `sched-stop` can be made daily. If a
+  database takes longer than usual to start, another stop attempt will occur
+  the next day. If you start the database manually, it will be stopped
+  automatically at the end of the day.
+- &#9888; For North&nbsp;America&nbsp;+&nbsp;Europe&nbsp;[+&nbsp;India], stop
+  attempts will occur only on weekends. If you start the database manually,
+  stop it manually when you are finished.
+- Set the database's weekly maintenance window to a time period when the
+  database will be running.
 
 </details>
 
@@ -209,7 +207,7 @@ Space was chosen as the separator and underscore, as the wildcard, because
 
 |Type|Note|Literal Values|
 |:---|:---:|:---:|
-|Once a day|d=_ or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
+|Once a day|`d=_` or d=_NN_ or u=_N_ first!|`H:M=00:00` ... `H:M=23:50`|
 |Once a week||`uTH:M=1T00:00` ... `uTH:M=7T23:50`|
 |Once a month||`dTH:M=01T00:00` ... `dTH:M=31T23:50`|
 
@@ -230,6 +228,8 @@ In most cases, you can use the `sched-start` tag without setup.
 
 <details>
   <summary>If you use custom KMS encryption keys from a different AWS account...</summary>
+
+<br/>
 
 The `sched-start` tag works for EC2 instances with EBS volumes if:
 
@@ -294,6 +294,8 @@ them.
 
 <details>
   <summary>If you work across many regions and/or AWS accounts...</summary>
+
+<br/>
 
 Because you want to use the `sched-backup` tag in a complex AWS environment,
 you must address the following AWS Backup requirements:
@@ -395,6 +397,8 @@ basic format (example: `20241231T1400Z`).
         <details>
           <summary>What to consider when evaluating errors...</summary>
 
+          <br/>
+
           The state of an AWS resource might change between the "Find" and "Do"
           steps; this sequence is fundamentally non-atomic. An operation might
           also be repeated due to queue message delivery logic; operations are
@@ -427,7 +431,9 @@ For reliability, Lights Off works completely independently in each (region, AWS
 account) pair. To deploy to multiple regions and/or AWS accounts,
 
  1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
-    accounts and regions, including any instances of the Terraform module.
+    accounts and regions (including any instances of the basic `//terraform`
+    module; you will be installing one instance of the `//terraform-multi`
+    module).
 
  2. Complete the prerequisites for creating a _StackSet_ with
     [service-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-enable-trusted-access.html).
@@ -436,41 +442,64 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
     in every target AWS account, in every target region. See the note in
     [Quick Start](#quick-start) Step&nbsp;4.
 
- 4. In the management AWS account (or a delegated administrator account),
-    create a
-    [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
-    Select "Upload a template file", then select "Choose file" and upload a
-    locally-saved copy of
-    [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-    [right-click to save as...]. On the next page, set:
+ 4. Install Lights Off as a CloudFormation StackSet, using CloudFormation or
+    Terraform. You must use your AWS organization's management account, or a
+    delegated administrator AWS account.
 
-    - StackSet name: `LightsOff`
+    - **CloudFormation**<br/>_Easy_ &check;
 
- 5. On the "Set deployment options" page, under "Accounts", select "Deploy
-    stacks in organizational units". Enter the `ou-` ID. Lights Off will be
-    deployed to all AWS accounts within this Organizational Unit. Next,
-    "Specify Regions".
+      Create a
+      [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
+      Select "Upload a template file", then select "Choose file" and upload a
+      locally-saved copy of
+      [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+      [right-click to save as...]. On the next page, set:
+
+      - StackSet name: `LightsOff`
+
+      On the "Set deployment options" page, under "Accounts", select "Deploy
+      stacks in organizational units". Enter the `ou-` ID(s). Lights Off will
+      be deployed to all AWS accounts within the organizational unit(s). Next,
+      "Specify Regions".
+
+    - **Terraform**
+
+      Your module block will now resemble:
+
+      ```terraform
+      module "lights_off_stackset" {
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.2.0"
+        # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+
+        lights_off_stackset_regions = ["us-east-1", "us-west-2", ]
+        lights_off_stackset_organizational_unit_names = ["MyOrganizationalUnit", ]
+      }
+      ```
+
+      &#9888; **In Terraform, specify the name(s) of the target organization
+      unit(s)**, not the `ou-` ID(s).
 
 ### Installation with Terraform
 
 [Quick Start](#quick-start)
 Step&nbsp;3 includes the option to install Lights Off as a Terraform module in
-one region in one AWS account.
+one region in one AWS account. This is the basic `//terraform` module.
 
-[Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
-in v6.0.0 of the Terraform AWS provider makes it possible to deploy AWS
-resources in multiple regions _in one AWS account_ without configuring a separate
-provider for each region. Lights Off is compatible because the Terraform module
-was written for AWS provider v6.0.0, the underlying CloudFormation templates
-have always let
+The
+[enhanced region support](https://registry.terraform.io/providers/hashicorp/aws/6.0.0/docs/guides/enhanced-region-support)
+added in v6.0.0 of the Terraform AWS provider makes it possible to deploy
+resources in multiple regions _in one AWS account_ without configuring a
+separate provider for each region. Lights Off is compatible because the
+Terraform module was written for AWS provider v6, the original CloudFormation
+templates always let
 [CloudFormation assign unique physical names](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-physical-id)
 to account-wide, non-regional resources like IAM roles, and the CloudFormation
-parameters have always been region-independent. Your module block will
+parameters were already region-independent. Your module block will now
 resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.1.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
   for_each          = toset(["us-east-1", "us-west-2", ])
@@ -481,16 +510,17 @@ module "lights_off" {
 For installation in multiple AWS accounts (regardless of the number of
 regions), wrapping a CloudFormation _StackSet_ in HashiCorp Configuration
 Language remains much easier than configuring Terraform to deploy identical
-resources in multiple AWS accounts. See
-[aws_cloudformation_stack_set](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set)&nbsp;.
-Instructions will be provided in a future update.
+resources in multiple AWS accounts. The
+[Multi-Account, Multi-Region (CloudFormation StackSet)](#multi-account-multi-region-cloudformation-stackset)
+installation instructions include the option to do this using a Terraform
+module, in Step&nbsp;4. This is the `//terraform-multi` module.
 
 ### Least-Privilege Installation
 
 <details>
   <summary>Least-privilege installation details...</summary>
 
-#### CloudFormation Stack
+#### CloudFormation Stack Least-Privilege
 
 You can use a
 [CloudFormation service role](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html)
@@ -515,7 +545,7 @@ set "Permissions - optional" &rarr; "IAM role - optional" to
 might need permission to pass the deployment role to CloudFormation. See the
 `LightsOffPrereq-SampleDeploymentRolePassRolePol` IAM policy for an example.
 
-#### CloudFormation StackSet
+#### CloudFormation StackSet Least-Privilege
 
 For a CloudFormation _StackSet_, you can use
 [self-managed permissions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html)
@@ -524,7 +554,7 @@ customer-managed IAM policy, attaching your policy to
 `AWSCloudFormationStackSetExecutionRole` and propagating the policy and the
 role policy attachment to all target AWS accounts.
 
-#### Terraform Module
+#### Terraform Least-Privilege
 
 If you do not give Terraform full AWS administrative permissions, you must give
 it permission to:
@@ -543,7 +573,7 @@ it permission to:
 - List, describe, and get tags for, all `data` sources. For a list, run:
 
   ```shell
-  grep 'data "' terraform/*.tf
+  grep 'data "' terraform*/*.tf | cut --delimiter=' ' --fields='1,2'
   ```
 
 Open the
@@ -558,6 +588,8 @@ table for each of:
 - `AWS Backup` (if you use the `sched-backup` tag)
 - `AWS Key Management Service` (if you encrypt SQS queues and/or CloudWatch log
   groups with KMS keys)
+- `AWS Organizations` (if you create a CloudFormation StackSet with the
+  `//terraform-multi` module)
 
 In most cases, you can scope Terraform's permissions to one workload by
 regulating resource naming and tagging, and then by using:
@@ -570,9 +602,10 @@ Check Service and Resource Control Policies (SCPs and RCPs), as well as
 resource policies (such as AWS Backup vault policies and KMS key
 policies).
 
-The deployment role defined in the `LightsOffPrereq` stack gives
-CloudFormation the permissions it needs to create the `LightsOff` stack.
-Terraform itself does not need the deployment role's permissions.
+The basic `//terraform` module creates the `LightsOffPrereq` stack, which
+defines the IAM role that gives CloudFormation the permissions it needs to
+create the `LightsOff` stack. Terraform itself does not need the deployment
+role's permissions.
 
 </details>
 
@@ -670,6 +703,8 @@ software at your own risk. You are encouraged to evaluate the source code.
 <details>
   <summary>Scheduled CloudFormation stack update details...</summary>
 
+<br/>
+
 Lights Off can delete and recreate many types of expensive AWS infrastructure
 in your own CloudFormation stacks, based on cron schedules in stack tags.
 
@@ -695,12 +730,21 @@ perform a stack update, toggling the value of the `Enable` parameter to `true`
 or `false`. (Capitalize **E**nable in the tag keys, to match the parameter
 name.)
 
-If your stack's status is other than `CREATE_COMPLETE` or `UPDATE_COMPLETE` at
-the scheduled time, Lights Off logs an error of `"type"`
-`STACK_STATUS_IRREGULAR` in the "Find" [log](#logging) instead of attempting
-an update that is likely to fail and require a rollback. To resume scheduled
-stack updates, resolve the underlying template error or permissions error and
-successfully complete one manual stack update.
+If your tagged stack lacks a CloudFormation service role, Lights Off logs an
+error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in the "Find"
+[log](#logging).
+To make scheduled updates possible, you must first perform a stack update in
+which you specify an IAM role that gives CloudFormation the permissions it
+needs to manage the resources defined in your stack. See the `RoleARN` request
+parameter in the
+[`UpdateStack` reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#API_UpdateStack_RequestParameters).
+
+If the status of your tagged stack is other than `CREATE_COMPLETE` or
+`UPDATE_COMPLETE` at the scheduled time, Lights Off logs an error of `"type"`
+`STACK_STATUS_IRREGULAR` in the "Find" log instead of attempting an update that
+is likely to fail and require a rollback. To resume scheduled stack updates,
+resolve the underlying template error or permissions error and successfully
+complete one manual stack update.
 
 </details>
 
@@ -708,6 +752,8 @@ successfully complete one manual stack update.
 
 <details>
   <summary>Extensibility details...</summary>
+
+<br/>
 
 Lights Off takes advantage of patterns in boto3, the AWS software development
 kit (SDK) for Python, and in the underlying AWS API. Adding AWS services,
@@ -771,11 +817,11 @@ management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 
-|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Terraform HCL Lines|
+|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Basic Terraform HCL Lines|
 |:---:|:---:|:---:|:---:|
 |2017|&asymp; 775|&asymp; 2,140||
 |2022|630|800 &check;||
-|2025|610 &check;|990|220|
+|2025|620 &check;|1,000|270|
 
 ## Dedication
 

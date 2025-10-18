@@ -8,8 +8,6 @@ locals {
   # Provider functions added in Terraform v1.8.0
   # arn_parse added in Terraform AWS provider v5.40.0
 
-  partition = local.caller_arn_parts["partition"]
-
   region = (
     var.lights_off_region == ""
     ? data.aws_region.current.region
@@ -33,3 +31,5 @@ locals {
     var.lights_off_tags,
   )
 }
+
+

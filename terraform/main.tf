@@ -118,13 +118,13 @@ locals {
 
 resource "aws_cloudformation_stack" "lights_off_prereq" {
   name          = "LightsOffPrereq${var.lights_off_stack_name_suffix}"
-  template_body = file("${path.module}/../cloudformation/lights_off_aws_prereq.yaml")
+  template_body = file("${local.cloudformation_path}/lights_off_aws_prereq.yaml")
 
   region = local.region
 
   capabilities = ["CAPABILITY_IAM"]
   policy_body = file(
-    "${path.module}/../cloudformation/lights_off_aws_prereq_policy.json"
+    "${local.cloudformation_path}/lights_off_aws_prereq_policy.json"
   )
 
   tags = local.lights_off_tags
@@ -142,6 +142,15 @@ resource "aws_s3_bucket" "lights_off_cloudformation" {
   region = local.region
 
   tags = local.lights_off_tags
+}
+
+resource "aws_s3_bucket_versioning" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
+
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
@@ -180,6 +189,7 @@ resource "aws_s3_object" "lights_off_cloudformation" {
   region = local.region
 
   depends_on = [
+    aws_s3_bucket_versioning.lights_off_cloudformation,
     aws_s3_bucket_public_access_block.lights_off_cloudformation,
     aws_s3_bucket_ownership_controls.lights_off_cloudformation,
     aws_s3_bucket_server_side_encryption_configuration.lights_off_cloudformation,
@@ -187,21 +197,27 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 
   key = "lights_off_aws.yaml"
 
-  source = "${path.module}/../cloudformation/lights_off_aws.yaml"
-  etag   = filemd5("${path.module}/../cloudformation/lights_off_aws.yaml")
+  source = "${local.cloudformation_path}/lights_off_aws.yaml"
+  etag   = filemd5("${local.cloudformation_path}/lights_off_aws.yaml")
+  # A template change will yield a new S3 object version.
 
   tags = local.lights_off_tags
 }
 
 resource "aws_cloudformation_stack" "lights_off" {
-  name         = "LightsOff${var.lights_off_stack_name_suffix}"
-  template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
+  name = "LightsOff${var.lights_off_stack_name_suffix}"
+
+  template_url = join("", [
+    "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/",
+    aws_s3_object.lights_off_cloudformation.key,
+    "?versionId=${aws_s3_object.lights_off_cloudformation.version_id}"
+  ])
 
   region = local.region
 
   capabilities = ["CAPABILITY_IAM"]
   iam_role_arn = data.aws_iam_role.lights_off_deploy.arn
-  policy_body  = file("${path.module}/../cloudformation/lights_off_aws_policy.json")
+  policy_body  = file("${local.cloudformation_path}/lights_off_aws_policy.json")
 
   parameters = local.lights_off_params
 
