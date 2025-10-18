@@ -728,12 +728,21 @@ perform a stack update, toggling the value of the `Enable` parameter to `true`
 or `false`. (Capitalize **E**nable in the tag keys, to match the parameter
 name.)
 
-If your stack's status is other than `CREATE_COMPLETE` or `UPDATE_COMPLETE` at
-the scheduled time, Lights Off logs an error of `"type"`
-`STACK_STATUS_IRREGULAR` in the "Find" [log](#logging) instead of attempting
-an update that is likely to fail and require a rollback. To resume scheduled
-stack updates, resolve the underlying template error or permissions error and
-successfully complete one manual stack update.
+If your tagged stack lacks a CloudFormation service role, Lights Off logs an
+error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in the "Find"
+[log](#logging).
+To make scheduled updates possible, you must first perform a stack update in
+which you specify an IAM role that gives CloudFormation the permissions it
+needs to manage the resources defined in your stack. See the `RoleARN` request
+parameter in the
+[`UpdateStack` reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#API_UpdateStack_RequestParameters).
+
+If the status of your tagged stack is other than `CREATE_COMPLETE` or
+`UPDATE_COMPLETE` at the scheduled time, Lights Off logs an error of `"type"`
+`STACK_STATUS_IRREGULAR` in the "Find" log instead of attempting an update that
+is likely to fail and require a rollback. To resume scheduled stack updates,
+resolve the underlying template error or permissions error and successfully
+complete one manual stack update.
 
 </details>
 

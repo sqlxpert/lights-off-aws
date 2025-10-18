@@ -486,12 +486,20 @@ class AWSOpUpdateStack(AWSOp):
   def op_kwargs(self, rsrc, cycle_start_str):
     """Take 1 describe_stacks result, return update_stack kwargs
 
-    An empty dict indicates that no stack update is needed.
+    An empty dict indicates that no stack update is needed (or possible).
     """
     op_kwargs_out = {}
     params_out = []
 
-    if rsrc.get("StackStatus") in (
+    if rsrc.get("RoleARN", "") == "":
+      log(
+        "STACK_NEEDS_SERVICE_ROLE",
+        "Update and specify a CloudFormation service role",
+        logging.ERROR
+      )
+      log("AWS_RESPONSE_PART", rsrc, logging.ERROR)
+
+    elif rsrc.get("StackStatus") in (
       "UPDATE_COMPLETE",
       "CREATE_COMPLETE",
     ):
