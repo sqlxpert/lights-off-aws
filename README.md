@@ -20,7 +20,7 @@ Click to view the architecture diagram:
 > Most of all, this tool is lightweight. Not counting blanks, comments, or
 tests, AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 lines of Python! At about 600 lines of Python, Lights Off is
+has over 9,500 lines of Python! At about 620 lines of Python, Lights Off is
 easy to understand, maintain, and extend.
 
 Jump to:
@@ -817,11 +817,11 @@ management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 
-|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Terraform HCL Lines|
+|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Basic Terraform HCL Lines|
 |:---:|:---:|:---:|:---:|
 |2017|&asymp; 775|&asymp; 2,140||
 |2022|630|800 &check;||
-|2025|610 &check;|990|220|
+|2025|620 &check;|1,000|270|
 
 ## Dedication
 
