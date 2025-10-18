@@ -91,6 +91,8 @@ resource "aws_s3_object" "lights_off_cloudformation" {
   key = "lights_off_aws.yaml"
 
   source = "${local.cloudformation_path}/lights_off_aws.yaml"
+  etag   = filemd5("${local.cloudformation_path}/lights_off_aws.yaml")
+  # A template change will yield a new S3 object version.
 
   tags = local.lights_off_tags
 }
