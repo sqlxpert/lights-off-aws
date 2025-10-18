@@ -37,6 +37,15 @@ resource "aws_s3_bucket" "lights_off_cloudformation" {
   tags = local.lights_off_tags
 }
 
+resource "aws_s3_bucket_versioning" "lights_off_cloudformation" {
+  bucket = aws_s3_bucket.lights_off_cloudformation.bucket
+  region = local.region
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "lights_off_cloudformation" {
   bucket = aws_s3_bucket.lights_off_cloudformation.bucket
   region = local.region
@@ -73,6 +82,7 @@ resource "aws_s3_object" "lights_off_cloudformation" {
   region = local.region
 
   depends_on = [
+    aws_s3_bucket_versioning.lights_off_cloudformation,
     aws_s3_bucket_public_access_block.lights_off_cloudformation,
     aws_s3_bucket_ownership_controls.lights_off_cloudformation,
     aws_s3_bucket_server_side_encryption_configuration.lights_off_cloudformation,
@@ -81,7 +91,6 @@ resource "aws_s3_object" "lights_off_cloudformation" {
   key = "lights_off_aws.yaml"
 
   source = "${path.module}/../cloudformation/lights_off_aws.yaml"
-  etag   = filemd5("${path.module}/../cloudformation/lights_off_aws.yaml")
 
   tags = local.lights_off_tags
 }
@@ -93,8 +102,13 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 # affects all StackSet instances.
 
 resource "aws_cloudformation_stack_set" "lights_off" {
-  name         = "LightsOff${var.lights_off_stackset_name_suffix}"
-  template_url = "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/${aws_s3_object.lights_off_cloudformation.key}"
+  name = "LightsOff${var.lights_off_stackset_name_suffix}"
+
+  template_url = join("", [
+    "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/",
+    aws_s3_object.lights_off_cloudformation.key,
+    "?versionId=${aws_s3_object.lights_off_cloudformation.version_id}"
+  ])
 
   region = local.region
 
