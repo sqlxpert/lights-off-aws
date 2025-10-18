@@ -476,8 +476,8 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
       }
       ```
 
-      Specify the _name(s)_ of the target organization unit(s), not the `ou-`
-      ID(s).
+      &#9888; **In Terraform, specify the name(s) of the target organization
+      unit(s)**, not the `ou-` ID(s).
 
 ### Installation with Terraform
 
@@ -485,12 +485,13 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 Step&nbsp;3 includes the option to install Lights Off as a Terraform module in
 one region in one AWS account.
 
-[Enhanced region support](https://www.hashicorp.com/en/blog/terraform-aws-provider-6-0-now-generally-available#enhanced-region-support)
-in v6.0.0 of the Terraform AWS provider makes it possible to deploy AWS
-resources in multiple regions _in one AWS account_ without configuring a separate
-provider for each region. Lights Off is compatible because the Terraform module
-was written for AWS provider v6, the original CloudFormation templates always
-let
+The
+[enhanced region support](https://registry.terraform.io/providers/hashicorp/aws/6.0.0/docs/guides/enhanced-region-support)
+added in v6.0.0 of the Terraform AWS provider makes it possible to deploy
+resources in multiple regions _in one AWS account_ without configuring a
+separate provider for each region. Lights Off is compatible because the
+Terraform module was written for AWS provider v6, the original CloudFormation
+templates always let
 [CloudFormation assign unique physical names](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-physical-id)
 to account-wide, non-regional resources like IAM roles, and the CloudFormation
 parameters were already region-independent. Your module block will now
