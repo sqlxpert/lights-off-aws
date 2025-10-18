@@ -510,7 +510,7 @@ For installation in multiple AWS accounts (regardless of the number of
 regions), wrapping a CloudFormation _StackSet_ in HashiCorp Configuration
 Language remains much easier than configuring Terraform to deploy identical
 resources in multiple AWS accounts. The
-[Multi-Account, Multi-Region (CloudFormation StackSet)](#multi-account-multi-region-cloud-formation-stackset)
+[Multi-Account, Multi-Region (CloudFormation StackSet)](#multi-account-multi-region-cloudformation-stackset)
 installation instructions explain how, in Step&nbsp;4.
 
 ### Least-Privilege Installation

@@ -885,6 +885,10 @@ Resources:
 
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
+
+    # Intent: Change Enable to false to keep old stack until logs expire.
+    DeletionPolicy: Delete
+
     Properties:
       RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
@@ -1743,6 +1747,10 @@ Resources:
 
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
+
+    # Intent: Change Enable to false to keep old stack until logs expire.
+    DeletionPolicy: Delete
+
     Properties:
       RetentionInDays: !Ref LogRetentionInDays
       KmsKeyId:
