@@ -10,10 +10,9 @@ locals {
 
   partition = local.caller_arn_parts["partition"]
 
-  region = (
-    var.lights_off_region == ""
-    ? data.aws_region.current.region
-    : var.lights_off_region
+  region = coalesce(
+    var.lights_off_region,
+    data.aws_region.current.region
   )
   # data.aws_region.region added,
   # data.aws_region.name marked deprecated
