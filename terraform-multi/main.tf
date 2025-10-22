@@ -3,16 +3,12 @@
 
 
 
-locals {
-  lights_off_stackset_regions = (
+data "aws_region" "lights_off_stackset" {
+  for_each = toset(
     length(var.lights_off_stackset_regions) == 0
     ? [local.region]
     : var.lights_off_stackset_regions
   )
-}
-
-data "aws_region" "lights_off_stackset" {
-  for_each = toset(local.lights_off_stackset_regions)
 
   region = each.key
 }
@@ -119,7 +115,7 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
-    region_order            = sort(local.lights_off_stackset_regions)
+    region_order            = sort(keys(data.aws_region.lights_off_stackset))
     region_concurrency_type = "PARALLEL"
     max_concurrent_count    = 2
     failure_tolerance_count = 2
@@ -153,7 +149,7 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
   call_as = var.lights_off_stackset_call_as
 
   operation_preferences {
-    region_order            = sort(local.lights_off_stackset_regions)
+    region_order            = sort(keys(data.aws_region.lights_off_stackset))
     region_concurrency_type = "PARALLEL"
     max_concurrent_count    = 2
     failure_tolerance_count = 2
