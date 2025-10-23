@@ -80,13 +80,13 @@ variable "lights_off_stackset_params" {
     PlaceholderHelp                     = optional(string, "")
     PlaceholderAdvancedParameters       = optional(string, "")
 
-    # Repeat defaults from ../cloudformation/lights_off_aws.yaml
+    # Repeat defaults from cloudformation/lights_off_aws.yaml
 
     # For a StackSet, we must cover all parameters here or in
     # aws_cloudformation_stack_set.lifecycle.ignore_changes
   })
 
-  description = "Lights Off CloudFormation StackSet parameter map. Keys, all optional, are parameter names from ../cloudformation/lights_off_aws.yaml ; parameters are described there. CloudFormation and Terraform data types match, except for Boolean parameters. Terraform converts bool values to CloudFormation String values automatically. For BackupRoleName in the StackSet module, include any role path prefix in Terraform, just as explained in the CloudFormation parameter description."
+  description = "Lights Off CloudFormation StackSet parameter map. Keys, all optional, are parameter names from cloudformation/lights_off_aws.yaml ; parameters are described there. CloudFormation and Terraform data types match, except for Boolean parameters. Terraform converts bool values to CloudFormation String values automatically. For BackupRoleName in the StackSet module, include any role path prefix in Terraform, just as explained in the CloudFormation parameter description."
 
   default = {}
 }
