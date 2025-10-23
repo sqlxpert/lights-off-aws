@@ -4,11 +4,10 @@
 
 
 data "aws_region" "lights_off_stackset" {
-  for_each = toset(
-    length(var.lights_off_stackset_regions) == 0
-    ? [local.region]
-    : var.lights_off_stackset_regions
-  )
+  for_each = toset(coalescelist(
+    var.lights_off_stackset_regions,
+    [local.region]
+  ))
 
   region = each.key
 }

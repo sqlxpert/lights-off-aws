@@ -18,7 +18,7 @@ locals {
   # data.aws_region.name marked deprecated
   # in Terraform AWS provider v6.0.0
 
-  cloudformation_path = "${path.module}/../cloudformation"
+  cloudformation_path = "${path.module}/cloudformation"
 
   module_directory = basename(path.module)
   lights_off_tags = merge(

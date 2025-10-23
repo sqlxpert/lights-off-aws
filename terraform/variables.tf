@@ -50,10 +50,10 @@ variable "lights_off_params" {
     LogRetentionInDays = optional(number, 7)
     LogLevel           = optional(string, "ERROR")
 
-    # Repeat defaults from ../cloudformation/lights_off_aws.yaml
+    # Repeat defaults from cloudformation/lights_off_aws.yaml
   })
 
-  description = "Lights Off CloudFormation stack parameter map. Keys, all optional, are parameter names from ../cloudformation/lights_off_aws.yaml ; parameters are described there. CloudFormation and Terraform data types match, except for Boolean parameters. Terraform converts bool values to CloudFormation String values automatically. Specifying a value other than the empty string for BackupRoleName , BackupVaultName , DoLambdaFnRoleAttachLocalPolicyName , SqsKmsKey or CloudWatchLogsKmsKey causes Terraform to look up the resource, which must exist. For BackupRoleName , omit any role path prefix in Terraform, contrary to the CloudFormation parameter description. Set BackupRoleName to \"AWSBackupDefaultServiceRole\" and BackupVaultName to \"Default\" in Terraform only if AWS Backup has already been configured."
+  description = "Lights Off CloudFormation stack parameter map. Keys, all optional, are parameter names from cloudformation/lights_off_aws.yaml ; parameters are described there. CloudFormation and Terraform data types match, except for Boolean parameters. Terraform converts bool values to CloudFormation String values automatically. Specifying a value other than the empty string for BackupRoleName , BackupVaultName , DoLambdaFnRoleAttachLocalPolicyName , SqsKmsKey or CloudWatchLogsKmsKey causes Terraform to look up the resource, which must exist. For BackupRoleName , omit any role path prefix in Terraform, contrary to the CloudFormation parameter description. Set BackupRoleName to \"AWSBackupDefaultServiceRole\" and BackupVaultName to \"Default\" in Terraform only if AWS Backup has already been configured."
 
   default = {}
 }

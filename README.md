@@ -74,7 +74,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.3.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -468,7 +468,7 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.2.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.3.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
         lights_off_stackset_regions = ["us-east-1", "us-west-2", ]
@@ -499,7 +499,7 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.2.1"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.3.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
   for_each          = toset(["us-east-1", "us-west-2", ])
