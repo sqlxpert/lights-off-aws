@@ -60,6 +60,7 @@ variable "lights_off_stackset_params" {
 
     FindLambdaFnMemoryMB    = optional(number, 128)
     FindLambdaFnTimeoutSecs = optional(number, 60)
+    FindLambdaFnScheduleExprCronUtc = optional(string, "01,11,21,31,41,51 * * * ? *")
 
     DoLambdaFnReservedConcurrentExecutions             = optional(number, -1)
     DoLambdaFnMaximumConcurrency                       = optional(number, 5)

@@ -133,6 +133,19 @@ Parameters:
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
 
+  FindLambdaFnScheduleExprCronUtc:
+    Type: String
+    Description: >-
+      The body (inside the parentheses) of the EventBridge Scheduler expression
+      (always cron, always UTC). Do not change this! The default,
+      "01,11,21,31,41,51 * * * ? *", which causes the "Find" AWS Lamba function
+      to run every 10 minutes beginning 1 minute after the hour, is compatible
+      with timeouts in the CloudFormation template, "cycle_minutes" and
+      "cutoff_minutes" defaults in the source code, and all schedule tag rules
+      in the documentation. For the format, see
+      https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html#cron-based
+    Default: "01,11,21,31,41,51 * * * ? *"
+
   DoLambdaFnReservedConcurrentExecutions:
     Type: Number
     Description: >-
@@ -325,6 +338,7 @@ Metadata:
         Parameters:
           - FindLambdaFnMemoryMB
           - FindLambdaFnTimeoutSecs
+          - FindLambdaFnScheduleExprCronUtc
       - Label:
           default: AWS Lambda function to do scheduled operations
         Parameters:
@@ -377,6 +391,8 @@ Metadata:
         default: Megabytes of memory
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
+      FindLambdaFnScheduleExprCronUtc:
+        default: Schedule expression (cron, UTC)
       DoLambdaFnReservedConcurrentExecutions:
         default: Reserved parallel batches
       DoLambdaFnMaximumConcurrency:
@@ -1730,11 +1746,10 @@ Resources:
     Properties:
       GroupName: !Ref FindLambdaFnSchedGrp
       Description: >-
-        Every 10 minutes (do not change!): invoke "Find" AWS Lambda function
+        Invoke "Find" AWS Lambda function; see FindLambdaFnScheduleExprCronUtc
+        in CloudFormation
       ScheduleExpressionTimezone: UTC
-      ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
-      # cron(minutes hours day-of-month month day-of-week year)
-      # https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html#cron-based
+      ScheduleExpression: !Sub "cron(${FindLambdaFnScheduleExprCronUtc})"
       FlexibleTimeWindow: { Mode: "OFF" }  # Quotes required!
       Target:
         RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn
