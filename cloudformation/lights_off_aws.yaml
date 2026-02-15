@@ -267,6 +267,26 @@ Parameters:
       primary key itself) must exist in every target region.
     Default: ""
 
+  ErrorQueueAdditionalPolicyStatements:
+    Type: String
+    Description: >-
+      JSON objects specifying additional statements for the queue policy of the
+      error queue. The least-privilege default is the empty string. If you set
+      this, you must start with a comma. Separate multiple statements with
+      commas.
+    Default: ""
+
+  GetQueueAttributesConditions:
+    Type: String
+    Description: >-
+      A JSON object specifying conditions for GetQueueAttributes . The default,
+      the empty object, allows any principal to call GetQueueAttributes . To
+      limit this action to principals in the same AWS account, specify
+      '{ "StringEquals" : { "aws:PrincipalAccount" : "${aws:ResourceAccount}" } }'.
+      For principals in the same AWS organization, specify
+      '{ "StringEquals" : { "aws:PrincipalOrgId" : "${aws:ResourceOrgID}" } }'.
+    Default: "{}"
+
   LogRetentionInDays:
     Type: Number
     Description: >-
@@ -355,6 +375,8 @@ Metadata:
           - OperationQueueVisibilityTimeoutSecs
           - QueueMessageBytesMax
           - ErrorQueueMessageRetentionPeriodSecs
+          - ErrorQueueAdditionalPolicyStatements
+          - GetQueueAttributesConditions
           - SqsKmsKey
       - Label:
           default: Logs
@@ -413,6 +435,10 @@ Metadata:
         default: Maximum bytes in a message
       ErrorQueueMessageRetentionPeriodSecs:
         default: Seconds before deleting an error queue message
+      ErrorQueueAdditionalPolicyStatements:
+        default: Additional error queue policy statements
+      GetQueueAttributesConditions:
+        default: Queue policy conditions for GetQueueAttributes
       SqsKmsKey:
         default: KMS encryption key
       LogRetentionInDays:
@@ -768,57 +794,80 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref ErrorQueue ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: RequireTls
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:*
-            Resource: "*"
-            Condition:
-              Bool: { aws:SecureTransport: "false" }
-          - Effect: Allow
-            Principal: "*"
-            Action: sqs:GetQueueAttributes
-            Resource: "*"
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceScheduleNoteRoleNeedsSqsKmsEncrypt
-                - SourceSchedule
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals:
-                "aws:PrincipalArn":
-                  - !GetAtt InvokeFindLambdaFnRole.Arn
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt
-                - SourceQueue
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals:
-                "aws:SourceArn":
-                  - !GetAtt OperationQueue.Arn
-          - Sid: ExclusiveSources
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals:
-                "aws:PrincipalArn":
-                  - !GetAtt InvokeFindLambdaFnRole.Arn
-                "aws:SourceArn":
-                  - !GetAtt OperationQueue.Arn
+      # A YAML policy would have interfered with substitution of JSON in
+      # GetQueueAttributesConditions and ErrorQueueAdditionalPolicyStatements .
+      PolicyDocument: !Sub
+        - >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "RequireTls",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:*",
+                "Resource": "*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                }
+              },
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:GetQueueAttributes",
+                "Resource": "*",
+                "Condition": ${GetQueueAttributesConditions}
+              },
+              {
+                "Sid": "${SourceScheduleSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${InvokeFindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${SourceQueueSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:SourceArn": "${OperationQueue.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveSources",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${InvokeFindLambdaFnRole.Arn}",
+                    "aws:SourceArn": "${OperationQueue.Arn}"
+                  }
+                }
+              }
+              ${ErrorQueueAdditionalPolicyStatements}
+            ]
+          }
+        - SourceScheduleSid: !If
+            - SqsKmsKeyCustom
+            - "SourceScheduleNoteRoleNeedsSqsKmsEncrypt"
+            - "SourceSchedule"
+          SourceQueueSid: !If
+            - SqsKmsKeyCustom
+            - "SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt"
+            - "SourceQueue"
 
   OperationQueuePol:
     Type: AWS::SQS::QueuePolicy
