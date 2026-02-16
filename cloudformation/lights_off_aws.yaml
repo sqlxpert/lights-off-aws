@@ -275,7 +275,7 @@ Parameters:
       first or only one, specify a comma and a JSON object. You could allow
       access from a central monitoring account, for example. See
       https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
-      Default: ''  # Values might contain double quotation marks!
+    Default: ''  # Values might contain double quotation marks!
 
   GetQueueAttributesConditions:
     Type: String
