@@ -630,8 +630,10 @@ software at your own risk. You are encouraged to evaluate the source code.
   (or an error queue, if an operation fails). Encryption in transit is
   required.
 
-- Readable IAM policies, formatted as CloudFormation YAML rather than JSON,
-  and broken down into discrete statements by service, resource or principal.
+- Readable IAM policies, broken down into discrete statements by service,
+  resource or principal. Policies are formatted as CloudFormation YAML rather
+  than as native JSON, except when it's necessary to allow insertion of
+  custom, user-specified JSON.
 
 - Optional encryption at rest with the AWS Key Management System (KMS), for
   queue message bodies (may contain resource identifiers) and for logs (may

@@ -270,22 +270,28 @@ Parameters:
   ErrorQueueAdditionalPolicyStatements:
     Type: String
     Description: >-
-      JSON objects specifying additional statements for the queue policy of the
-      error queue. The least-privilege default is the empty string. If you set
-      this, you must start with a comma. Separate multiple statements with
-      commas.
-    Default: ""
+      Additional statements for the error queue policy. The least-privilege
+      default is the empty string. For each custom statement, including the
+      first or only one, specify a comma and a JSON object. You could allow
+      access from a central monitoring account, for example. See
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
+      Default: ''  # Values might contain double quotation marks!
 
   GetQueueAttributesConditions:
     Type: String
     Description: >-
-      A JSON object specifying conditions for GetQueueAttributes . The default,
-      the empty object, allows any principal to call GetQueueAttributes . To
-      limit this action to principals in the same AWS account, specify
-      '{ "StringEquals" : { "aws:PrincipalAccount" : "${aws:ResourceAccount}" } }'.
-      For principals in the same AWS organization, specify
-      '{ "StringEquals" : { "aws:PrincipalOrgId" : "${aws:ResourceOrgID}" } }'.
-    Default: "{}"
+      Conditions to restrict GetQueueAttributes in the operation and error
+      queue policies. The default, the empty object '{}', allows any principal
+      to call GetQueueAttributes . If SQS queue attributes are sensitive,
+      specify one or more custom conditions in a JSON object. For example,
+      '{ "StringEquals" : { "aws:PrincipalAccount" : "${aws:ResourceAccount}" } }'
+      would allow principals in the same AWS account only or
+      '{ "StringEquals" : { "aws:PrincipalOrgId" : "${aws:ResourceOrgID}" } }'
+      , principals in the same AWS organization only. See
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
+      and
+      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html
+    Default: '{}'  # Values might contain double quotation marks!
 
   LogRetentionInDays:
     Type: Number
@@ -794,8 +800,9 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref ErrorQueue ]
-      # A YAML policy would have interfered with substitution of JSON in
-      # GetQueueAttributesConditions and ErrorQueueAdditionalPolicyStatements .
+      # Expressing a policy in YAML makes it easier to read and maintain, but
+      # we need to insert custom JSON from GetQueueAttributesConditions and
+      # ErrorQueueAdditionalPolicyStatements .
       PolicyDocument: !Sub
         - >-
           {
@@ -860,7 +867,8 @@ Resources:
               ${ErrorQueueAdditionalPolicyStatements}
             ]
           }
-        - SourceScheduleSid: !If
+        -
+          SourceScheduleSid: !If
             - SqsKmsKeyCustom
             - "SourceScheduleNoteRoleNeedsSqsKmsEncrypt"
             - "SourceSchedule"
@@ -873,80 +881,120 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref OperationQueue ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: RequireTls
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:*
-            Resource: "*"
-            Condition:
-              Bool: { aws:SecureTransport: "false" }
-          - Effect: Allow
-            Principal: "*"
-            Action: sqs:GetQueueAttributes
-            Resource: "*"
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt
-                - SourceLambdaFn
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
-          - Sid: ExclusiveSource
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt
-                - TargetLambdaFn
-            Effect: Allow
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:PrincipalArn: !GetAtt DoLambdaFnRole.Arn }
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
-                - TargetDeadLetterQueue
-            Effect: Allow
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:SourceArn: !GetAtt ErrorQueue.Arn }
-          - Sid: ExclusiveTargets
-            Effect: Deny
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals:
-                aws:PrincipalArn:
-                  - !GetAtt DoLambdaFnRole.Arn
-                aws:SourceArn:
-                  - !GetAtt ErrorQueue.Arn
+      # Expressing a policy in YAML makes it easier to read and maintain, but
+      # we need to insert custom JSON from GetQueueAttributesConditions .
+      PolicyDocument: !Sub
+        - >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "RequireTls",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:*",
+                "Resource": "*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                }
+              },
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:GetQueueAttributes",
+                "Resource": "*",
+                "Condition": ${GetQueueAttributesConditions}
+              },
+              {
+                "Sid": "${SourceLambdaFnSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${FindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveSource",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${FindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${TargetLambdaFnSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": [
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${DoLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${TargetDeadLetterQueueSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": [
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:SourceArn": "${ErrorQueue.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveTargets",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": [
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${DoLambdaFnRole.Arn}",
+                    "aws:SourceArn": "${ErrorQueue.Arn}"
+                  }
+                }
+              }
+            ]
+          }
+        -
+          SourceLambdaFnSid: !If
+            - SqsKmsKeyCustom
+            - "SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt"
+            - "SourceLambdaFn"
+          TargetLambdaFnSid: !If
+            - SqsKmsKeyCustom
+            - "TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt"
+            - "TargetLambdaFn"
+          TargetDeadLetterQueueSid: !If
+            - SqsKmsKeyCustom
+            - "TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt"
+            - "TargetDeadLetterQueue"
 
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
