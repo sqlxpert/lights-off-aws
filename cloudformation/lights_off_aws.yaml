@@ -133,6 +133,19 @@ Parameters:
       https://aws.amazon.com/about-aws/whats-new/2018/10/aws-lambda-supports-functions-that-can-run-up-to-15-minutes/
     Default: 60
 
+  FindLambdaFnScheduleExprCronUtc:
+    Type: String
+    Description: >-
+      The body (inside the parentheses) of the EventBridge Scheduler expression
+      (always cron, always UTC). Do not change this! The default,
+      "01,11,21,31,41,51 * * * ? *", which causes the "Find" AWS Lamba function
+      to run every 10 minutes beginning 1 minute after the hour, is compatible
+      with timeouts in the CloudFormation template, "cycle_minutes" and
+      "cutoff_minutes" defaults in the source code, and all schedule tag rules
+      in the documentation. For the format, see
+      https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html#cron-based
+    Default: "01,11,21,31,41,51 * * * ? *"
+
   DoLambdaFnReservedConcurrentExecutions:
     Type: Number
     Description: >-
@@ -254,6 +267,16 @@ Parameters:
       primary key itself) must exist in every target region.
     Default: ""
 
+  ErrorQueueAdditionalPolicyStatements:
+    Type: String
+    Description: >-
+      Additional statements for the error queue policy. The least-privilege
+      default is the empty string. For each custom statement, including the
+      first or only one, specify a comma and a JSON object. You could allow
+      access from a central monitoring account, for example. See
+      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
+    Default: ''  # Values might contain double quotation marks!
+
   LogRetentionInDays:
     Type: Number
     Description: >-
@@ -325,6 +348,7 @@ Metadata:
         Parameters:
           - FindLambdaFnMemoryMB
           - FindLambdaFnTimeoutSecs
+          - FindLambdaFnScheduleExprCronUtc
       - Label:
           default: AWS Lambda function to do scheduled operations
         Parameters:
@@ -341,6 +365,7 @@ Metadata:
           - OperationQueueVisibilityTimeoutSecs
           - QueueMessageBytesMax
           - ErrorQueueMessageRetentionPeriodSecs
+          - ErrorQueueAdditionalPolicyStatements
           - SqsKmsKey
       - Label:
           default: Logs
@@ -377,6 +402,8 @@ Metadata:
         default: Megabytes of memory
       FindLambdaFnTimeoutSecs:
         default: Seconds before timeout
+      FindLambdaFnScheduleExprCronUtc:
+        default: Schedule expression (cron, UTC)
       DoLambdaFnReservedConcurrentExecutions:
         default: Reserved parallel batches
       DoLambdaFnMaximumConcurrency:
@@ -397,6 +424,8 @@ Metadata:
         default: Maximum bytes in a message
       ErrorQueueMessageRetentionPeriodSecs:
         default: Seconds before deleting an error queue message
+      ErrorQueueAdditionalPolicyStatements:
+        default: Additional error queue policy statements
       SqsKmsKey:
         default: KMS encryption key
       LogRetentionInDays:
@@ -752,136 +781,187 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref ErrorQueue ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: RequireTls
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:*
-            Resource: "*"
-            Condition:
-              Bool: { aws:SecureTransport: "false" }
-          - Effect: Allow
-            Principal: "*"
-            Action: sqs:GetQueueAttributes
-            Resource: "*"
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceScheduleNoteRoleNeedsSqsKmsEncrypt
-                - SourceSchedule
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals:
-                "aws:PrincipalArn":
-                  - !GetAtt InvokeFindLambdaFnRole.Arn
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt
-                - SourceQueue
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals:
-                "aws:SourceArn":
-                  - !GetAtt OperationQueue.Arn
-          - Sid: ExclusiveSources
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals:
-                "aws:PrincipalArn":
-                  - !GetAtt InvokeFindLambdaFnRole.Arn
-                "aws:SourceArn":
-                  - !GetAtt OperationQueue.Arn
+      # Using YAML makes a policy easier to read, but we need to support
+      # insertion of custom JSON from ErrorQueueAdditionalPolicyStatements .
+      PolicyDocument: !Sub
+        - >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "RequireTls",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:*",
+                "Resource": "*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "${SourceScheduleSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${InvokeFindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${SourceQueueSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:SourceArn": "${OperationQueue.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveSources",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${InvokeFindLambdaFnRole.Arn}",
+                    "aws:SourceArn": "${OperationQueue.Arn}"
+                  }
+                }
+              }
+              ${ErrorQueueAdditionalPolicyStatements}
+            ]
+          }
+        -
+          SourceScheduleSid: !If
+            - SqsKmsKeyCustom
+            - "SourceScheduleNoteRoleNeedsSqsKmsEncrypt"
+            - "SourceSchedule"
+          SourceQueueSid: !If
+            - SqsKmsKeyCustom
+            - "SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt"
+            - "SourceQueue"
 
   OperationQueuePol:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref OperationQueue ]
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: RequireTls
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:*
-            Resource: "*"
-            Condition:
-              Bool: { aws:SecureTransport: "false" }
-          - Effect: Allow
-            Principal: "*"
-            Action: sqs:GetQueueAttributes
-            Resource: "*"
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt
-                - SourceLambdaFn
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
-          - Sid: ExclusiveSource
-            Effect: Deny
-            Principal: "*"
-            Action: sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals: { aws:PrincipalArn: !GetAtt FindLambdaFnRole.Arn }
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt
-                - TargetLambdaFn
-            Effect: Allow
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:PrincipalArn: !GetAtt DoLambdaFnRole.Arn }
-          - Sid:
-              Fn::If:
-                - SqsKmsKeyCustom
-                - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
-                - TargetDeadLetterQueue
-            Effect: Allow
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnEquals: { aws:SourceArn: !GetAtt ErrorQueue.Arn }
-          - Sid: ExclusiveTargets
-            Effect: Deny
-            Principal: "*"
-            Action:
-              - sqs:ChangeMessageVisibility
-              - sqs:ReceiveMessage
-              - sqs:DeleteMessage
-            Resource: "*"
-            Condition:
-              ArnNotEquals:
-                aws:PrincipalArn:
-                  - !GetAtt DoLambdaFnRole.Arn
-                aws:SourceArn:
-                  - !GetAtt ErrorQueue.Arn
+      # Using YAML makes a policy easier to read, but we may need to support
+      # insertion of custom, user-specified JSON in the future.
+      PolicyDocument: !Sub
+        - >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "RequireTls",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:*",
+                "Resource": "*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "${SourceLambdaFnSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${FindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveSource",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${FindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${TargetLambdaFnSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": [
+                  "sqs:GetQueueAttributes",
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${DoLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "${TargetDeadLetterQueueSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": [
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:SourceArn": "${ErrorQueue.Arn}"
+                  }
+                }
+              },
+              {
+                "Sid": "ExclusiveTargets",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": [
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnNotEquals": {
+                    "aws:PrincipalArn": "${DoLambdaFnRole.Arn}",
+                    "aws:SourceArn": "${ErrorQueue.Arn}"
+                  }
+                }
+              }
+            ]
+          }
+        -
+          SourceLambdaFnSid: !If
+            - SqsKmsKeyCustom
+            - "SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt"
+            - "SourceLambdaFn"
+          TargetLambdaFnSid: !If
+            - SqsKmsKeyCustom
+            - "TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt"
+            - "TargetLambdaFn"
+          TargetDeadLetterQueueSid: !If
+            - SqsKmsKeyCustom
+            - "TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt"
+            - "TargetDeadLetterQueue"
 
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
@@ -1730,11 +1810,10 @@ Resources:
     Properties:
       GroupName: !Ref FindLambdaFnSchedGrp
       Description: >-
-        Every 10 minutes (do not change!): invoke "Find" AWS Lambda function
+        Invoke "Find" AWS Lambda function; see FindLambdaFnScheduleExprCronUtc
+        in CloudFormation
       ScheduleExpressionTimezone: UTC
-      ScheduleExpression: "cron(01,11,21,31,41,51 * * * ? *)"
-      # cron(minutes hours day-of-month month day-of-week year)
-      # https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html#cron-based
+      ScheduleExpression: !Sub "cron(${FindLambdaFnScheduleExprCronUtc})"
       FlexibleTimeWindow: { Mode: "OFF" }  # Quotes required!
       Target:
         RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn

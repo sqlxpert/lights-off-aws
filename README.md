@@ -13,6 +13,10 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this tool to multiple AWS accounts and regions.
 
+Lights Off addresses Cloud Efficiency Hub report
+[CER-0096: Missing Scheduled Shutdown for Non-Production EC2 Instances](https://hub.pointfive.co/inefficiencies/missing-scheduled-shutdown-for-non-production-ec2-instances)
+and more!
+
 Click to view the architecture diagram:
 
 [<img src="media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls 'describe' methods, checks the resource records returned for tag keys such as 'sched-start', and uses regular expressions to check the tag values for day, hour, and minute terms. Current day and time elements are inserted into the regular expressions using 'strftime'. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the method indicated by the message attributes, passing the message body for the parameters. If the request is successful or a known exception occurs and it is not okay to re-try, the function is done. If an unknown exception occurs, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." height="144" />](media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
@@ -74,7 +78,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.3.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.4.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -468,7 +472,7 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.3.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.4.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
         lights_off_stackset_regions = ["us-east-1", "us-west-2", ]
@@ -499,7 +503,7 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.3.1"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.4.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
   for_each          = toset(["us-east-1", "us-west-2", ])
@@ -630,8 +634,10 @@ software at your own risk. You are encouraged to evaluate the source code.
   (or an error queue, if an operation fails). Encryption in transit is
   required.
 
-- Readable IAM policies, formatted as CloudFormation YAML rather than JSON,
-  and broken down into discrete statements by service, resource or principal.
+- Readable IAM policies, broken down into discrete statements by service,
+  resource or principal. Policies are formatted as CloudFormation YAML rather
+  than as native JSON, except when it's necessary to allow insertion of
+  custom, user-specified JSON.
 
 - Optional encryption at rest with the AWS Key Management System (KMS), for
   queue message bodies (may contain resource identifiers) and for logs (may

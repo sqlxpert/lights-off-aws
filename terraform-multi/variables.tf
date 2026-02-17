@@ -60,6 +60,7 @@ variable "lights_off_stackset_params" {
 
     FindLambdaFnMemoryMB    = optional(number, 128)
     FindLambdaFnTimeoutSecs = optional(number, 60)
+    FindLambdaFnScheduleExprCronUtc = optional(string, "01,11,21,31,41,51 * * * ? *")
 
     DoLambdaFnReservedConcurrentExecutions             = optional(number, -1)
     DoLambdaFnMaximumConcurrency                       = optional(number, 5)
@@ -71,6 +72,7 @@ variable "lights_off_stackset_params" {
     OperationQueueVisibilityTimeoutSecs  = optional(number, 90)
     QueueMessageBytesMax                 = optional(number, 32768)
     ErrorQueueMessageRetentionPeriodSecs = optional(number, 604800)
+    ErrorQueueAdditionalPolicyStatements = optional(string, "")
 
     LogRetentionInDays = optional(number, 7)
     LogLevel           = optional(string, "ERROR")
