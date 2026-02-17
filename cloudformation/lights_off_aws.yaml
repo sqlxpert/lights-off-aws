@@ -277,22 +277,6 @@ Parameters:
       https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
     Default: ''  # Values might contain double quotation marks!
 
-  GetQueueAttributesConditions:
-    Type: String
-    Description: >-
-      Conditions to restrict GetQueueAttributes in the operation and error
-      queue policies. The default, the empty object '{}', allows any principal
-      to call GetQueueAttributes . If SQS queue attributes are sensitive,
-      specify one or more custom conditions in a JSON object. For example,
-      '{ "StringEquals" : { "aws:PrincipalAccount" : "${aws:ResourceAccount}" } }'
-      would allow principals in the same AWS account only or
-      '{ "StringEquals" : { "aws:PrincipalOrgId" : "${aws:ResourceOrgID}" } }'
-      , principals in the same AWS organization only. See
-      https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-creating-custom-policies.html
-      and
-      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html
-    Default: '{}'  # Values might contain double quotation marks!
-
   LogRetentionInDays:
     Type: Number
     Description: >-
@@ -382,7 +366,6 @@ Metadata:
           - QueueMessageBytesMax
           - ErrorQueueMessageRetentionPeriodSecs
           - ErrorQueueAdditionalPolicyStatements
-          - GetQueueAttributesConditions
           - SqsKmsKey
       - Label:
           default: Logs
@@ -443,8 +426,6 @@ Metadata:
         default: Seconds before deleting an error queue message
       ErrorQueueAdditionalPolicyStatements:
         default: Additional error queue policy statements
-      GetQueueAttributesConditions:
-        default: Queue policy conditions for GetQueueAttributes
       SqsKmsKey:
         default: KMS encryption key
       LogRetentionInDays:
@@ -800,9 +781,8 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref ErrorQueue ]
-      # Expressing a policy in YAML makes it easier to read and maintain, but
-      # we need to insert custom JSON from GetQueueAttributesConditions and
-      # ErrorQueueAdditionalPolicyStatements .
+      # Using YAML makes a policy easier to read, but we need to support
+      # insertion of custom JSON from ErrorQueueAdditionalPolicyStatements .
       PolicyDocument: !Sub
         - >-
           {
@@ -819,13 +799,6 @@ Resources:
                     "aws:SecureTransport": "false"
                   }
                 }
-              },
-              {
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "sqs:GetQueueAttributes",
-                "Resource": "*",
-                "Condition": ${GetQueueAttributesConditions}
               },
               {
                 "Sid": "${SourceScheduleSid}",
@@ -881,8 +854,8 @@ Resources:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [ !Ref OperationQueue ]
-      # Expressing a policy in YAML makes it easier to read and maintain, but
-      # we need to insert custom JSON from GetQueueAttributesConditions .
+      # Using YAML makes a policy easier to read, but we may need to support
+      # insertion of custom, user-specified JSON in the future.
       PolicyDocument: !Sub
         - >-
           {
@@ -899,13 +872,6 @@ Resources:
                     "aws:SecureTransport": "false"
                   }
                 }
-              },
-              {
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "sqs:GetQueueAttributes",
-                "Resource": "*",
-                "Condition": ${GetQueueAttributesConditions}
               },
               {
                 "Sid": "${SourceLambdaFnSid}",
@@ -936,6 +902,7 @@ Resources:
                 "Effect": "Allow",
                 "Principal": "*",
                 "Action": [
+                  "sqs:GetQueueAttributes",
                   "sqs:ChangeMessageVisibility",
                   "sqs:ReceiveMessage",
                   "sqs:DeleteMessage"
