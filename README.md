@@ -673,10 +673,6 @@ software at your own risk. You are encouraged to evaluate the source code.
 
 - Automatically copy backups to an AWS Backup vault in an isolated account.
 
-- Set `GetQueueAttributesConditions` to make the queues visible only inside
-  their own AWS account(s). Set `ErrorQueueAdditionalPolicyStatements` to
-  refine permissions for the error queue.
-
 - Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might add a custom policy to the
   "Do" function's role, denying authority to stop production resources (
