@@ -48,7 +48,6 @@ variable "lights_off_params" {
     QueueMessageBytesMax                 = optional(number, 32768)
     ErrorQueueMessageRetentionPeriodSecs = optional(number, 604800)
     ErrorQueueAdditionalPolicyStatements = optional(string, "")
-    GetQueueAttributesConditions         = optional(string, "{}")
 
     LogRetentionInDays = optional(number, 7)
     LogLevel           = optional(string, "ERROR")
