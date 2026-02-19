@@ -104,6 +104,11 @@ Resources:
                   - lambda:RemovePermission
                   - lambda:PutFunctionConcurrency
                   - lambda:DeleteFunctionConcurrency
+                  - lambda:PutFunctionEventInvokeConfig
+                  - lambda:ListFunctionEventInvokeConfigs
+                  - lambda:GetFunctionEventInvokeConfig
+                  - lambda:UpdateFunctionEventInvokeConfig
+                  - lambda:DeleteFunctionEventInvokeConfig
                   - lambda:TagResource
                   - lambda:UntagResource
                 Resource:

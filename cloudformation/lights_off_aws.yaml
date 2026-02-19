@@ -813,6 +813,18 @@ Resources:
                 }
               },
               {
+                "Sid": "${SourceLambdaFnSid}",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "sqs:SendMessage",
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:PrincipalArn": "${FindLambdaFnRole.Arn}"
+                  }
+                }
+              },
+              {
                 "Sid": "${SourceQueueSid}",
                 "Effect": "Allow",
                 "Principal": "*",
@@ -832,7 +844,10 @@ Resources:
                 "Resource": "*",
                 "Condition": {
                   "ArnNotEquals": {
-                    "aws:PrincipalArn": "${InvokeFindLambdaFnRole.Arn}",
+                    "aws:PrincipalArn": [
+                      "${InvokeFindLambdaFnRole.Arn}",
+                      "${FindLambdaFnRole.Arn}"
+                    ],
                     "aws:SourceArn": "${OperationQueue.Arn}"
                   }
                 }
@@ -843,12 +858,16 @@ Resources:
         -
           SourceScheduleSid: !If
             - SqsKmsKeyCustom
-            - "SourceScheduleNoteRoleNeedsSqsKmsEncrypt"
-            - "SourceSchedule"
+            - SourceScheduleNoteRoleNeedsSqsKmsEncrypt
+            - SourceSchedule
+          SourceLambdaFnSid: !If
+            - SqsKmsKeyCustom
+            - SourceLambdaFnNoteRoleNeedsSqsKmsDecrypt
+            - SourceLambdaFn
           SourceQueueSid: !If
             - SqsKmsKeyCustom
-            - "SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt"
-            - "SourceQueue"
+            - SourceQueueNoteKeyPolicyNeedsSqsKmsEncrypt
+            - SourceQueue
 
   OperationQueuePol:
     Type: AWS::SQS::QueuePolicy
@@ -952,16 +971,16 @@ Resources:
         -
           SourceLambdaFnSid: !If
             - SqsKmsKeyCustom
-            - "SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt"
-            - "SourceLambdaFn"
+            - SourceLambdaFnNoteRoleNeedsSqsKmsEncrypt
+            - SourceLambdaFn
           TargetLambdaFnSid: !If
             - SqsKmsKeyCustom
-            - "TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt"
-            - "TargetLambdaFn"
+            - TargetLambdaFnNoteRoleNeedsSqsKmsDecrypt
+            - TargetLambdaFn
           TargetDeadLetterQueueSid: !If
             - SqsKmsKeyCustom
-            - "TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt"
-            - "TargetDeadLetterQueue"
+            - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
+            - TargetDeadLetterQueue
 
   FindLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
@@ -979,6 +998,7 @@ Resources:
 
   FindLambdaFn:
     Type: AWS::Lambda::Function
+    DependsOn: OperationQueuePol
     Properties:
       Role: !GetAtt FindLambdaFnRole.Arn
       ReservedConcurrentExecutions: 1  # Only one Find process at a time!
@@ -991,7 +1011,7 @@ Resources:
         ApplicationLogLevel: !Ref LogLevel
       Architectures:
         - arm64
-      Runtime: python3.13
+      Runtime: python3.14
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
@@ -1807,6 +1827,7 @@ Resources:
 
   FindLambdaFnSched2:
     Type: AWS::Scheduler::Schedule
+    DependsOn: ErrorQueuePol
     Properties:
       GroupName: !Ref FindLambdaFnSchedGrp
       Description: >-
@@ -1819,10 +1840,27 @@ Resources:
         RoleArn: !GetAtt InvokeFindLambdaFnRole.Arn
         Arn: !GetAtt FindLambdaFn.Arn
         RetryPolicy:
-          MaximumRetryAttempts: 0  # ReservedConcurrentExecutions >= 0
+          # EventBridge Scheduler invokes Lambda functions asynchronously; a
+          # permanent, permissions-related failure is the most likely failure.
+          MaximumRetryAttempts: 0
           MaximumEventAgeInSeconds: 300  # 5 minutes (future use)
         DeadLetterConfig: { Arn: !GetAtt ErrorQueue.Arn }
       State: !If [ EnableTrue, ENABLED, DISABLED ]
+
+  FindLambdaFnInvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    DependsOn: ErrorQueuePol
+    Properties:
+      FunctionName: !Ref FindLambdaFn
+      Qualifier: "$LATEST"
+      # Schedule is every 10 minutes, ReservedConcurrentExecutions is 1, and
+      # FindLambdaFnTimeoutSecs default is 60 seconds; Lambda throttling
+      # is unlikely. Lambda function code uses boto3 retry capabilities;
+      # a permanent, permissions-related failure is the most likely failure.
+      MaximumRetryAttempts: 0
+      MaximumEventAgeInSeconds: 300  # 5 minutes (future use)
+      DestinationConfig:
+        OnFailure: { Destination: !GetAtt ErrorQueue.Arn }
 
   DoLambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
@@ -1857,7 +1895,7 @@ Resources:
       TracingConfig: { Mode: PassThrough }
       Architectures:
         - arm64
-      Runtime: python3.13
+      Runtime: python3.14
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
