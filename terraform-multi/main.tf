@@ -14,6 +14,7 @@ data "aws_region" "lights_off_stackset" {
 
 
 
+# Remove when var.lights_off_stackset_organizational_unit_names is removed.
 data "aws_organizations_organization" "current" {}
 data "aws_organizations_organizational_unit" "lights_off_stackset" {
   for_each = toset(var.lights_off_stackset_organizational_unit_names)
@@ -21,6 +22,13 @@ data "aws_organizations_organizational_unit" "lights_off_stackset" {
   parent_id = data.aws_organizations_organization.current.roots[0].id
   name      = each.key
 }
+# This data source, by its pair of required arguments, must call
+# organizations:ListOrganizationalUnitsForParent . Sure enough,
+# https://github.com/hashicorp/terraform-provider-aws/blob/5c9e51b/internal/service/organizations/organizational_unit_data_source.go#L52
+# To check the existence of arbitrary OUs before passing them to
+# CloudFormation, with only OU IDs to go on, we'd need a data source that calls
+# DescribeOrganizationalUnit , but there is no such data source as of 2026-03.
+# https://github.com/search?q=repo%3Ahashicorp%2Fterraform-provider-aws+DescribeOrganizationalUnit&type=code
 
 
 
@@ -156,11 +164,13 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
 
   stack_set_instance_region = each.value.region
   deployment_targets {
-    organizational_unit_ids = sort([
+    organizational_unit_ids = sort(toset(concat([
       for organizational_unit_key, organizational_unit
       in data.aws_organizations_organizational_unit.lights_off_stackset
       : organizational_unit.id
-    ])
+      ],
+      var.lights_off_stackset_organizational_unit_ids,
+    )))
   }
   retain_stack = false
 
