@@ -124,11 +124,9 @@ variable "lights_off_tags" {
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#parameter_overrides-1
 
-
-
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
-  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. The organizational units must exist. At least one is required. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
+  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
 
   default = []
 }
