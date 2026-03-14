@@ -78,7 +78,7 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
       }
       ```
@@ -472,16 +472,13 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.5.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.5.1"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
-        lights_off_stackset_regions = ["us-east-1", "us-west-2", ]
-        lights_off_stackset_organizational_unit_names = ["MyOrganizationalUnit", ]
+        lights_off_stackset_regions                 = ["us-east-1", "us-west-2",]
+        lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg",]
       }
       ```
-
-      &#9888; **In Terraform, specify the name(s) of the target organization
-      unit(s)**, not the `ou-` ID(s).
 
 ### Installation with Terraform
 
@@ -503,10 +500,10 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
 
-  for_each          = toset(["us-east-1", "us-west-2", ])
+  for_each          = toset(["us-east-1", "us-west-2",])
   lights_off_region = each.key
 }
 ```

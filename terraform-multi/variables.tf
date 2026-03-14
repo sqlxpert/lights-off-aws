@@ -126,12 +126,23 @@ variable "lights_off_tags" {
 
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
-  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name)."
+  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
+
+  default = []
+}
+
+variable "lights_off_stackset_organizational_unit_ids" {
+  type        = list(string)
+  description = "List of the IDs of the organizational units in which to create instances of the CloudFormation StackSet. At least one OU must be specified. Within a region, deployments will always proceed in alphabetical order by OU ID."
+
+  default = [] # Until lights_off_stackset_organizational_unit_names is removed
 
   validation {
-    error_message = "At least one organizational unit name is required."
+    error_message = "At least one organizational unit ID is required."
 
-    condition = length(var.lights_off_stackset_organizational_unit_names) >= 1
+    condition = (length(var.lights_off_stackset_organizational_unit_ids) >= 1) || (
+      length(var.lights_off_stackset_organizational_unit_names) >= 1
+    )
   }
 }
 
