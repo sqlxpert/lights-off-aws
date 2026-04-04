@@ -1,5 +1,7 @@
 # Start, stop and back up AWS resources tagged with cron schedules
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
-boto3
-botocore
+# boto3
+# botocore
+# Included in the AWS Lambda Python runtime; AWS manages patching for all users
+# https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html

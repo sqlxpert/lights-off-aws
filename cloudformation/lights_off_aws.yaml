@@ -523,7 +523,7 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: lambda.amazonaws.com }
+            Principal: { Service: !Sub "lambda.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
       Policies:
 
@@ -601,7 +601,7 @@ Resources:
                   Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                   Condition:
                     StringEquals:
-                      "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com"
+                      "kms:ViaService": !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}"
           - !Ref AWS::NoValue
 
   DoLambdaFnRole:
@@ -612,7 +612,7 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: lambda.amazonaws.com }
+            Principal: { Service: !Sub "lambda.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
       ManagedPolicyArns: !If
         - DoLambdaFnRoleAttachLocalPolicyNameBlank
@@ -649,17 +649,17 @@ Resources:
                 Action: ec2:StartInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+                  "Null": { "aws:ResourceTag/sched-start": "false" }
               - Effect: Allow
                 Action: ec2:StopInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+                  "Null": { "aws:ResourceTag/sched-stop": "false" }
               - Effect: Allow
                 Action: ec2:StopInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-hibernate": "*" }
+                  "Null": { "aws:ResourceTag/sched-hibernate": "false" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -679,7 +679,7 @@ Resources:
                   NotResource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:*"
                   Condition:
                     StringEquals:
-                      "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com"
+                      "kms:ViaService": !Sub "ec2.${AWS::Region}.${AWS::URLSuffix}"
                     Bool: { "kms:GrantIsForAWSResource": "true" }
           - !Ref AWS::NoValue
 
@@ -696,7 +696,7 @@ Resources:
                   Resource: "*"
                   Condition:
                     StringEquals:
-                      "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com"
+                      "kms:ViaService": !Sub "ec2.${AWS::Region}.${AWS::URLSuffix}"
                     Bool: { "kms:GrantIsForAWSResource": "true" }
 
         - PolicyName: RdsWrite
@@ -711,7 +711,7 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+                  "Null": { "aws:ResourceTag/sched-start": "false" }
               - Effect: Allow
                 Action:
                   - rds:StopDBInstance
@@ -720,7 +720,7 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+                  "Null": { "aws:ResourceTag/sched-stop": "false" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -741,7 +741,7 @@ Resources:
                 Action: iam:PassRole
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
                 Condition:
-                  StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
+                  StringLike: { "iam:PassedToService": "backup.${AWS::URLSuffix}" }
 
         - !If
           - EnableSchedCloudFormationOpsTrue
@@ -753,14 +753,14 @@ Resources:
                   Action: cloudformation:UpdateStack
                   Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
                   Condition:
-                    StringLike:
-                      "aws:ResourceTag/sched-set-Enable-false": "*"
+                    "Null":
+                      "aws:ResourceTag/sched-set-Enable-false": "false"
                 - Effect: Allow
                   Action: cloudformation:UpdateStack
                   Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
                   Condition:
-                    StringLike:
-                      "aws:ResourceTag/sched-set-Enable-true": "*"
+                    "Null":
+                      "aws:ResourceTag/sched-set-Enable-true": "false"
           - !Ref AWS::NoValue
 
         - !If
@@ -775,7 +775,7 @@ Resources:
                     - kms:Decrypt
                   Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                   Condition:
-                    StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+                    StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}" }
           - !Ref AWS::NoValue
 
   ErrorQueuePol:
@@ -1793,7 +1793,7 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: scheduler.amazonaws.com }
+            Principal: { Service: !Sub "scheduler.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
             Condition:
               ArnEquals:
@@ -1822,7 +1822,7 @@ Resources:
                     - kms:Decrypt  # To verify a new data key!
                   Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
                   Condition:
-                    StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
+                    StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}" }
           - !Ref AWS::NoValue
 
   FindLambdaFnSched2:
@@ -2662,7 +2662,7 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref DoLambdaFn
-      Principal: sqs.amazonaws.com
+      Principal: !Sub "sqs.${AWS::URLSuffix}"
       SourceArn: !GetAtt OperationQueue.Arn
 
   DoLambdaFnSqsMapping:

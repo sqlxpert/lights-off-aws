@@ -13,6 +13,19 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this tool to multiple AWS accounts and regions.
 
+> &#128274; Software supply chain security is on everyone's mind. This tool
+includes two AWS Lambda functions in a common source code file. The small size
+(<&nbsp;700&nbsp;lines) makes the source code easy to audit. The source code
+is referenced in-line, so there are no build tools, build credentials, or build
+artifacts to secure. AWS supplies the Lambda Python runtime, including the
+Python standard library, the AWS software development kit, boto3, and its
+low-level library, boto. AWS manages patching for all users. There are no other
+dependencies. Lambda layers are not needed, and the deployment role, if used,
+disallows them. The Lambda function roles and the queue policies are
+least-privilege. Substantial parts of this ReadMe have always been dedicated to
+security and least-privilege installation. I've made GitHub releases immutable
+as of `v3.6.0`&nbsp;.
+
 Lights Off addresses Cloud Efficiency Hub report
 [CER-0096: Missing Scheduled Shutdown for Non-Production EC2 Instances](https://hub.pointfive.co/inefficiencies/missing-scheduled-shutdown-for-non-production-ec2-instances)
 and more!
@@ -78,8 +91,9 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+        # Check that the release is immutable!
       }
       ```
 
@@ -472,8 +486,9 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.5.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.6.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+        # Check that the release is immutable!
 
         lights_off_stackset_regions                 = ["us-east-1", "us-west-2",]
         lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg",]
@@ -500,8 +515,9 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+  # Check that the release is immutable!
 
   for_each          = toset(["us-east-1", "us-west-2",])
   lights_off_region = each.key
