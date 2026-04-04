@@ -131,11 +131,10 @@ Resources:
     Condition: EnableTrue
     ##########################################################################
     Properties:
-      GroupDescription:
-        Fn::Sub: >-
-          Demonstrates deletion and recreation of a resource (this security
-          group) based on schedules in the
-          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
+      GroupDescription: !Sub >-
+        Demonstrates deletion and recreation of a resource (this security
+        group) based on schedules in the sched-set-Enable-true/-false stack
+        tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-ConditionalSecGrp"
@@ -144,11 +143,10 @@ Resources:
   SecGrpWithConditionalRule:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription:
-        Fn::Sub: >-
-          Demonstrates deletion and recreation of a resource property (a
-          security group ingress rule) based on schedules in the
-          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
+      GroupDescription: !Sub >-
+        Demonstrates deletion and recreation of a resource property (a security
+        group ingress rule) based on schedules in the
+        sched-set-Enable-true/-false stack tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-SecGrpWithConditionalRule"
@@ -162,19 +160,20 @@ Resources:
         # STEP 5 #############################################################
         #
         # To conditionally specify a resource property or a list item, use:
-        # Fn::If: [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
+        # !If [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
         #
         # !Ref AWS::NoValue omits a resource property entirely.
         #
-        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
-        - Fn::If:
-            - EnableTrue
-            - Description: Conditional rule
-              IpProtocol: tcp
-              FromPort: 53
-              ToPort: 53
-              SourceSecurityGroupId: !Ref ConditionalSecGrp
-            - !Ref AWS::NoValue
+        # See
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
+        - !If
+          - EnableTrue
+          - Description: Conditional rule
+            IpProtocol: tcp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !Ref ConditionalSecGrp
+          - !Ref AWS::NoValue
 # STEP 6 #####################################################################
 #
 # Test your deployment role and your stack. Try a manual stack update in which

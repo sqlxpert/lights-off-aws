@@ -281,11 +281,10 @@ Resources:
   SampleDeploymentRolePassRolePol:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      Description:
-        Fn::Sub: >-
-          ${DeploymentRole}: pass to CloudFormation. Demonstrates a privilege
-          that non-adminstrators need before they can create a Lights Off
-          CloudFormation stack using the deployment role.
+      Description: !Sub >-
+        ${DeploymentRole}: pass to CloudFormation. Demonstrates a privilege
+        that non-adminstrators need before they can create a Lights Off
+        CloudFormation stack using the deployment role.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
