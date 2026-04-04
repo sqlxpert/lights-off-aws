@@ -117,7 +117,7 @@ Conditions:
   # Review
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
   # and add this condition to your template:
-  EnableTrue: !Equals [!Ref Enable, "true"]
+  EnableTrue: !Equals [ !Ref Enable, "true" ]
   ############################################################################
 
 Resources:
