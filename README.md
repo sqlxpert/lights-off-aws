@@ -399,18 +399,17 @@ basic format (example: `20241231T1400Z`).
 ## Logging and Monitoring
 
  1. Check the
-    [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
+    [LightsOff CloudWatch log group](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
     - Log entries are JSON objects.
       - Lights Off includes `"level"` , `"type"` and `"value"` keys.
       - Other software components may use different keys.
     - For more data, change the `LogLevel` parameter.
     - Scrutinize log entries at the `ERROR` level.
-      - Both logs:
-        Entries with the `"stackTrace"` key represent unexpected exceptions
+      - All entries with the `"stackTrace"` key represent unexpected exceptions
         that require correction. These are unusual.
-      - "Find" log:
+      - "Find" function log streams:
         All other entries at the `ERROR` level require correction.
-      - "Do" log:
+      - "Do" function log streams:
         Some other entries at the `ERROR` level do not require correction.
 
         <details>
@@ -456,7 +455,7 @@ basic format (example: `20241231T1400Z`).
 Two strengths of this tool are its distributed design and its simplicity.
 
 Lights Off operates independently in each region, in each AWS account. Every
-(region, account) pair has its own logs and error queue. Operation does not
+(region, account) pair has its own log and error queue. Operation does not
 depend on central resources, other than an optional customer-managed
 multi-region KMS key. Centralized logging and monitoring would introduce a
 single point of failure and add complexity, only to duplicate AWS features that
@@ -666,8 +665,8 @@ table for each of:
 - `CloudFormation`
 - `AWS Security Token Service`
 - `AWS Backup` (if you use the `sched-backup` tag)
-- `AWS Key Management Service` (if you encrypt SQS queues and/or CloudWatch log
-  groups with KMS keys)
+- `AWS Key Management Service` (if you encrypt the SQS queues and/or the
+  CloudWatch log group with KMS keys)
 - `AWS Organizations` (if you create a CloudFormation StackSet with the
   `//terraform-multi` module)
 
@@ -716,8 +715,8 @@ software at your own risk. You are encouraged to evaluate the source code.
   custom, user-specified JSON.
 
 - Optional encryption at rest with the AWS Key Management System (KMS), for
-  queue message bodies (may contain resource identifiers) and for logs (may
-  contain resource metadata).
+  queue message bodies (may contain resource identifiers) and for log entries
+  (may contain resource metadata).
 
 - No data storage other than in queues and logs, with short or configurable
   retention periods.
@@ -816,7 +815,7 @@ times, Lights Off will perform a stack update, toggling the value of the
 to match the parameter name.)
 
 If your tagged stack lacks a CloudFormation service role, Lights Off logs an
-error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in the "Find"
+error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in a "Find" log stream in the
 [log](#logging-and-monitoring).
 To make scheduled updates possible, you must first perform a stack update in
 which you attach an IAM role that gives CloudFormation the permissions it
@@ -833,10 +832,10 @@ changes from `true` to `false` and vice versa.
 
 If the status of your tagged stack is other than `CREATE_COMPLETE` or
 `UPDATE_COMPLETE` at the scheduled time, Lights Off logs an error of `"type"`
-`STACK_STATUS_IRREGULAR` in the "Find" log instead of attempting an update that
-is likely to fail and require a rollback. To resume scheduled stack updates,
-resolve the underlying template error or permissions error and successfully
-complete one manual stack update.
+`STACK_STATUS_IRREGULAR` in a "Find" log stream, instead of attempting an
+update that is likely to fail and require a rollback. To resume scheduled stack
+updates, resolve the underlying template error or permissions error and
+successfully complete one manual stack update.
 
 </details>
 

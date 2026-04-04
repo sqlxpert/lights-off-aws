@@ -280,8 +280,8 @@ Parameters:
   LogRetentionInDays:
     Type: Number
     Description: >-
-      How many days to keep CloudWatch logs from the AWS Lambda functions. See
-      retentionInDays in
+      How many days to keep CloudWatch log entries from the AWS Lambda
+      functions. See retentionInDays in
       http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
     Default: 7
 
@@ -368,7 +368,7 @@ Metadata:
           - ErrorQueueAdditionalPolicyStatements
           - SqsKmsKey
       - Label:
-          default: Logs
+          default: Log
         Parameters:
           - LogRetentionInDays
           - LogLevel
@@ -534,7 +534,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !GetAtt FindLambdaFnLogGrp.Arn
+                Resource: !GetAtt LambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -544,7 +544,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LambdaFnLogGrp}:log-stream:*"
                 # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
                 # append :log-stream:* to make a log stream ARN
 
@@ -628,7 +628,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !GetAtt DoLambdaFnLogGrp.Arn
+                Resource: !GetAtt LambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -638,7 +638,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LambdaFnLogGrp}:log-stream:*"
                 # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
                 # append :log-stream:* to make a log stream ARN
 
@@ -989,7 +989,7 @@ Resources:
             - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
             - TargetDeadLetterQueue
 
-  FindLambdaFnLogGrp:
+  LambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
 
     # Intent: Change Enable to false to keep old stack until logs expire.
@@ -1011,7 +1011,7 @@ Resources:
       Timeout: !Ref FindLambdaFnTimeoutSecs
       MemorySize: !Ref FindLambdaFnMemoryMB
       LoggingConfig:
-        LogGroup: !Ref FindLambdaFnLogGrp
+        LogGroup: !Ref LambdaFnLogGrp
         LogFormat: JSON
         SystemLogLevel: WARN
         ApplicationLogLevel: !Ref LogLevel
@@ -1874,19 +1874,6 @@ Resources:
       DestinationConfig:
         OnFailure: { Destination: !GetAtt ErrorQueue.Arn }
 
-  DoLambdaFnLogGrp:
-    Type: AWS::Logs::LogGroup
-
-    # Intent: Change Enable to false to keep old stack until logs expire.
-    DeletionPolicy: Delete
-
-    Properties:
-      RetentionInDays: !Ref LogRetentionInDays
-      KmsKeyId: !If
-        - CloudWatchLogsKmsKeyBlank
-        - !Ref AWS::NoValue
-        - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
-
   DoLambdaFn:
     Type: AWS::Lambda::Function
     Properties:
@@ -1898,7 +1885,7 @@ Resources:
       Timeout: !Ref DoLambdaFnTimeoutSecs
       MemorySize: !Ref DoLambdaFnMemoryMB
       LoggingConfig:
-        LogGroup: !Ref DoLambdaFnLogGrp
+        LogGroup: !Ref LambdaFnLogGrp
         LogFormat: JSON
         SystemLogLevel: WARN
         ApplicationLogLevel: !Ref LogLevel
