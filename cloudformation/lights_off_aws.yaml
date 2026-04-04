@@ -1018,6 +1018,10 @@ Resources:
       Architectures:
         - arm64
       Runtime: python3.14
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
+        # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
@@ -1902,6 +1906,10 @@ Resources:
       Architectures:
         - arm64
       Runtime: python3.14
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
+        # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
