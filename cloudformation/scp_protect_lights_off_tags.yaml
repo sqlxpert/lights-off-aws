@@ -61,7 +61,7 @@ Parameters:
       means that a tagging request will be denied if it is not made by the
       manage-lights-off role. (Separately, you would have to create the
       manage-lights-off role and attach an IAM policy allowing the role to
-      read, add, change and remove tags.)
+      read, add, change, and remove tags.)
       "ForAnyValue:StringEquals" is forbidden; to use this condition operator,
       write a custom policy.
       For condition operators, see
