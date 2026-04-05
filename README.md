@@ -14,26 +14,26 @@ Ever forget to turn the lights off? Now you can:
 - Easily deploy this tool to multiple AWS accounts and regions.
 
 >&#128274; Software supply chain security is on everyone's mind. This tool's
-two Lambda functions share a common source file short enough for you to read
-(&lt;700&nbsp;lines of code). AWS's stock Lambda runtime provides the Python
-standard library and the AWS software development kit (boto3, boto). AWS
-manages patching for all users. The deployment role (if you use it) forbids
-adding Lambda layers. I've made GitHub releases immutable as of `v3.6.0`&nbsp;.
-Simplicity means no build tools, build credentials, or build artifacts to
-secure.
+two Lambda functions share one source file that's short enough to read
+(&lt;700&nbsp;lines of code). I've made GitHub releases immutable as of
+`v3.6.0`&nbsp;. AWS
+[patches](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
+the stock Lambda runtime, which provides the Python standard library and the
+AWS software development kit (boto, boto3).
 >
->The closest equivalent, AWS's own
+>AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
-has over 9,500&nbsp;lines of Python code! It depends on numerous
+the closest competing tool, has well over 10,000&nbsp;lines of Python spread
+across more than 100 files, not counting tests. It depends on numerous
 [npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json)
 and
 [Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/cli/poetry.lock). It helps itself to permission to
-[modify and stop all EC2 instances](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29),
-[stop all RDS/Aurora databases and delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L41).
-To top it off, it
-[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#this-solution-sends-operational-metrics-to-aws-the-data-about-the-use-of-this-solutionwe-use-this-data-to-better-understand-how-customers-use-this-solution-and-related-servicesand-products-awss-collection-of-this-data-is-subject-to-the-aws-privacy-notice). Instance Scheduler is powerful,
-and I respect the professionals who wrote it, but you'd need your own expert,
-and plenty of time, to run it securely.
+[modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
+and
+[delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
+It also
+[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics). Instance Scheduler is powerful, and I
+respect its authors, but you need your own expert to run it securely.
 
 Jump to:
 [Quick Start](#quick-start)
