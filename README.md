@@ -796,10 +796,10 @@ In either case, specify the number of the account or the `ou-` ID of the
 organizational unit that you use for testing SCPs.
 
 Test the SCP before applying it broadly, because it generally reduces existing
-EC2, EBS, RDS/Aurora, and CloudFormation tagging permissions. Human users or
-automated processes might rely on those permissions. This is especially true of
-backup restoration, blue/green deployment, and cluster scaling workflows, which
-might copy tags to new resources.
+EC2, EBS, and RDS/Aurora tagging permissions. Human users or automated
+processes might rely on those permissions. This is especially true of backup
+restoration, blue/green deployment, and cluster scaling workflows, which might
+copy tags to new resources.
 
 You will need at least one SCP-exempt role in every AWS account, to manage
 schedule tags. I recommend
@@ -890,6 +890,17 @@ If the status of your tagged stack is other than `CREATE_COMPLETE` or
 update that is likely to fail and require a rollback. To resume scheduled stack
 updates, resolve the underlying template error or permissions error and
 successfully complete one manual stack update.
+
+The sample
+[service control policy](#service-control-policy)
+does _not_ cover `sched-set-Enable-true` and `sched-set-Enable-false` tags on
+CloudFormation stacks (or StackSets, whose tags would be copied to member
+stack instances). CloudFormation authorizes stack update requests that include
+stack tag changes, even if the changes conflict with conditions on
+`cloudformation:TagResource` and `cloudformation:UntagResource`&nbsp;. Because
+[UpdateStack](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#:~:text=tags.-,If%20you%20don't%20specify,CloudFormation%20doesn't%20modify%20the%20stack's%20tags.)
+works by overwriting the entire set of tags, IAM policy conditions can't
+distinguish adding a tag from preserving the value of an existing tag.
 
 </details>
 

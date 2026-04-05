@@ -127,11 +127,11 @@ Conditions:
 
 Resources:
 
-  ScpEc2RdsCFnProtectTags:
+  ScpProtectTags:
     Type: AWS::Organizations::Policy
     Properties:
       Type: SERVICE_CONTROL_POLICY
-      Name: !Sub "Ec2RdsCFnProtectTags-${AWS::StackName}"
+      Name: !Sub "Ec2RdsProtectTags-${AWS::StackName}"
       Tags:
         - Key: StackName  # No automatic CloudFormation tags, as of 2026-03
           Value: !Ref AWS::StackName
@@ -140,9 +140,9 @@ Resources:
         - Key: Rights
           Value: "GPLv3. Copyright Paul Marcelin."
       Description: >-
-        EC2 instance, EBS volume, RDS/Aurora database instance/cluster, and
-        CloudFormation stack/StackSet tags: Matching IAM principals cannot add,
-        change, or remove 'sched-' tags used by Lights Off.
+        EC2 instance, EBS volume, and RDS/Aurora database instance/cluster
+        tags: Matching IAM principals cannot add, change, or remove 'sched-'
+        tags used by Lights Off.
         GPLv3, Copyright Paul Marcelin. github.com/sqlxpert
       TargetIds: !If [ EnableScpTrue, !Ref ScpTargetIds, !Ref AWS::NoValue ]
       Content: !Sub >-
@@ -208,37 +208,17 @@ Resources:
                 },
                 ${ScpPrincipalCondition}
               }
-            },
-            {
-              "Effect": "Deny",
-              "Action": [
-                "cloudformation:TagResource",
-                "cloudformation:UntagResource"
-              ],
-              "Resource": [
-                "arn:${AWS::Partition}:cloudformation:*:*:stack/*",
-                "arn:${AWS::Partition}:cloudformation:*:*:stackset/*"
-              ],
-              "Condition": {
-                "ForAnyValue:StringEquals": {
-                  "aws:TagKeys": [
-                    "sched-set-Enable-true",
-                    "sched-set-Enable-false"
-                  ]
-                },
-                ${ScpPrincipalCondition}
-              }
             }
           ]
         }
 
 Outputs:
 
-  ScpEc2RdsCFnProtectTagsArn:
+  ScpProtectTagsArn:
     Description: >-
       ARN of service control policy protecting Lights Off schedule tags
-    Value: !GetAtt ScpEc2RdsCFnProtectTags.Arn
-  ScpEc2RdsCFnProtectTagsId:
+    Value: !GetAtt ScpProtectTags.Arn
+  ScpProtectTagsId:
     Description: >-
       Physical identifier of service control policy
-    Value: !GetAtt ScpEc2RdsCFnProtectTags.Id
+    Value: !GetAtt ScpProtectTags.Id

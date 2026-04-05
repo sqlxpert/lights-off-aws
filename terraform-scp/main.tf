@@ -3,8 +3,8 @@
 
 resource "aws_organizations_policy" "scp_protect_lights_off_tags" {
   type        = "SERVICE_CONTROL_POLICY"
-  name        = "Ec2RdsCFnProtectTags-${var.scp_name_suffix}"
-  description = "EC2 instance, EBS volume, RDS/Aurora database instance/cluster, and CloudFormation stack/StackSet tags: Matching IAM principals cannot add, change, or remove 'sched-' tags used by Lights Off. GPLv3, Copyright Paul Marcelin. github.com/sqlxpert"
+  name        = "Ec2RdsProtectTags-${var.scp_name_suffix}"
+  description = "EC2 instance, EBS volume, and RDS/Aurora database instance/cluster tags: Matching IAM principals cannot add, change, or remove 'sched-' tags used by Lights Off. GPLv3, Copyright Paul Marcelin. github.com/sqlxpert"
   tags        = local.scp_tags
 
   # I prefer data.aws_iam_policy_document , but a HEREDOC allows source parity
@@ -69,26 +69,6 @@ resource "aws_organizations_policy" "scp_protect_lights_off_tags" {
                 "sched-start",
                 "sched-stop",
                 "sched-backup"
-              ]
-            },
-            ${var.scp_principal_condition}
-          }
-        },
-        {
-          "Effect": "Deny",
-          "Action": [
-            "cloudformation:TagResource",
-            "cloudformation:UntagResource"
-          ],
-          "Resource": [
-            "${provider::aws::arn_build(local.partition, "cloudformation", "*", "*", "stack/*")}",
-            "${provider::aws::arn_build(local.partition, "cloudformation", "*", "*", "stackset/*")}"
-          ],
-          "Condition": {
-            "ForAnyValue:StringEquals": {
-              "aws:TagKeys": [
-                "sched-set-Enable-true",
-                "sched-set-Enable-false"
               ]
             },
             ${var.scp_principal_condition}
