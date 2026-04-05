@@ -99,9 +99,13 @@ Resources:
                 Resource:
                   - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
                 Condition:
-                  "Null": { "lambda:Layer": "true" }  # Disallow any layers
+                  "Null": { "lambda:Layer": "true" }
+                  # Disallow any layers
+                  # https://www.plerion.com/blog/without-passrole-it-fine-lambda-edition
               - Effect: Allow
                 Action:
+                  # See comment in lights_off_aws.yaml
+                  # - lambda:PutRuntimeManagementConfig
                   - lambda:GetFunction
                   - lambda:DeleteFunction
                   - lambda:UpdateFunctionCode

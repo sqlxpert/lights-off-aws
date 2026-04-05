@@ -15,7 +15,7 @@ Ever forget to turn the lights off? Now you can:
 
 >&#128274; Software supply chain security is on everyone's mind. This tool's
 two Lambda functions share one source file that's short enough to read
-(&lt;700&nbsp;lines of code). I've made GitHub releases immutable as of
+(&lt;&nbsp;700&nbsp;lines of code). I've made GitHub releases immutable as of
 `v3.6.0`&nbsp;. AWS
 [patches](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
 the stock Lambda runtime, which provides the Python standard library and the
@@ -639,8 +639,8 @@ it permission to:
 - List, describe, get tags for, create, tag, update, untag and delete
   IAM roles, update the "assume role" (role trust or "resource-based")
   policy, and put and delete in-line policies
-- Attach managed IAM policies to, and detach them from, roles (if you set
-  `AttachLocalPolicy`)
+- Attach managed IAM policies to, and detach them from, roles (if you set the
+  `AttachLocalPolicy` parameter)
 - Create, tag, describe, update, untag and delete
   `arn:aws:s3:::terraform-*` S3 buckets
   and put, tag, list, get, untag and delete
@@ -699,6 +699,8 @@ software at your own risk. You are encouraged to evaluate the source code.
 <details>
   <summary>Security goals...</summary>
 
+<br/>
+
 - Least-privilege roles for the AWS Lambda functions that find resources and
   do scheduled operations. The "Do" function is authorized to perform a small
   set of operations, and at that, only when a resource has the correct tag
@@ -727,6 +729,8 @@ software at your own risk. You are encouraged to evaluate the source code.
 
 <details>
   <summary>Security actions...</summary>
+
+<br/>
 
 - Only allow trusted people and services to tag AWS resources. A sample
   [service control policy](#service-control-policy) is available.

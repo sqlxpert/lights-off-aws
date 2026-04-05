@@ -1018,9 +1018,12 @@ Resources:
       Architectures:
         - arm64
       Runtime: python3.14
-      RuntimeManagementConfig:
-        UpdateRuntimeOn: Auto
-        # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # RuntimeManagementConfig:
+      #   UpdateRuntimeOn: Auto
+      #   # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # Can't make the default explicit, because the deployment role would
+      # need lambda:PutRuntimeManagementConfig , and no condition keys exist as
+      # of 2026-04 to restrict the allowed configuration.
 
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
@@ -1893,9 +1896,12 @@ Resources:
       Architectures:
         - arm64
       Runtime: python3.14
-      RuntimeManagementConfig:
-        UpdateRuntimeOn: Auto
-        # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # RuntimeManagementConfig:
+      #   UpdateRuntimeOn: Auto
+      #   # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # Can't make the default explicit, because the deployment role would
+      # need lambda:PutRuntimeManagementConfig , and no condition keys exist as
+      # of 2026-04 to restrict the allowed configuration.
 
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
