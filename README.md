@@ -144,8 +144,8 @@ Jump to:
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html)||&rarr; Snapshot|
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-cluster-stop-start.html)||&rarr; Snapshot|
 
-> Whether a database operation is at the cluster or instance level depends on
-  your choice of Aurora or RDS, and for RDS, on your database's configuration.
+>Whether a database operation is at the cluster or instance level depends on
+your choice of Aurora or RDS, and for RDS, on your database's configuration.
 
 ## Tag Values (Schedules)
 
@@ -295,8 +295,8 @@ instances, you must add a statement like the following to the key policies:
   Lights Off. `/*` at the end of this organization path stands for child OUs,
   if any. Do not use a path less specific than `"o-ORG_ID/*"`&nbsp;.
 
-> If an EC2 instance does not start as scheduled, a KMS key permissions error
-is possible.
+>If an EC2 instance does not start as scheduled, a KMS key permissions error is
+possible.
 
 </details>
 
@@ -364,8 +364,8 @@ you must address the following AWS Backup requirements:
     and
     [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
 
-> If no backup jobs appear in AWS Backup, or if jobs do not start, a
-permissions problem is likely.
+>If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
+problem is likely.
 
 </details>
 
@@ -690,72 +690,62 @@ role's permissions.
 
 ## Security
 
-> In accordance with the software license, nothing in this document creates a
+>In accordance with the software license, nothing in this document creates a
 warranty, an indemnification, an assumption of liability, etc. Use this
 software at your own risk. You are encouraged to evaluate the source code.
 
-<details>
-  <summary>Security details...</summary>
-
 ### Security Design Goals
+
+<details>
+  <summary>Security goals...</summary>
 
 - Least-privilege roles for the AWS Lambda functions that find resources and
   do scheduled operations. The "Do" function is authorized to perform a small
   set of operations, and at that, only when a resource has the correct tag
   key. (AWS Backup creates backups, using a role that you can configure.)
-
 - A least-privilege queue policy. The operation queue can only consume
-  messages from the "Find" function and produce messages for the "Do" function
-  (or the error queue, if an operation fails). Encryption in transit is
-  required.
-
+  messages from the "Find" function and produce messages for the "Do" function,
+  or the error queue, if an operation fails. Encryption in transit is
+  required for both queues.
 - Readable IAM policies, broken down into discrete statements by service,
   resource or principal. Policies are formatted as CloudFormation YAML rather
   than as native JSON, except when it's necessary to allow insertion of
   custom, user-specified JSON.
-
 - Optional encryption at rest with the AWS Key Management System (KMS), for
   queue message bodies (may contain resource identifiers) and for log entries
   (may contain resource metadata).
-
 - No data storage other than in queues and logs, with short or configurable
   retention periods.
-
 - Tolerance for clock drift in a distributed system. The "Find" function
-  starts 1 minute into the 10-minute cycle and operation queue entries expire
-  9 minutes in.
-
+  starts 1&nbsp;minute into the 10-minute cycle and operation queue entries
+  expire 9&nbsp;minutes in.
 - An optional CloudFormation service role for least-privilege deployment.
+
+</details>
 
 ### Security Steps You Can Take
 
-- Only allow trusted people and services to tag AWS resources. You can
-  deny the right to add, change and delete `sched-` tags by including the
-  [aws:TagKeys condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in a service control policy (SCP).
+<details>
+  <summary>Security actions...</summary>
 
+- Only allow trusted people and services to tag AWS resources. A sample
+  [service control policy](#service-control-policy) is available.
 - Prevent people who can set the `sched-backup` tag from deleting backups.
-
 - Prevent people from modifying components, most of which can be identified by
   `LightsOff` in ARNs and in the automatic `aws:cloudformation:stack-name`
   tag. Limiting permissions so that the deployment role is _necessary_ for
-  stack modifications is ideal.
-
+  CloudFormation stack modifications is ideal.
 - Prevent people from directly invoking the AWS Lambda functions and from
   passing the function roles to arbitrary functions.
-
 - Log infrastructure changes using AWS CloudTrail, and set up alerts.
-
 - Automatically copy backups to an AWS Backup vault in an isolated account.
   Lights Off is compatible with my
   [Backup Events](https://github.com/sqlxpert/backup-events-aws)
   utility.
-
 - Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might add a custom policy to the
   "Do" function's role, denying authority to stop production resources. See the
   `AttachLocalPolicy` parameter.
-
 - If you use Terraform, do not use it with an AWS access key and do not give it
   full AWS administrative privileges. Instead, follow AWS's
   [Best practices for using the Terraform AWS Provider: Security best practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/security.html).
@@ -766,21 +756,81 @@ software at your own risk. You are encouraged to evaluate the source code.
 
 </details>
 
+### Service Control Policy
+
+<details>
+  <summary>Protecting schedule tags...</summary>
+
+<br/>
+
+A sample service control policy is available to prevent tampering with Lights
+Off schedule tags.
+
+This SCP offers two-way protection: Non-exempt roles can neither remove nor add
+schedule tags. Non-exempt roles also cannot change schedule tag values.
+
+In your AWS Organizations management account, in the region where you manage
+infrastructure-as-code templates for non-regional resources, create a
+CloudFormation stack from
+[cloudformation/scp_protect_lights_off_tags.yaml](/../../blob/v3.6.0/cloudformation/scp_protect_lights_off_tags.yaml?raw=true)&nbsp;.
+
+Or, reference the equivalent Terraform module:
+
+```terraform
+module "lights_off_scp" {
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-scp?ref=v3.6.0"
+  # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+  # Check that the release is immutable!
+
+  scp_target_ids = [
+    "ou-0123-abcdefg",
+  ]
+}
+```
+
+In either case, specify the number of the account or the `ou-` ID of the
+organizational unit that you use for testing SCPs.
+
+Test the SCP before applying it broadly, because it generally reduces existing
+EC2, EBS, RDS/Aurora, and CloudFormation tagging permissions. Human users or
+automated processes might rely on those permissions. This is especially true of
+backup restoration, blue/green deployment, and cluster scaling workflows, which
+might copy tags to new resources.
+
+You will need at least one SCP-exempt role in every AWS account, to manage
+schedule tags. I recommend
+[IAM Identity Center permission sets](https://docs.aws.amazon.com/singlesignon/latest/userguide/permissionsets.html).
+You can customize `ScpPrincipalCondition` / `scp_principal_condition` to
+[reference permission set roles](https://docs.aws.amazon.com/singlesignon/latest/userguide/referencingpermissionsets.html).
+
+The SCP works by denying certain tag addition/change and removal requests. It
+cannot _add_ permissions that have been denied by another SCP, or that were
+never allowed by a role's attached or inline policies.
+
+SCPs do not affect roles or other IAM principals in the AWS&nbsp;Organizations
+management account.
+
+</details>
+
 ## Advice
 
-- Test Lights Off in your AWS environment. Please
+- Test Lights Off in your own AWS environment. After following the suggestions
+  in the
+  [Logging and Monitoring](#logging-and-monitoring)
+  section, please
   [report bugs](https://github.com/sqlxpert/lights-off-aws/issues).
 
-- Test your backups! Are they finishing on-schedule? Can they be restored?
-  [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
-  can help.
+- Be aware: of charges for S3 (holds CloudFormation templates, even if you use
+  Terraform), EventBridge Scheduler, AWS Lambda, SQS, CloudWatch Logs, KMS,
+  backup storage, and early deletion from cold storage; of the minimum charge
+  when you stop an EC2 instance with a commercial license, or any RDS database;
+  of the resumption of charges when RDS/Aurora restarts a stopped database
+  after 7&nbsp;days; and of ongoing storage charges and potential public IP
+  address charges while EC2 instances and RDS/Aurora databases are stopped.
+  What have we missed? &#128184;
 
-- Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
-  KMS, backup storage, and early deletion from cold storage; of the minimum
-  charge when you stop an EC2 instance or RDS database with a commercial
-  license; of the resumption of charges when RDS or Aurora restarts a stopped
-  database after 7 days; and of ongoing storage charges while EC2 instances
-  and RDS/Aurora databases are stopped. Have we missed anything?
+- Test your backups! Are they finishing on-schedule? Can they be restored
+  successfully?
 
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
