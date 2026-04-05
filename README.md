@@ -33,7 +33,7 @@ and
 [delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
 It also
 [sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics). Instance Scheduler is powerful, and I
-respect its authors, but you need your own expert to run it securely.
+respect its authors, but you'd need your own expert to run it securely.
 
 Jump to:
 [Quick Start](#quick-start)
@@ -46,13 +46,13 @@ Jump to:
 &bull;
 [Security](#security)
 
+Click to view the Lights Off architecture diagram:
+
+[<img src="/media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls 'describe' methods, checks the resource records returned for tag keys such as 'sched-start', and uses regular expressions to check the tag values for day, hour, and minute terms. Current day and time elements are inserted into the regular expressions using 'strftime'. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the method indicated by the message attributes, passing the message body for the parameters. If the request is successful or a known exception occurs and it is not okay to re-try, the function is done. If an unknown exception occurs, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." height="144" />](/media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
+
 Lights Off addresses Cloud Efficiency Hub report
 [CER-0096: Missing Scheduled Shutdown for Non-Production EC2 Instances](https://hub.pointfive.co/inefficiencies/missing-scheduled-shutdown-for-non-production-ec2-instances),
 and more!
-
-Click to view the architecture diagram:
-
-[<img src="/media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls 'describe' methods, checks the resource records returned for tag keys such as 'sched-start', and uses regular expressions to check the tag values for day, hour, and minute terms. Current day and time elements are inserted into the regular expressions using 'strftime'. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the method indicated by the message attributes, passing the message body for the parameters. If the request is successful or a known exception occurs and it is not okay to re-try, the function is done. If an unknown exception occurs, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." height="144" />](/media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
 
 ## Quick Start
 
