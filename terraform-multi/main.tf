@@ -107,7 +107,8 @@ resource "aws_s3_object" "lights_off_cloudformation" {
 # affects all StackSet instances.
 
 resource "aws_cloudformation_stack_set" "lights_off" {
-  name = "LightsOff${var.lights_off_stackset_name_suffix}"
+  name        = "LightsOff${var.lights_off_stackset_name_suffix}"
+  description = "Start, stop and back up AWS resources tagged with cron schedules. github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin"
 
   template_url = join("", [
     "https://${aws_s3_bucket.lights_off_cloudformation.bucket_regional_domain_name}/",
