@@ -37,17 +37,18 @@ AWS software development kit (boto, boto3).
 >AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 the closest competing tool, has well over 10,000&nbsp;lines of Python spread
-across more than 100&nbsp;files. As of 2026-04-05, the latest release,
-(mutable!)
-[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1), Instance Scheduler depends on numerous
+across more than 100&nbsp;files. As of 2026-04-05, the latest release was still
+mutable:
+[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1).
+Instance Scheduler depends on numerous
 [Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/.projen/deps.json)
 and
 [npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
-Instance Scheduler helps itself to permission to
+It helps itself to permission to
 [modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
 and
 [delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
-Instance Scheduler also
+It also
 [sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
 Instance Scheduler is powerful, and I have tremendous respect for its authors,
 but you'd need your own expert to run it securely.
