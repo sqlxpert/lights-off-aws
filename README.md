@@ -24,6 +24,8 @@ Jump to:
 &bull;
 [Security](#security)
 
+---
+
 >&#128274; Software supply chain security is on everyone's mind. This tool's
 two Lambda functions share one Python source file that's short enough to read
 (750&nbsp;lines total). I've made GitHub releases immutable as of
