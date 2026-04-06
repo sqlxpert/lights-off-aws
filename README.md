@@ -640,8 +640,6 @@ it permission to:
 - List, describe, get tags for, create, tag, update, untag and delete
   IAM roles, update the "assume role" (role trust or "resource-based")
   policy, and put and delete in-line policies
-- Attach managed IAM policies to, and detach them from, roles (if you set the
-  `AttachLocalPolicy` parameter)
 - Create, tag, describe, update, untag and delete
   `arn:aws:s3:::terraform-*` S3 buckets
   and put, tag, list, get, untag and delete
