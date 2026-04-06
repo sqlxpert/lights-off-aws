@@ -14,26 +14,28 @@ Ever forget to turn the lights off? Now you can:
 - Easily deploy this tool to multiple AWS accounts and regions.
 
 >&#128274; Software supply chain security is on everyone's mind. This tool's
-two Lambda functions share one source file that's short enough to read
-(&lt;&nbsp;700&nbsp;lines of code). I've made GitHub releases immutable as of
+two Lambda functions share one Python source file that's short enough to read
+(750&nbsp;lines total). I've made GitHub releases immutable as of
 `v3.6.0`&nbsp;. AWS
-[patches](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
-the stock Lambda runtime, which provides the Python standard library and the
+[manages patching](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
+of the stock Lambda runtime, which provides the Python standard library and the
 AWS software development kit (boto, boto3).
 >
 >AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 the closest competing tool, has well over 10,000&nbsp;lines of Python spread
-across more than 100 files, not counting tests. It depends on numerous
-[npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json)
+across more than 100&nbsp;files. It depends on numerous
+[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/cli/poetry.lock)
 and
-[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/cli/poetry.lock). It helps itself to permission to
+[npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
+It helps itself to permission to
 [modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
 and
 [delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
 It also
-[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics). Instance Scheduler is powerful, and I
-respect its authors, but you'd need your own expert to run it securely.
+[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
+Instance Scheduler is powerful, and I have tremendous respect its authors, but
+you'd need your own expert to run it securely.
 
 Jump to:
 [Quick Start](#quick-start)
@@ -973,12 +975,25 @@ management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 
-|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Basic Terraform HCL Lines|
+### Counting Complexity
+
+|Year|Lambda Python Lines|Core CloudFormation YAML Lines|Core Terraform HCL Lines|
 |:---:|:---:|:---:|:---:|
 |2017|&asymp; 775|&asymp; 2,140||
 |2022|630|800 &check;||
 |2025|620 &check;|1,000|270|
 |2026|620|1,120|270|
+
+Here I report "loc" figures from GitHub. Figures for CloudFormation are net of
+in-line Lambda Python code. GitHub seems to count _non-blank, non-comment
+lines_, for a rough indication of complexity.
+
+In the introduction, I reported _total lines_ of code for my Lambda Python
+source file, because blank lines and comment lines contribute to the reading
+experience. To provide an order-of-magnitude comparison of complexity, I
+counted non-blank, non-comment lines in Instance Scheduler `.py` files without
+`test` in their paths. People would never read all the Python source in AWS's
+Instance Scheduler, which is my point!
 
 ## Dedication
 
