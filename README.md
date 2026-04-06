@@ -13,6 +13,17 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this tool to multiple AWS accounts and regions.
 
+Jump to:
+[Quick Start](#quick-start)
+&bull;
+[Tags](#tag-keys-operations)
+&bull;
+[Schedules](#tag-values-schedules)
+&bull;
+[Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
+&bull;
+[Security](#security)
+
 >&#128274; Software supply chain security is on everyone's mind. This tool's
 two Lambda functions share one Python source file that's short enough to read
 (750&nbsp;lines total). I've made GitHub releases immutable as of
@@ -36,17 +47,6 @@ It also
 [sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
 Instance Scheduler is powerful, and I have tremendous respect its authors, but
 you'd need your own expert to run it securely.
-
-Jump to:
-[Quick Start](#quick-start)
-&bull;
-[Tags](#tag-keys-operations)
-&bull;
-[Schedules](#tag-values-schedules)
-&bull;
-[Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
-&bull;
-[Security](#security)
 
 Click to view the Lights Off architecture diagram:
 
