@@ -79,7 +79,7 @@ Resources:
         Version: 2012-10-17
         Statement:
           - Effect: Allow
-            Principal: { Service: cloudformation.amazonaws.com }
+            Principal: { Service: !Sub "cloudformation.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
       # In-line policies apply only to this role, which, in turn, can only be
       # assumed by CloudFormation. Separate, "managed" policies could be
@@ -95,11 +95,21 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:CreateFunction  # Also iam:PassRole
+                  - lambda:UpdateFunctionConfiguration
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
+                Condition:
+                  "Null": { "lambda:Layer": "true" }
+                  # Disallow any layers
+                  # https://www.plerion.com/blog/without-passrole-it-fine-lambda-edition
+              - Effect: Allow
+                Action:
+                  # See comment in lights_off_aws.yaml
+                  # - lambda:PutRuntimeManagementConfig
                   - lambda:GetFunction
                   - lambda:DeleteFunction
                   - lambda:UpdateFunctionCode
                   - lambda:GetFunctionConfiguration
-                  - lambda:UpdateFunctionConfiguration
                   - lambda:AddPermission
                   - lambda:RemovePermission
                   - lambda:PutFunctionConcurrency
@@ -239,8 +249,8 @@ Resources:
                 Condition:
                   StringEquals:
                     "iam:PassedToService":
-                      - lambda.amazonaws.com
-                      - scheduler.amazonaws.com
+                      - !Sub "lambda.${AWS::URLSuffix}"
+                      - !Sub "scheduler.${AWS::URLSuffix}"
                   ArnLike:
                     "iam:AssociatedResourceArn":
                       - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:${StackNameLike}-*"
@@ -281,11 +291,10 @@ Resources:
   SampleDeploymentRolePassRolePol:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      Description:
-        Fn::Sub: >-
-          ${DeploymentRole}: pass to CloudFormation. Demonstrates a privilege
-          that non-adminstrators need before they can create a Lights Off
-          CloudFormation stack using the deployment role.
+      Description: !Sub >-
+        ${DeploymentRole}: pass to CloudFormation. Demonstrates a privilege
+        that non-adminstrators need before they can create a Lights Off
+        CloudFormation stack using the deployment role.
       PolicyDocument:
         Version: "2012-10-17"
         Statement:

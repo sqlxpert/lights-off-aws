@@ -1,0 +1,224 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |-
+  Service control policy protecting Lights Off schedule tags.
+
+  github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
+
+Parameters:
+
+  PlaceholderSuggestedStackName:
+    Type: String
+    Description: >-
+      The stack name will be appended to the service control policy name. If
+      you have also installed the Terraform module equivalent to this
+      CloudFormation template, the stack name must differ from
+      scp_name_suffix for all instances of the Terraform module.
+    Default: "LightsOffScp"
+
+  PlaceholderHelp:
+    Type: String
+    Default: "github.com/sqlxpert/lights-off-aws#quick-start"
+
+  EnableScp:
+    Type: String
+    Description: >-
+      Whether to apply the service control policy to its designated targets.
+      The default is true . Change this to false to detach the SCP but preserve
+      the list of targets.
+    Default: "true"
+    AllowedValues:
+      - "false"
+      - "true"
+
+  ScpTargetIds:
+    Type: List<String>
+    Description: >-
+      Up to 100 r- root ID strings, ou- organizational unit ID strings, and/or
+      AWS account ID numbers to which the SCP will apply. Separate multiple
+      targets with commas but no spaces. To view the SCP before applying it,
+      leave this empty (the default), or start with EnableScp set to false .
+      Exercise caution when applying this SCP, because it generally does reduce
+      existing permissions.
+    Default: ""
+
+  PlaceholderAdvancedParameters:
+    Type: String
+    Default: ""
+    AllowedValues:
+      - ""
+
+  ScpPrincipalCondition:
+    Type: String
+    Description: >-
+      One or more condition expressions determining which roles (or other IAM
+      principals) are not allowed to add, change, or remove Light Off schedule
+      tags, in AWS accounts subject to the SCP. Separate multiple expressions
+      with commas.
+      The default,
+      '"ArnNotLike": { "aws:PrincipalArn": "arn:aws:iam::*:role/manage-lights-off" }',
+      means that a tagging request will be denied if it is not made by the
+      manage-lights-off role. (Separately, you would have to create the
+      manage-lights-off role and attach an IAM policy allowing the role to
+      read, add, change, and remove tags.)
+      "ForAnyValue:StringEquals" is forbidden; to use this condition operator,
+      write a custom policy.
+      For condition operators, see
+      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
+      . For condition keys, see
+      https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-principal-properties
+    Default: '"ArnNotLike": { "aws:PrincipalArn": "arn:aws:iam::*:role/manage-lights-off" }'
+    AllowedPattern: '^(?!.*"ForAnyValue:StringEquals").*$'
+    ConstraintDescription: >-
+      "ForAnyValue:StringEquals" is forbidden. To use this condition operator,
+      write a custom policy.
+
+Metadata:
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: For Reference
+        Parameters:
+          - PlaceholderSuggestedStackName
+          - PlaceholderHelp
+      - Label:
+          default: Essential
+        Parameters:
+          - EnableScp
+          - ScpTargetIds
+      - Label:
+          default: Advanced...
+        Parameters:
+          - PlaceholderAdvancedParameters
+      - Label:
+          default: >-
+            Service control policy (protect Lights Off schedule tags)
+        Parameters:
+          - ScpPrincipalCondition
+    ParameterLabels:
+      PlaceholderSuggestedStackName:
+        default: Suggested stack name
+      PlaceholderHelp:
+        default: For help with this stack, see
+      EnableScp:
+        default: Enable SCP?
+      ScpTargetIds:
+        default: SCP root IDs, OU IDs, and/or AWS account ID numbers
+      PlaceholderAdvancedParameters:
+        default: Do not change the parameters below unless necessary!
+      ScpPrincipalCondition:
+        default: Condition for roles not allowed to add, change, or remove tags
+
+Rules:
+
+  ScpPrincipalConditionNotBlank:
+    Assertions:
+      - AssertDescription: >-
+          ScpPrincipalCondition must not be blank
+        Assert: !Not [ !Equals [ !Ref ScpPrincipalCondition, "" ] ]
+
+Conditions:
+
+  EnableScpTrue: !And
+    - !Equals [ !Ref EnableScp, "true" ]
+    - !Not [ !Equals [ !Join [ "", !Ref ScpTargetIds ], "" ] ]
+
+Resources:
+
+  ScpProtectTags:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Type: SERVICE_CONTROL_POLICY
+      Name: !Sub "Ec2RdsProtectTags-${AWS::StackName}"
+      Tags:
+        - Key: StackName  # No automatic CloudFormation tags, as of 2026-03
+          Value: !Ref AWS::StackName
+        - Key: Source
+          Value: "github.com/sqlxpert/lights-off-aws"
+        - Key: Rights
+          Value: "GPLv3. Copyright Paul Marcelin."
+      Description: >-
+        EC2 instance, EBS volume, and RDS/Aurora database instance/cluster
+        tags: Matching IAM principals cannot add, change, or remove 'sched-'
+        tags used by Lights Off.
+        GPLv3, Copyright Paul Marcelin. github.com/sqlxpert
+      TargetIds: !If [ EnableScpTrue, !Ref ScpTargetIds, !Ref AWS::NoValue ]
+      Content: !Sub >-
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Action": [
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+              ],
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:*:*:instance/*"
+              ],
+              "Condition": {
+                "ForAnyValue:StringEquals": {
+                  "aws:TagKeys": [
+                    "sched-start",
+                    "sched-stop",
+                    "sched-hibernate"
+                  ]
+                },
+                ${ScpPrincipalCondition}
+              }
+            },
+            {
+              "Effect": "Deny",
+              "Action": [
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+              ],
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:*:*:volume/*",
+                "arn:${AWS::Partition}:ec2:*:*:instance/*"
+              ],
+              "Condition": {
+                "ForAnyValue:StringEquals": {
+                  "aws:TagKeys": [
+                    "sched-backup"
+                  ]
+                },
+                ${ScpPrincipalCondition}
+              }
+            },
+            {
+              "Effect": "Deny",
+              "Action": [
+                "rds:AddTagsToResource",
+                "rds:RemoveTagsFromResource"
+              ],
+              "Resource": [
+                "arn:${AWS::Partition}:rds:*:*:db:*",
+                "arn:${AWS::Partition}:rds:*:*:cluster:*"
+              ],
+              "Condition": {
+                "ForAnyValue:StringEquals": {
+                  "aws:TagKeys": [
+                    "sched-start",
+                    "sched-stop",
+                    "sched-backup"
+                  ]
+                },
+                ${ScpPrincipalCondition}
+              }
+            }
+          ]
+        }
+
+Outputs:
+
+  ScpProtectTagsArn:
+    Description: >-
+      ARN of service control policy protecting Lights Off schedule tags
+    Value: !GetAtt ScpProtectTags.Arn
+  ScpProtectTagsId:
+    Description: >-
+      Physical identifier of service control policy
+    Value: !GetAtt ScpProtectTags.Id

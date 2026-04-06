@@ -280,8 +280,8 @@ Parameters:
   LogRetentionInDays:
     Type: Number
     Description: >-
-      How many days to keep CloudWatch logs from the AWS Lambda functions. See
-      retentionInDays in
+      How many days to keep CloudWatch log entries from the AWS Lambda
+      functions. See retentionInDays in
       http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html
     Default: 7
 
@@ -368,7 +368,7 @@ Metadata:
           - ErrorQueueAdditionalPolicyStatements
           - SqsKmsKey
       - Label:
-          default: Logs
+          default: Log
         Parameters:
           - LogRetentionInDays
           - LogLevel
@@ -446,10 +446,9 @@ Conditions:
     !Equals [ !Ref RequireSameAccountKmsKeyPolicyForEc2StartInstances, "true" ]
 
   SqsKmsKeyBlank: !Equals [ !Ref SqsKmsKey, "" ]
-  SqsKmsKeyCustom:
-    Fn::And:
-      - !Not [ !Condition SqsKmsKeyBlank ]
-      - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
+  SqsKmsKeyCustom: !And
+    - !Not [ !Condition SqsKmsKeyBlank ]
+    - !Not [ !Equals [ !Ref SqsKmsKey, "alias/aws/sqs" ] ]
 
   DoLambdaFnRoleAttachLocalPolicyNameBlank:
     !Equals [ !Ref DoLambdaFnRoleAttachLocalPolicyName, "" ]
@@ -466,14 +465,13 @@ Resources:
     Properties:
       DelaySeconds: 0
       SqsManagedSseEnabled: !If [ SqsKmsKeyBlank, true, false ]
-      KmsMasterKeyId:
-        Fn::If:
-          - SqsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - Fn::If:
-              - SqsKmsKeyCustom
-              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
-              - !Ref SqsKmsKey
+      KmsMasterKeyId: !If
+        - SqsKmsKeyBlank
+        - !Ref AWS::NoValue
+        - !If
+          - SqsKmsKeyCustom
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+          - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
       MessageRetentionPeriod: !Ref ErrorQueueMessageRetentionPeriodSecs
@@ -484,14 +482,13 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       SqsManagedSseEnabled: !If [ SqsKmsKeyBlank, true, false ]
-      KmsMasterKeyId:
-        Fn::If:
-          - SqsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - Fn::If:
-              - SqsKmsKeyCustom
-              - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
-              - !Ref SqsKmsKey
+      KmsMasterKeyId: !If
+        - SqsKmsKeyBlank
+        - !Ref AWS::NoValue
+        - !If
+          - SqsKmsKeyCustom
+          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+          - !Ref SqsKmsKey
       KmsDataKeyReusePeriodSeconds:
         !If [ SqsKmsKeyBlank, !Ref AWS::NoValue, 86400 ]  # seconds (24 hours)
       MaximumMessageSize: !Ref QueueMessageBytesMax
@@ -526,7 +523,7 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: lambda.amazonaws.com }
+            Principal: { Service: !Sub "lambda.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
       Policies:
 
@@ -537,7 +534,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !GetAtt FindLambdaFnLogGrp.Arn
+                Resource: !GetAtt LambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -547,7 +544,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FindLambdaFnLogGrp}:log-stream:*"
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LambdaFnLogGrp}:log-stream:*"
                 # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
                 # append :log-stream:* to make a log stream ARN
 
@@ -577,34 +574,36 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
 
-        - Fn::If:
-            - EnableSchedCloudFormationOpsTrue
-            - PolicyName: CloudFormationRead
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - cloudformation:ListStacks
-                      - cloudformation:DescribeStacks
-                    Resource: "*"
-            - !Ref AWS::NoValue
+        - !If
+          - EnableSchedCloudFormationOpsTrue
+          - PolicyName: CloudFormationRead
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - cloudformation:ListStacks
+                    - cloudformation:DescribeStacks
+                  Resource: "*"
+          - !Ref AWS::NoValue
 
-        - Fn::If:
-            - SqsKmsKeyCustom
-            - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
-                      - kms:GenerateDataKey
-                      - kms:Decrypt  # To verify a new data key!
-                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
-                    Condition:
-                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
-            - !Ref AWS::NoValue
+        - !If
+          - SqsKmsKeyCustom
+          - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
+                    - kms:GenerateDataKey
+                    - kms:Decrypt  # To verify a new data key!
+                  Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+                  Condition:
+                    StringEquals:
+                      "kms:ViaService":
+                        !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}"
+          - !Ref AWS::NoValue
 
   DoLambdaFnRole:
     Type: AWS::IAM::Role
@@ -614,13 +613,12 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: lambda.amazonaws.com }
+            Principal: { Service: !Sub "lambda.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - Fn::If:
-            - DoLambdaFnRoleAttachLocalPolicyNameBlank
-            - !Ref AWS::NoValue
-            - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${DoLambdaFnRoleAttachLocalPolicyName}"
+      ManagedPolicyArns: !If
+        - DoLambdaFnRoleAttachLocalPolicyNameBlank
+        - !Ref AWS::NoValue
+        - [ !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${DoLambdaFnRoleAttachLocalPolicyName}" ]
       Policies:
 
         - PolicyName: CloudWatchLogsCreateLogGroupIfDeleted
@@ -630,7 +628,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !GetAtt DoLambdaFnLogGrp.Arn
+                Resource: !GetAtt LambdaFnLogGrp.Arn
 
         - PolicyName: CloudWatchLogsWrite
           PolicyDocument:
@@ -640,7 +638,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DoLambdaFnLogGrp}:log-stream:*"
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LambdaFnLogGrp}:log-stream:*"
                 # !GetAtt LogGroup.Arn ends with :* instead of allowing us to
                 # append :log-stream:* to make a log stream ARN
 
@@ -652,17 +650,17 @@ Resources:
                 Action: ec2:StartInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+                  "Null": { "aws:ResourceTag/sched-start": "false" }
               - Effect: Allow
                 Action: ec2:StopInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+                  "Null": { "aws:ResourceTag/sched-stop": "false" }
               - Effect: Allow
                 Action: ec2:StopInstances
                 Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-hibernate": "*" }
+                  "Null": { "aws:ResourceTag/sched-hibernate": "false" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -670,35 +668,39 @@ Resources:
                   - ec2:DeleteSnapshot
                 Resource: "*"
 
-        - Fn::If:
-            - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
-            - PolicyName: KmsForEc2StartInstancesRequireSameAccountKmsKeyPolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - kms:CreateGrant
-                    NotResource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:*"
-                    Condition:
-                      StringEquals: { "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com" }
-                      Bool: { "kms:GrantIsForAWSResource": "true" }
-            - !Ref AWS::NoValue
+        - !If
+          - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
+          - PolicyName: KmsForEc2StartInstancesRequireSameAccountKmsKeyPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - kms:CreateGrant
+                  NotResource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:*"
+                  Condition:
+                    StringEquals:
+                      "kms:ViaService":
+                        !Sub "ec2.${AWS::Region}.${AWS::URLSuffix}"
+                    Bool: { "kms:GrantIsForAWSResource": "true" }
+          - !Ref AWS::NoValue
 
-        - Fn::If:
-            - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
-            - !Ref AWS::NoValue
-            - PolicyName: KmsForEc2StartInstances
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - kms:CreateGrant
-                    Resource: "*"
-                    Condition:
-                      StringEquals: { "kms:ViaService": !Sub "ec2.${AWS::Region}.amazonaws.com" }
-                      Bool: { "kms:GrantIsForAWSResource": "true" }
+        - !If
+          - RequireSameAccountKmsKeyPolicyForEc2StartInstancesTrue
+          - !Ref AWS::NoValue
+          - PolicyName: KmsForEc2StartInstances
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - kms:CreateGrant
+                  Resource: "*"
+                  Condition:
+                    StringEquals:
+                      "kms:ViaService":
+                        !Sub "ec2.${AWS::Region}.${AWS::URLSuffix}"
+                    Bool: { "kms:GrantIsForAWSResource": "true" }
 
         - PolicyName: RdsWrite
           PolicyDocument:
@@ -712,7 +714,7 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-start": "*" }
+                  "Null": { "aws:ResourceTag/sched-start": "false" }
               - Effect: Allow
                 Action:
                   - rds:StopDBInstance
@@ -721,7 +723,7 @@ Resources:
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:*"
                   - !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
                 Condition:
-                  StringLike: { "aws:ResourceTag/sched-stop": "*" }
+                  "Null": { "aws:ResourceTag/sched-stop": "false" }
               - Sid: BackupCreatorCannotDeleteBackup
                 Effect: Deny
                 Action:
@@ -742,40 +744,45 @@ Resources:
                 Action: iam:PassRole
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BackupRoleName}"
                 Condition:
-                  StringLike: { "iam:PassedToService": "backup.amazonaws.com" }
+                  StringLike:
+                    "iam:PassedToService": !Sub "backup.${AWS::URLSuffix}"
 
-        - Fn::If:
-            - EnableSchedCloudFormationOpsTrue
-            - PolicyName: CloudFormationWrite
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action: cloudformation:UpdateStack
-                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                    Condition:
-                      StringLike: { "aws:ResourceTag/sched-set-Enable-false": "*" }
-                  - Effect: Allow
-                    Action: cloudformation:UpdateStack
-                    Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
-                    Condition:
-                      StringLike: { "aws:ResourceTag/sched-set-Enable-true": "*" }
-            - !Ref AWS::NoValue
+        - !If
+          - EnableSchedCloudFormationOpsTrue
+          - PolicyName: CloudFormationWrite
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: cloudformation:UpdateStack
+                  Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                  Condition:
+                    "Null":
+                      "aws:ResourceTag/sched-set-Enable-false": "false"
+                - Effect: Allow
+                  Action: cloudformation:UpdateStack
+                  Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+                  Condition:
+                    "Null":
+                      "aws:ResourceTag/sched-set-Enable-true": "false"
+          - !Ref AWS::NoValue
 
-        - Fn::If:
-            - SqsKmsKeyCustom
-            - PolicyName: SqsKmsDecryptNoteComplementsQueuePolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
-                      - kms:Decrypt
-                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
-                    Condition:
-                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
-            - !Ref AWS::NoValue
+        - !If
+          - SqsKmsKeyCustom
+          - PolicyName: SqsKmsDecryptNoteComplementsQueuePolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#receive-from-encrypted-queue
+                    - kms:Decrypt
+                  Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+                  Condition:
+                    StringEquals:
+                      "kms:ViaService":
+                        !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}"
+          - !Ref AWS::NoValue
 
   ErrorQueuePol:
     Type: AWS::SQS::QueuePolicy
@@ -982,7 +989,7 @@ Resources:
             - TargetDeadLetterQueueNoteKeyPolicyNeedsSqsKmsDecrypt
             - TargetDeadLetterQueue
 
-  FindLambdaFnLogGrp:
+  LambdaFnLogGrp:
     Type: AWS::Logs::LogGroup
 
     # Intent: Change Enable to false to keep old stack until logs expire.
@@ -990,11 +997,10 @@ Resources:
 
     Properties:
       RetentionInDays: !Ref LogRetentionInDays
-      KmsKeyId:
-        Fn::If:
-          - CloudWatchLogsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
+      KmsKeyId: !If
+        - CloudWatchLogsKmsKeyBlank
+        - !Ref AWS::NoValue
+        - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
 
   FindLambdaFn:
     Type: AWS::Lambda::Function
@@ -1005,13 +1011,20 @@ Resources:
       Timeout: !Ref FindLambdaFnTimeoutSecs
       MemorySize: !Ref FindLambdaFnMemoryMB
       LoggingConfig:
-        LogGroup: !Ref FindLambdaFnLogGrp
+        LogGroup: !Ref LambdaFnLogGrp
         LogFormat: JSON
         SystemLogLevel: WARN
         ApplicationLogLevel: !Ref LogLevel
       Architectures:
         - arm64
       Runtime: python3.14
+      # RuntimeManagementConfig:
+      #   UpdateRuntimeOn: Auto
+      #   # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # Can't make the default explicit, because the deployment role would
+      # need lambda:PutRuntimeManagementConfig , and no condition keys exist as
+      # of 2026-04 to restrict the allowed configuration.
+
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
@@ -1793,7 +1806,7 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Principal: { Service: scheduler.amazonaws.com }
+            Principal: { Service: !Sub "scheduler.${AWS::URLSuffix}" }
             Action: sts:AssumeRole
             Condition:
               ArnEquals:
@@ -1809,21 +1822,23 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt FindLambdaFn.Arn
 
-        - Fn::If:
-            - SqsKmsKeyCustom
-            - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
-                      - kms:GenerateDataKey
-                      - kms:Decrypt  # To verify a new data key!
-                    Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
-                    Condition:
-                      StringEquals: { "kms:ViaService": !Sub "sqs.${AWS::Region}.amazonaws.com" }
-            - !Ref AWS::NoValue
+        - !If
+          - SqsKmsKeyCustom
+          - PolicyName: SqsKmsEncryptNoteComplementsQueuePolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-key-management.html#send-to-encrypted-queue
+                    - kms:GenerateDataKey
+                    - kms:Decrypt  # To verify a new data key!
+                  Resource: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${SqsKmsKey}"
+                  Condition:
+                    StringEquals:
+                      "kms:ViaService":
+                        !Sub "sqs.${AWS::Region}.${AWS::URLSuffix}"
+          - !Ref AWS::NoValue
 
   FindLambdaFnSched2:
     Type: AWS::Scheduler::Schedule
@@ -1862,33 +1877,18 @@ Resources:
       DestinationConfig:
         OnFailure: { Destination: !GetAtt ErrorQueue.Arn }
 
-  DoLambdaFnLogGrp:
-    Type: AWS::Logs::LogGroup
-
-    # Intent: Change Enable to false to keep old stack until logs expire.
-    DeletionPolicy: Delete
-
-    Properties:
-      RetentionInDays: !Ref LogRetentionInDays
-      KmsKeyId:
-        Fn::If:
-          - CloudWatchLogsKmsKeyBlank
-          - !Ref AWS::NoValue
-          - !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${CloudWatchLogsKmsKey}"
-
   DoLambdaFn:
     Type: AWS::Lambda::Function
     Properties:
       Role: !GetAtt DoLambdaFnRole.Arn
-      ReservedConcurrentExecutions:
-        Fn::If:
-          - DoLambdaFnReservedConcurrentExecutionsOff
-          - !Ref AWS::NoValue
-          - !Ref DoLambdaFnReservedConcurrentExecutions
+      ReservedConcurrentExecutions: !If
+        - DoLambdaFnReservedConcurrentExecutionsOff
+        - !Ref AWS::NoValue
+        - !Ref DoLambdaFnReservedConcurrentExecutions
       Timeout: !Ref DoLambdaFnTimeoutSecs
       MemorySize: !Ref DoLambdaFnMemoryMB
       LoggingConfig:
-        LogGroup: !Ref DoLambdaFnLogGrp
+        LogGroup: !Ref LambdaFnLogGrp
         LogFormat: JSON
         SystemLogLevel: WARN
         ApplicationLogLevel: !Ref LogLevel
@@ -1896,6 +1896,13 @@ Resources:
       Architectures:
         - arm64
       Runtime: python3.14
+      # RuntimeManagementConfig:
+      #   UpdateRuntimeOn: Auto
+      #   # https://docs.aws.amazon.com/lambda/latest/dg/runtimes-update.html#runtime-management-two-phase:~:text=runtime%20version%20consistency
+      # Can't make the default explicit, because the deployment role would
+      # need lambda:PutRuntimeManagementConfig , and no condition keys exist as
+      # of 2026-04 to restrict the allowed configuration.
+
       # To avoid making users build a source bundle and distribute it to a
       # bucket in every target region (an AWS Lambda requirement when using
       # S3), use common, inline source code for both functions...
@@ -2664,7 +2671,7 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref DoLambdaFn
-      Principal: sqs.amazonaws.com
+      Principal: !Sub "sqs.${AWS::URLSuffix}"
       SourceArn: !GetAtt OperationQueue.Arn
 
   DoLambdaFnSqsMapping:

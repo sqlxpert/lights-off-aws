@@ -13,20 +13,6 @@ Ever forget to turn the lights off? Now you can:
 
 - Easily deploy this tool to multiple AWS accounts and regions.
 
-Lights Off addresses Cloud Efficiency Hub report
-[CER-0096: Missing Scheduled Shutdown for Non-Production EC2 Instances](https://hub.pointfive.co/inefficiencies/missing-scheduled-shutdown-for-non-production-ec2-instances)
-and more!
-
-Click to view the architecture diagram:
-
-[<img src="/media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls 'describe' methods, checks the resource records returned for tag keys such as 'sched-start', and uses regular expressions to check the tag values for day, hour, and minute terms. Current day and time elements are inserted into the regular expressions using 'strftime'. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the method indicated by the message attributes, passing the message body for the parameters. If the request is successful or a known exception occurs and it is not okay to re-try, the function is done. If an unknown exception occurs, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." height="144" />](/media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
-
-> Most of all, this tool is lightweight. Not counting blanks, comments, or
-tests, AWS's
-[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws)
-has over 9,500 lines of Python! At about 620 lines of Python, Lights Off is
-easy to understand, maintain, and extend.
-
 Jump to:
 [Quick Start](#quick-start)
 &bull;
@@ -37,6 +23,43 @@ Jump to:
 [Multi-Account, Multi-Region](#multi-account-multi-region-cloudformation-stackset)
 &bull;
 [Security](#security)
+
+---
+
+>&#128274; Software supply chain security is on everyone's mind. This tool's
+two Lambda functions share one Python source file that's short enough to read
+(750&nbsp;lines total). I made GitHub releases immutable as of `v3.6.0`
+(2026-04-06). AWS
+[manages patching](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
+of the stock Lambda runtime, which provides the Python standard library and the
+AWS software development kit (boto, boto3).
+>
+>AWS's
+[Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
+the closest competing tool, has well over 10,000&nbsp;lines of Python spread
+across more than 100&nbsp;files. As of 2026-04-05, the latest release was still
+mutable:
+[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1).
+Instance Scheduler depends on numerous
+[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/.projen/deps.json)
+and
+[npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
+It helps itself to permission to
+[modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
+and
+[delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
+It also
+[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
+Instance Scheduler is powerful, and I have tremendous respect for its authors,
+but you'd need your own expert to run it securely.
+
+Click to view the Lights Off architecture diagram:
+
+[<img src="/media/lights-off-aws-architecture-and-flow-thumb.png" alt="An Event Bridge Scheduler rule triggers the 'Find' Amazon Web Services Lambda function every 10 minutes. The function calls 'describe' methods, checks the resource records returned for tag keys such as 'sched-start', and uses regular expressions to check the tag values for day, hour, and minute terms. Current day and time elements are inserted into the regular expressions using 'strftime'. If there is a match, the function sends a message to a Simple Queue Service queue. The 'Do' function, triggered in response, checks whether the message has expired. If not, this function calls the method indicated by the message attributes, passing the message body for the parameters. If the request is successful or a known exception occurs and it is not okay to re-try, the function is done. If an unknown exception occurs, the message remains in the operation queue, becoming visibile again after 90 seconds. After 3 tries, a message goes from the operation queue to the error (dead letter) queue." height="144" />](/media/lights-off-aws-architecture-and-flow.png?raw=true "Architecture diagram and flowchart for Lights Off, AWS!")
+
+Lights Off addresses Cloud Efficiency Hub report
+[CER-0096: Missing Scheduled Shutdown for Non-Production EC2 Instances](https://hub.pointfive.co/inefficiencies/missing-scheduled-shutdown-for-non-production-ec2-instances),
+and more!
 
 ## Quick Start
 
@@ -54,13 +77,11 @@ Jump to:
 
     - **CloudFormation**<br/>_Easy_ &check;
 
-      Create a
-      [CloudFormation stack](https://console.aws.amazon.com/cloudformation/home)
-      "With new resources (standard)".
+      [Create a CloudFormation stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create).
 
       Select "Upload a template file", then select "Choose file" and navigate
       to a locally-saved copy of
-      [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
+      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)
       [right-click to save as...].
 
       On the next page, set:
@@ -78,8 +99,9 @@ Jump to:
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+        # Check that the release is immutable!
       }
       ```
 
@@ -129,8 +151,8 @@ Jump to:
 |[Database Instance](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html)||&rarr; Snapshot|
 |[Database Cluster](https://console.aws.amazon.com/rds/home#databases:)|[&check;](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-cluster-stop-start.html)||&rarr; Snapshot|
 
-> Whether a database operation is at the cluster or instance level depends on
-  your choice of Aurora or RDS, and for RDS, on your database's configuration.
+>Whether a database operation is at the cluster or instance level depends on
+your choice of Aurora or RDS, and for RDS, on your database's configuration.
 
 ## Tag Values (Schedules)
 
@@ -280,8 +302,8 @@ instances, you must add a statement like the following to the key policies:
   Lights Off. `/*` at the end of this organization path stands for child OUs,
   if any. Do not use a path less specific than `"o-ORG_ID/*"`&nbsp;.
 
-> If an EC2 instance does not start as scheduled, a KMS key permissions error
-is possible.
+>If an EC2 instance does not start as scheduled, a KMS key permissions error is
+possible.
 
 </details>
 
@@ -328,7 +350,7 @@ you must address the following AWS Backup requirements:
     ([AWS Backup](https://console.aws.amazon.com/backup/home#) &rarr; My
     account &rarr; Dashboard &rarr; On-demand backup). Otherwise, see
     [Default service role for AWS Backup](https://docs.aws.amazon.com/aws-backup/latest/devguide/iam-service-roles.html#default-service-roles).
-    Update `BackupRoleName` in CloudFormation if necessary.
+    Update the `BackupRoleName` parameter if necessary.
 
  4. KMS key policies
 
@@ -349,8 +371,8 @@ you must address the following AWS Backup requirements:
     and
     [Key policies in KMS](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html).
 
-> If no backup jobs appear in AWS Backup, or if jobs do not start, a
-permissions problem is likely.
+>If no backup jobs appear in AWS Backup, or if jobs do not start, a permissions
+problem is likely.
 
 </details>
 
@@ -377,25 +399,24 @@ basic format (example: `20241231T1400Z`).
 ## On/Off Switch
 
 - You can toggle the `Enable` parameter of your Lights Off CloudFormation
-  stack.
+  stack, CloudFormation StackSet, or Terraform module.
 - While Enable is `false`, scheduled operations do not happen; they are
   skipped permanently.
 
-## Logging
+## Logging and Monitoring
 
  1. Check the
-    [LightsOff CloudWatch log groups](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
+    [LightsOff CloudWatch log group](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups$3FlogGroupNameFilter$3DLightsOff-).
     - Log entries are JSON objects.
       - Lights Off includes `"level"` , `"type"` and `"value"` keys.
       - Other software components may use different keys.
-    - For more data, change the `LogLevel` in CloudFormation.
+    - For more data, change the `LogLevel` parameter.
     - Scrutinize log entries at the `ERROR` level.
-      - Both logs:
-        Entries with the `"stackTrace"` key represent unexpected exceptions
+      - All entries with the `"stackTrace"` key represent unexpected exceptions
         that require correction. These are unusual.
-      - "Find" log:
+      - "Find" function log streams:
         All other entries at the `ERROR` level require correction.
-      - "Do" log:
+      - "Do" function log streams:
         Some other entries at the `ERROR` level do not require correction.
 
         <details>
@@ -409,10 +430,10 @@ basic format (example: `20241231T1400Z`).
           idempotent. If a state change is favorable or an operation is
           repeated, Lights Off logs success responses or expected exceptions
           (depending on the AWS service) at the `INFO` level. For RDS database
-          _instance_ start/stop operations, however, Lights Off logs expected
-          exceptions at the `ERROR` level because it cannot determine whether
-          they represent actual errors or harmless repetition (such as trying
-          to start a database instance that has already been started).
+          _instance_ start/stop operations, however, expected exceptions are
+          logged at the `ERROR` level because Lights Off cannot determine
+          whether they represent actual errors or harmless repetition (such as
+          trying to start a database instance that has already been started).
 
           For complete details, see the technical article
           [Idempotence: Doing It More than Once](https://sqlxpert.github.io/2025/05/17/idempotence-doing-it-more-than-once.html).
@@ -424,15 +445,72 @@ basic format (example: `20241231T1400Z`).
     for "Find" and "Do" events that were not delivered, or not fully
     processed.
 
- 3. Check CloudTrail for the final stages of `sched-start` and `sched-backup`
-    operations.
+ 3. Check
+    [CloudTrail Event history](https://console.aws.amazon.com/cloudtrailv2/home?ReadOnly=false/events#/events?ReadOnly=false)
+    for the final stages of `sched-start` and `sched-backup` operations.
+    - CloudTrail events with an "Error code" may indicate permissions problems,
+      typically due to the local security configuration.
+    - To see more events, change "Read-only" from `false` to `true` .
+
+### Why No Built-In Monitoring?
+
+<details>
+  <summary>Whether and how to monitor Lights Off...</summary>
+
+<br/>
+
+Two strengths of this tool are its distributed design and its simplicity.
+
+Lights Off operates independently in each region, in each AWS account. Every
+(region, account) pair has its own log and error queue. Operation does not
+depend on central resources, other than an optional customer-managed
+multi-region KMS key. Centralized logging and monitoring would introduce a
+single point of failure and add complexity, only to duplicate AWS features that
+can cover all of your applications.
+
+Consider monitoring Lights Off through...
+
+- The [organization CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/creating-trail-organization.html)
+  or
+- [CloudWatch Logs data centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
+
+...which might already be configured in your organization.
+
+The fetish for metrics, dashboards, and alerts raises a deeper question. Is it
+_worth_ paging someone over an unsuccessful EC2 instance stop request? Probably
+not! If large amounts of money are at stake, you need
+[AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html).
+The thresholds, notifications, and actions you define there cover any and all
+tools, applications, provisioning processes, and people, not just Lights Off.
+
+Backups _are_ worth monitoring, but at the point of consumption, not at the
+point of creation. No matter how you create backups, you should implement an
+automated process to restore critical ones (the first hourly backup of the day,
+for example) and validate the results.
+[AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
+solves this problem.
+
+When your organization becomes large and formal, you will graduate from
+friendly, locally-managed `sched-backup` tags to centralized
+[backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
+Then, you can use
+[AWS Backup Audit Manager](https://docs.aws.amazon.com/aws-backup/latest/devguide/controls-and-remediation.html)
+to continuously check your resources, your plans, and the presence of your
+backups. (You will still have to validate the backups.) Consider quitting
+before your job shifts from making software to making PowerPoint presentations.
+
+Employees, consultants, and vendors who demonstrate pretty dashboards should
+instead start by asking what is material to you. You should ask whether AWS
+provides standard ways to gather the information you actually care about.
+
+</details>
 
 ## Advanced Installation
 
 ### Multi-Account, Multi-Region (CloudFormation StackSet)
 
-For reliability, Lights Off works completely independently in each (region, AWS
-account) pair. To deploy to multiple regions and/or AWS accounts,
+For reliability, Lights Off works completely independently in each region, in
+each AWS account. To deploy to multiple regions and/or AWS accounts,
 
  1. Delete any standalone Lights Off CloudFormation _stacks_ in the target AWS
     accounts and regions (including any instances of the basic `//terraform`
@@ -452,12 +530,14 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
     - **CloudFormation**<br/>_Easy_ &check;
 
-      Create a
-      [CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets).
+      [Create a CloudFormation StackSet](https://console.aws.amazon.com/cloudformation/home#/stacksets/create).
+
       Select "Upload a template file", then select "Choose file" and upload a
       locally-saved copy of
-      [cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)
-      [right-click to save as...]. On the next page, set:
+      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)
+      [right-click to save as...].
+
+      On the next page, set:
 
       - StackSet name: `LightsOff`
 
@@ -472,8 +552,9 @@ account) pair. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.5.1"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.6.0"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+        # Check that the release is immutable!
 
         lights_off_stackset_regions                 = ["us-east-1", "us-west-2",]
         lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg",]
@@ -500,8 +581,9 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.5.1"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+  # Check that the release is immutable!
 
   for_each          = toset(["us-east-1", "us-west-2",])
   lights_off_region = each.key
@@ -530,17 +612,17 @@ is done for you if you use Terraform at Step&nbsp;3 of the
 [Quick Start](#quick-start).)
 
 First, create the `LightsOffPrereq` stack from
-[cloudformation/lights_off_aws_prereq.yaml](/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
+[cloudformation/lights_off_aws_prereq.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
 
 Under "Additional settings" &rarr; "Stack policy - optional", you can "Upload a
 file" and select a locally-saved copy of
-[cloudformation/lights_off_aws_prereq_policy.json](/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
+[cloudformation/lights_off_aws_prereq_policy.json](/../../blob/v3.6.0/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
 The stack policy prevents inadvertent replacement or deletion of the deployment
 role during stack updates, but it cannot prevent deletion of the entire
 `LightsOffPrereq` stack.
 
 Next, when you create the `LightsOff` stack from
-[cloudformation/lights_off_aws.yaml](/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
+[cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
 set "Permissions - optional" &rarr; "IAM role - optional" to
 `LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges are limited, you
 might need permission to pass the deployment role to CloudFormation. See the
@@ -574,7 +656,7 @@ it permission to:
 - List, describe, and get tags for, all `data` sources. For a list, run:
 
   ```shell
-  grep 'data "' terraform*/*.tf | cut --delimiter=' ' --fields='1,2'
+  grep 'data "' terraform*/*.tf | cut --delimiter=' ' --fields='1,2' | sort | uniq
   ```
 
 Open the
@@ -587,8 +669,8 @@ table for each of:
 - `CloudFormation`
 - `AWS Security Token Service`
 - `AWS Backup` (if you use the `sched-backup` tag)
-- `AWS Key Management Service` (if you encrypt SQS queues and/or CloudWatch log
-  groups with KMS keys)
+- `AWS Key Management Service` (if you encrypt the SQS queues and/or the
+  CloudWatch log group with KMS keys)
 - `AWS Organizations` (if you create a CloudFormation StackSet with the
   `//terraform-multi` module)
 
@@ -612,94 +694,151 @@ role's permissions.
 
 ## Security
 
-> In accordance with the software license, nothing in this document creates a
+>In accordance with the software license, nothing in this document creates a
 warranty, an indemnification, an assumption of liability, etc. Use this
 software at your own risk. You are encouraged to evaluate the source code.
 
-<details>
-  <summary>Security details...</summary>
-
 ### Security Design Goals
+
+<details>
+  <summary>Security goals...</summary>
+
+<br/>
 
 - Least-privilege roles for the AWS Lambda functions that find resources and
   do scheduled operations. The "Do" function is authorized to perform a small
   set of operations, and at that, only when a resource has the correct tag
   key. (AWS Backup creates backups, using a role that you can configure.)
-
 - A least-privilege queue policy. The operation queue can only consume
-  messages from the "Find" function and produce messages for the "Do" function
-  (or an error queue, if an operation fails). Encryption in transit is
-  required.
-
+  messages from the "Find" function and produce messages for the "Do" function,
+  or the error queue, if an operation fails. Encryption in transit is
+  required for both queues.
 - Readable IAM policies, broken down into discrete statements by service,
   resource or principal. Policies are formatted as CloudFormation YAML rather
   than as native JSON, except when it's necessary to allow insertion of
   custom, user-specified JSON.
-
 - Optional encryption at rest with the AWS Key Management System (KMS), for
-  queue message bodies (may contain resource identifiers) and for logs (may
-  contain resource metadata).
-
+  queue message bodies (may contain resource identifiers) and for log entries
+  (may contain resource metadata).
 - No data storage other than in queues and logs, with short or configurable
   retention periods.
-
 - Tolerance for clock drift in a distributed system. The "Find" function
-  starts 1 minute into the 10-minute cycle and operation queue entries expire
-  9 minutes in.
-
+  starts 1&nbsp;minute into the 10-minute cycle and operation queue entries
+  expire 9&nbsp;minutes in.
 - An optional CloudFormation service role for least-privilege deployment.
+
+</details>
 
 ### Security Steps You Can Take
 
-- Only allow trusted people and services to tag AWS resources. You can
-  deny the right to add, change and delete `sched-` tags by including the
-  [aws:TagKeys condition key](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html#access_tags_control-tag-keys)
-  in a permissions boundary.
+<details>
+  <summary>Security actions...</summary>
 
+<br/>
+
+- Only allow trusted people and services to tag AWS resources. A sample
+  [service control policy](#service-control-policy) is available.
 - Prevent people who can set the `sched-backup` tag from deleting backups.
-
 - Prevent people from modifying components, most of which can be identified by
   `LightsOff` in ARNs and in the automatic `aws:cloudformation:stack-name`
   tag. Limiting permissions so that the deployment role is _necessary_ for
-  stack modifications is ideal.
-
+  CloudFormation stack modifications is ideal.
 - Prevent people from directly invoking the AWS Lambda functions and from
   passing the function roles to arbitrary functions.
-
 - Log infrastructure changes using AWS CloudTrail, and set up alerts.
-
 - Automatically copy backups to an AWS Backup vault in an isolated account.
-
+  Lights Off is compatible with my
+  [Backup Events](https://github.com/sqlxpert/backup-events-aws)
+  utility.
 - Separate production workloads. You might choose not to deploy Lights Off to
   AWS accounts used for production, or you might add a custom policy to the
-  "Do" function's role, denying authority to stop production resources (
-  `AttachLocalPolicy` in CloudFormation).
-
+  "Do" function's role, denying authority to stop production resources. See the
+  `AttachLocalPolicy` parameter.
 - If you use Terraform, do not use it with an AWS access key and do not give it
   full AWS administrative privileges. Instead, follow AWS's
   [Best practices for using the Terraform AWS Provider: Security best practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/security.html).
   Do the extra work of defining a least-privilege IAM role for deploying each
   workload. Configure Terraform to assume workload-specific roles. The
   CloudFormation service role is one element, but achieving least-privilege
-  also requires limiting Terraform's privileges.
+  also requires limiting _Terraform's_ privileges.
+
+</details>
+
+### Service Control Policy
+
+<details>
+  <summary>Protecting schedule tags...</summary>
+
+<br/>
+
+A sample service control policy is available to prevent tampering with Lights
+Off schedule tags.
+
+This SCP offers two-way protection: roles subject to the SCP can neither remove
+nor add schedule tags. They cannot change existing schedule tag values, either.
+
+In your AWS Organizations management account, in the region where you manage
+infrastructure-as-code templates for non-regional resources, create a
+CloudFormation stack from
+[cloudformation/scp_protect_lights_off_tags.yaml](/../../blob/v3.6.0/cloudformation/scp_protect_lights_off_tags.yaml?raw=true)&nbsp;.
+
+Or, reference the equivalent Terraform module:
+
+```terraform
+module "lights_off_scp" {
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-scp?ref=v3.6.0"
+  # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
+  # Check that the release is immutable!
+
+  scp_target_ids = [
+    "ou-0123-abcdefg",
+  ]
+}
+```
+
+In either case, specify the number of the account or the `ou-` ID of the
+organizational unit that you use for testing SCPs.
+
+Test the SCP before applying it broadly, because it generally reduces existing
+EC2, EBS, and RDS/Aurora tagging permissions. Human users or automated
+processes might rely on those permissions. This is especially true of backup
+restoration, blue/green deployment, and cluster scaling workflows, which might
+copy tags to new resources.
+
+You will need at least one SCP-exempt role in every AWS account, to manage
+schedule tags. I recommend
+[IAM Identity Center permission sets](https://docs.aws.amazon.com/singlesignon/latest/userguide/permissionsets.html).
+You can customize `ScpPrincipalCondition` / `scp_principal_condition` to
+[reference permission set roles](https://docs.aws.amazon.com/singlesignon/latest/userguide/referencingpermissionsets.html).
+
+The SCP works by denying certain tag addition/change and removal requests. It
+cannot _add_ permissions that have been denied by another SCP, or that were
+never allowed by a role's attached or inline policies.
+
+SCPs do not affect roles or other IAM principals in the AWS&nbsp;Organizations
+management account.
 
 </details>
 
 ## Advice
 
-- Test Lights Off in your AWS environment. Please
+- Test Lights Off in your own AWS environment. After following the suggestions
+  in the
+  [Logging and Monitoring](#logging-and-monitoring)
+  section, please
   [report bugs](https://github.com/sqlxpert/lights-off-aws/issues).
 
-- Test your backups! Are they finishing on-schedule? Can they be restored?
-  [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
-  can help.
+- Be aware: of charges for S3 (holds CloudFormation templates, even if you use
+  Terraform), EventBridge Scheduler, AWS Lambda, SQS, CloudWatch Logs, KMS,
+  backup storage, and early deletion from cold storage; of the minimum charge
+  when you stop an EC2 instance with a commercial license, or any RDS database;
+  of the resumption of charges when RDS/Aurora restarts a stopped database
+  after 7&nbsp;days; and of ongoing storage charges and potential public IP
+  address charges while EC2 instances and RDS/Aurora databases are stopped.
+  What have we missed? &#128184;
 
-- Be aware: of charges for AWS Lambda functions, SQS queues, CloudWatch Logs,
-  KMS, backup storage, and early deletion from cold storage; of the minimum
-  charge when you stop an EC2 instance or RDS database with a commercial
-  license; of the resumption of charges when RDS or Aurora restarts a stopped
-  database after 7 days; and of ongoing storage charges while EC2 instances
-  and RDS/Aurora databases are stopped. Have we missed anything?
+- Test your backups! Are they finishing on-schedule? Can they be restored
+  successfully?
 
 ## Bonus: Delete and Recreate Expensive Resources on a Schedule
 
@@ -716,7 +855,7 @@ a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
 To make your own CloudFormation template compatible, see
-[cloudformation/lights_off_aws_bonus_cloudformation_example.yaml](/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
+[cloudformation/lights_off_aws_bonus_cloudformation_example.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
 .
 
 Not every resource needs to be deleted and recreated; condition the creation
@@ -727,27 +866,46 @@ need to reconfigure VPN clients.
 
 Set the `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 your own CloudFormation stack and make sure that the
-`EnableSchedCloudFormationOps` parameter of the _LightsOff stack or StackSet_
-is set to `true` (the default). At the scheduled times, Lights Off will
-perform a stack update, toggling the value of the `Enable` parameter to `true`
-or `false`. (Capitalize **E**nable in the tag keys, to match the parameter
-name.)
+`EnableSchedCloudFormationOps` parameter is set to `true` (the default) in your
+Lights Off CloudFormation stack/StackSet or Terraform module. At the scheduled
+times, Lights Off will perform a stack update, toggling the value of the
+`Enable` parameter to `true` or `false`. (Capitalize **E**nable in the tag keys,
+to match the parameter name.)
 
 If your tagged stack lacks a CloudFormation service role, Lights Off logs an
-error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in the "Find"
-[log](#logging).
+error of `"type"` `STACK_NEEDS_SERVICE_ROLE` in a "Find" log stream in the
+[log](#logging-and-monitoring).
 To make scheduled updates possible, you must first perform a stack update in
-which you specify an IAM role that gives CloudFormation the permissions it
+which you attach an IAM role that gives CloudFormation the permissions it
 needs to manage the resources defined in your stack. See the `RoleARN` request
 parameter in the
 [`UpdateStack` reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#API_UpdateStack_RequestParameters).
 
+&#128161; Because you can attach a different service role by performing a stack
+update, you may wish to maintain two roles, a less restrictive one that you can
+use for stack creation, arbitrary modification, and deletion, and a restrictive
+one that you can leave in place for automated stack updates. The latter role
+need only support the AWS actions invoked when the stack's `Enable` parameter
+changes from `true` to `false` and vice versa.
+
 If the status of your tagged stack is other than `CREATE_COMPLETE` or
 `UPDATE_COMPLETE` at the scheduled time, Lights Off logs an error of `"type"`
-`STACK_STATUS_IRREGULAR` in the "Find" log instead of attempting an update that
-is likely to fail and require a rollback. To resume scheduled stack updates,
-resolve the underlying template error or permissions error and successfully
-complete one manual stack update.
+`STACK_STATUS_IRREGULAR` in a "Find" log stream, instead of attempting an
+update that is likely to fail and require a rollback. To resume scheduled stack
+updates, resolve the underlying template error or permissions error and
+successfully complete one manual stack update.
+
+The sample
+[service control policy](#service-control-policy)
+does _not_ cover `sched-set-Enable-true` and `sched-set-Enable-false` tags on
+CloudFormation stacks (or StackSets, whose tags would be copied to member
+stack instances). Because
+[UpdateStack](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#:~:text=tags.-,If%20you%20don't%20specify,CloudFormation%20doesn't%20modify%20the%20stack's%20tags.)
+overwrites the entire set of tags, distinguishing between adding a tag,
+preserving an existing tag's value, explicitly removing a tag, and removing a
+tag by removing all tags, requires multiple IAM policy statements for each tag
+key. Only privileged roles should be allowed to create and update
+CloudFormation stacks/StackSets, including their tags.
 
 </details>
 
@@ -800,31 +958,45 @@ to describe (list) resources.
             Action: rds:StartDBCluster
             Resource: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:*"
             Condition:
-              StringLike: { "aws:ResourceTag/sched-start": "*" }
+              "Null": { "aws:ResourceTag/sched-start": "false" }
 ```
 
-What capabilities would you like to add? Submit a
-[pull request](https://github.com/sqlxpert/lights-off-aws/pulls) today!
+Let me know what resource types you'd like me to add!
 
 </details>
 
 ## Progress
 
-Paul wrote TagSchedOps, the first version of this tool, before Systems
-Manager, Data Lifecycle Manager or AWS Backup existed. The tool remains a
-simple alternative to
-[Systems Manager Automation runbooks for
-stopping EC2 instances](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html),
+I wrote
+[TagSchedOps](https://github.com/sqlxpert/aws-tag-sched-ops),
+the original version of Lights Off, in 2017, before Systems Manager, Data
+Lifecycle Manager or AWS Backup existed. Lights Off remains a simple
+alternative to
+[Systems Manager Automation runbooks for stopping EC2 instances](https://docs.aws.amazon.com/systems-manager-automation-runbooks/latest/userguide/automation-aws-stopec2instance.html),
 etc. It is now integrated with AWS Backup, leveraging the security and
 management benefits (including backup retention lifecycle policies) but
 offering a simple alternative to
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 
-|Year|AWS Lambda Python Lines|Core CloudFormation YAML Lines|Basic Terraform HCL Lines|
+### Counting Complexity
+
+|Year|Lambda Python Lines|Core CloudFormation YAML Lines|Core Terraform HCL Lines|
 |:---:|:---:|:---:|:---:|
-|2017|&asymp; 775|&asymp; 2,140||
-|2022|630|800 &check;||
-|2025|620 &check;|1,000|270|
+|2017|&asymp;&nbsp;775|&asymp;&nbsp;2,140||
+|2022|630|800&nbsp;&check;||
+|2025|620&nbsp;&check;|1,000|&asymp;&nbsp;270|
+|2026|620|1,120|270|
+
+Here I report "loc" figures from GitHub. Figures for CloudFormation are net of
+in-line Lambda Python code. GitHub seems to count _non-blank, non-comment
+lines_, for a rough indication of complexity.
+
+In the introduction, I reported _total lines_ of code for my Lambda Python
+source file, because blank lines and comment lines contribute to the reading
+experience. To provide an order-of-magnitude comparison of complexity, I
+counted non-blank, non-comment lines in Instance Scheduler `.py` files without
+`test` in their paths. People would never read all the Python source in AWS's
+Instance Scheduler, which is my point!
 
 ## Dedication
 
@@ -842,7 +1014,7 @@ and to Lee for suggesting the new name.
 |Scope|Link|Included Copy|
 |:---|:---:|:---:|
 |Source code files, and source code embedded in documentation files|[GNU General Public License (GPL) 3.0](http://www.gnu.org/licenses/gpl-3.0.html)|[LICENSE-CODE.md](/LICENSE-CODE.md)|
-|Documentation files (including this readme file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
+|Documentation files (including this ReadMe file)|[GNU Free Documentation License (FDL) 1.3](http://www.gnu.org/licenses/fdl-1.3.html)|[LICENSE-DOC.md](/LICENSE-DOC.md)|
 
 Copyright Paul Marcelin
 

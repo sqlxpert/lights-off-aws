@@ -24,10 +24,10 @@ locals {
   lights_off_tags = merge(
     {
       terraform = "1"
+      source    = "github.com/sqlxpert/lights-off-aws/blob/main/${local.module_directory}"
+      rights    = "GPLv3. Copyright Paul Marcelin."
       # CloudFormation stack tag values must be at least 1 character long!
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_Tag.html#API_Tag_Contents
-
-      source = "https://github.com/sqlxpert/lights-off-aws/blob/main/${local.module_directory}"
     },
     var.lights_off_tags,
   )

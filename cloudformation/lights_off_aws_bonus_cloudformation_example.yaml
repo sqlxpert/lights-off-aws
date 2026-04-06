@@ -24,9 +24,10 @@ Description: |-
 # AmazonEC2FullAccess policy and check the box to the left of that policy.
 # It is not least-privilege, and is only suitable for testing.
 #
-# You MUST select your deployment role when you create a CloudFormation stack
-# from your template. Scroll to the Permissions section and set IAM role -
-# optional . Otherwise, stack updates triggered by Lights Off will fail.
+# You MUST attach your deployment role when you create a CloudFormation stack
+# from your template. Scroll to the Permissions section and set
+# "IAM role - optional". Otherwise, stack updates triggered by Lights Off will
+# fail. If you forget, perform a manual stack update to attach the role.
 #
 # About resource tagging: CloudFormation needs permission to get/list, create,
 # update, and delete arbitrary resource tags, due to the automatic propagation
@@ -34,6 +35,13 @@ Description: |-
 # stack tags to more resource types, provide tagging privileges for all of the
 # resource types in your template, even if CloudFormation doesn't yet
 # propagate stack tags to them.
+#
+# Because you can attach a different service role by performing a stack
+# update, you may wish to maintain two roles, a less restrictive one that you
+# can use for stack creation, arbitrary modification, and deletion, and a
+# restrictive one that you can leave in place for automated stack updates. The
+# latter role need only support the AWS actions invoked when the stack's
+# Enable parameter changes from true to false and vice versa.
 ##############################################################################
 
 Parameters:
@@ -117,7 +125,7 @@ Conditions:
   # Review
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
   # and add this condition to your template:
-  EnableTrue: !Equals [!Ref Enable, "true"]
+  EnableTrue: !Equals [ !Ref Enable, "true" ]
   ############################################################################
 
 Resources:
@@ -126,16 +134,15 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     # STEP 4 #################################################################
     #
-    # Add this property to each conditionally-created resource. There is no
+    # Add this attribute to each conditionally-created resource. There is no
     # need to add it to free or low-cost resources.
     Condition: EnableTrue
     ##########################################################################
     Properties:
-      GroupDescription:
-        Fn::Sub: >-
-          Demonstrates deletion and recreation of a resource (this security
-          group) based on schedules in the
-          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
+      GroupDescription: !Sub >-
+        Demonstrates deletion and recreation of a resource (this security
+        group) based on schedules in the sched-set-Enable-true/-false stack
+        tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-ConditionalSecGrp"
@@ -144,11 +151,10 @@ Resources:
   SecGrpWithConditionalRule:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription:
-        Fn::Sub: >-
-          Demonstrates deletion and recreation of a resource property (a
-          security group ingress rule) based on schedules in the
-          sched-set-Enable-true/-false stack tags of ${AWS::StackName}
+      GroupDescription: !Sub >-
+        Demonstrates deletion and recreation of a resource property (a security
+        group ingress rule) based on schedules in the
+        sched-set-Enable-true/-false stack tags of ${AWS::StackName}
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-SecGrpWithConditionalRule"
@@ -161,33 +167,44 @@ Resources:
           CidrIp: 8.8.8.8/32
         # STEP 5 #############################################################
         #
-        # To conditionally specify a resource property or a list item, use:
-        # Fn::If: [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
+        # To conditionally set the value of a resource property or the value
+        # of a list item, use:
         #
-        # !Ref AWS::NoValue omits a resource property entirely.
+        # !If [ EnableTrue, VALUE_IF_ENABLED, VALUE_IF_NOT_ENABLED ]
         #
-        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
-        - Fn::If:
-            - EnableTrue
-            - Description: Conditional rule
-              IpProtocol: tcp
-              FromPort: 53
-              ToPort: 53
-              SourceSecurityGroupId: !Ref ConditionalSecGrp
-            - !Ref AWS::NoValue
+        # !Ref AWS::NoValue omits a resource property entirely. It also omits
+        # a list item, but if this would have been the only item, make the
+        # parent property conditional instead, and specify a singleton list:
+        #
+        # KeyForSomeListProperty: !If
+        #   - EnableTrue
+        #   - [ SINGLE_VALUE ]
+        #   - !Ref AWS::NoValue
+        #
+        # See
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html#cfn-pseudo-param-novalue
+        - !If
+          - EnableTrue
+          - Description: Conditional rule
+            IpProtocol: tcp
+            FromPort: 53
+            ToPort: 53
+            SourceSecurityGroupId: !Ref ConditionalSecGrp
+          - !Ref AWS::NoValue
 # STEP 6 #####################################################################
 #
 # Test your deployment role and your stack. Try a manual stack update in which
-# you change the Enable parameter from false to true, and anoter in which you
+# you change the Enable parameter from false to true, and another in which you
 # change it from true to false.
 #
 # STEP 7 #####################################################################
 #
 # Refer to
-# https://github.com/sqlxpert/lights-off-aws#tag-values-schedules .
+# https://github.com/sqlxpert/lights-off-aws#tag-values-schedules
 #
-# Make sure that the EnableSchedCloudFormationOps is set to "true" in the
-# main LightsOff CloudFormation stack or StackSet.
+# Make sure that the EnableSchedCloudFormationOps parameter is set to "true"
+# in your main LightsOff CloudFormation stack, CloudFormation StackSet, or
+# Terraform module.
 #
 # Add schedule tags to your own stack:
 # - sched-set-Enable-true
