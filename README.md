@@ -445,10 +445,10 @@ basic format (example: `20241231T1400Z`).
       typically due to the local security configuration.
     - To see more events, change "Read-only" from `false` to `true` .
 
-### Why No Centralized Monitoring?
+### Why No Built-In Monitoring?
 
 <details>
-  <summary>Whether and how to monitor Lights Off centrally...</summary>
+  <summary>Whether and how to monitor Lights Off...</summary>
 
 <br/>
 
@@ -467,35 +467,34 @@ Consider monitoring Lights Off through...
   or
 - [CloudWatch Logs data centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
 
-...which might already have been configured in your organization.
+...which might already be configured in your organization.
 
-The love (practically a fetish!) for dashboards, alerts, and reports raises a
-deeper question. Is it _worth_ monitoring EC2 instance and RDS/Aurora database
-re-starts? Probably not! If large amounts of money are at stake, you need
+The fetish for metrics, dashboards, and alerts raises a deeper question. Is it
+_worth_ paging someone over an unsuccessful EC2 instance stop request? Probably
+not! If large amounts of money are at stake, you need
 [AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html).
 The thresholds, notifications, and actions you define there cover any and all
 tools, applications, provisioning processes, and people, not just Lights Off.
 
 Backups _are_ worth monitoring, but at the point of consumption, not at the
-point of creation. No matter how you create backups, you should be restoring
-the critical ones automatically and validating the results.
+point of creation. No matter how you create backups, you should implement an
+automated process to restore critical ones (the first hourly backup of the day,
+for example) and validate the results.
 [AWS Backup restore testing](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html)
 solves this problem.
 
-When your organization becomes large and formal, you will graduate from Lights
-Off's tag-based backup schedules, with their friendly, local configuration, to
-central
+When your organization becomes large and formal, you will graduate from
+friendly, locally-managed `sched-backup` tags to centralized
 [backup plans](https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html).
 Then, you can use
 [AWS Backup Audit Manager](https://docs.aws.amazon.com/aws-backup/latest/devguide/controls-and-remediation.html)
-to continuously check your resources, your plans, and (the presence of) your
-backups. This is also a good time to quit, before your job changes from
-producing software to attending meetings, making charts, and writing reports.
+to continuously check your resources, your plans, and the presence of your
+backups. (You will still have to validate the backups.) Consider quitting
+before your job shifts from making software to making PowerPoint presentations.
 
-Employees, consultants, and software vendors who wow you with pretty
-dashboards should instead be asking whether the information rises to the level
-of materiality, and whether AWS provides standard ways to gather the
-information you care about.
+Employees, consultants, and vendors who demonstrate pretty dashboards should
+instead start by asking what is material to you. You should ask whether AWS
+provides standard ways to gather the information you actually care about.
 
 </details>
 
@@ -770,8 +769,8 @@ software at your own risk. You are encouraged to evaluate the source code.
 A sample service control policy is available to prevent tampering with Lights
 Off schedule tags.
 
-This SCP offers two-way protection: Non-exempt roles can neither remove nor add
-schedule tags. Non-exempt roles also cannot change schedule tag values.
+This SCP offers two-way protection: roles subject to the SCP can neither remove
+nor add schedule tags. They cannot change existing schedule tag values, either.
 
 In your AWS Organizations management account, in the region where you manage
 infrastructure-as-code templates for non-regional resources, create a
@@ -895,12 +894,13 @@ The sample
 [service control policy](#service-control-policy)
 does _not_ cover `sched-set-Enable-true` and `sched-set-Enable-false` tags on
 CloudFormation stacks (or StackSets, whose tags would be copied to member
-stack instances). CloudFormation authorizes stack update requests that include
-stack tag changes, even if the changes conflict with conditions on
-`cloudformation:TagResource` and `cloudformation:UntagResource`&nbsp;. Because
+stack instances). Because
 [UpdateStack](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_UpdateStack.html#:~:text=tags.-,If%20you%20don't%20specify,CloudFormation%20doesn't%20modify%20the%20stack's%20tags.)
-works by overwriting the entire set of tags, IAM policy conditions can't
-distinguish adding a tag from preserving the value of an existing tag.
+overwrites the entire set of tags, distinguishing between adding a tag,
+preserving an existing tag's value, explicitly removing a tag, and removing a
+tag by removing all tags, requires multiple IAM policy statements for each tag
+key. Only privileged roles should be allowed to create and update
+CloudFormation stacks/StackSets, including their tags.
 
 </details>
 
