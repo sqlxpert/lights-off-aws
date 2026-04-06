@@ -28,8 +28,8 @@ Jump to:
 
 >&#128274; Software supply chain security is on everyone's mind. This tool's
 two Lambda functions share one Python source file that's short enough to read
-(750&nbsp;lines total). I've made GitHub releases immutable as of
-`v3.6.0`&nbsp;. AWS
+(750&nbsp;lines total). I made GitHub releases immutable as of `v3.6.0`
+(2026-04-06). AWS
 [manages patching](https://docs.aws.amazon.com/lambda/latest/dg/runtime-management-shared.html#:~:text=Lambda%20is%20responsible%20for%20applying,Auto%20runtime%20update%20mode.)
 of the stock Lambda runtime, which provides the Python standard library and the
 AWS software development kit (boto, boto3).
@@ -37,16 +37,17 @@ AWS software development kit (boto, boto3).
 >AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 the closest competing tool, has well over 10,000&nbsp;lines of Python spread
-across more than 100&nbsp;files. As of (mutable!)
-[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1), it depends on numerous
+across more than 100&nbsp;files. As of 2026-04-05, the latest release,
+(mutable!)
+[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1), Instance Scheduler depends on numerous
 [Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/.projen/deps.json)
 and
 [npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
-It helps itself to permission to
+Instance Scheduler helps itself to permission to
 [modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
 and
 [delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
-It also
+Instance Scheduler also
 [sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
 Instance Scheduler is powerful, and I have tremendous respect for its authors,
 but you'd need your own expert to run it securely.
