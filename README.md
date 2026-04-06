@@ -37,8 +37,9 @@ AWS software development kit (boto, boto3).
 >AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 the closest competing tool, has well over 10,000&nbsp;lines of Python spread
-across more than 100&nbsp;files. It depends on numerous
-[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/poetry.lock)
+across more than 100&nbsp;files. As of (mutable!)
+[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1), it depends on numerous
+[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/.projen/deps.json)
 and
 [npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
 It helps itself to permission to
