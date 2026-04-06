@@ -48,8 +48,8 @@ and
 [delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
 It also
 [sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
-Instance Scheduler is powerful, and I have tremendous respect its authors, but
-you'd need your own expert to run it securely.
+Instance Scheduler is powerful, and I have tremendous respect for its authors,
+but you'd need your own expert to run it securely.
 
 Click to view the Lights Off architecture diagram:
 
