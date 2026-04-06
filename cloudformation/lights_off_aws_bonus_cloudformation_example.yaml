@@ -176,9 +176,9 @@ Resources:
         # a list item, but if this would have been the only item, make the
         # parent property conditional instead, and specify a singleton list:
         #
-        # !If
+        # KeyForSomeListProperty: !If
         #   - EnableTrue
-        #   - SomePropertyKey: [ SINGLE_VALUE ]
+        #   - [ SINGLE_VALUE ]
         #   - !Ref AWS::NoValue
         #
         # See
