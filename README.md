@@ -979,9 +979,9 @@ offering a simple alternative to
 
 |Year|Lambda Python Lines|Core CloudFormation YAML Lines|Core Terraform HCL Lines|
 |:---:|:---:|:---:|:---:|
-|2017|&asymp; 775|&asymp; 2,140||
-|2022|630|800 &check;||
-|2025|620 &check;|1,000|270|
+|2017|&asymp;&nbsp;775|&asymp;&nbsp;2,140||
+|2022|630|800&nbsp;&check;||
+|2025|620&nbsp;&check;|1,000|&asymp;&nbsp;270|
 |2026|620|1,120|270|
 
 Here I report "loc" figures from GitHub. Figures for CloudFormation are net of
