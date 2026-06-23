@@ -125,8 +125,8 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   operation_preferences {
     region_order            = sort(keys(data.aws_region.lights_off_stackset))
     region_concurrency_type = "PARALLEL"
-    max_concurrent_count    = 2
-    failure_tolerance_count = 2
+    max_concurrent_count    = var.lights_off_multi_concurrency_count
+    failure_tolerance_count = var.lights_off_multi_failure_tolerance_count
   }
 
   auto_deployment {
@@ -159,8 +159,8 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
   operation_preferences {
     region_order            = sort(keys(data.aws_region.lights_off_stackset))
     region_concurrency_type = "PARALLEL"
-    max_concurrent_count    = 2
-    failure_tolerance_count = 2
+    max_concurrent_count    = var.lights_off_multi_concurrency_count
+    failure_tolerance_count = var.lights_off_multi_failure_tolerance_count
   }
 
   stack_set_instance_region = each.value.region

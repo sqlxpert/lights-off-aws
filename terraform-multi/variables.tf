@@ -146,6 +146,20 @@ variable "lights_off_stackset_organizational_unit_ids" {
   }
 }
 
+variable "lights_off_multi_concurrency_count" {
+  type        = number
+  description = "Number of concurrent StackSet instance deployments to run in each region."
+
+  default = 2
+}
+
+variable "lights_off_multi_failure_tolerance_count" {
+  type        = number
+  description = "Number of concurrent StackSet instance deployment failures to allow in each region before stopping deployments in that region."
+
+  default = 2
+}
+
 variable "lights_off_stackset_regions" {
   type        = list(string)
   description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment will proceed in alphabetical order by region code."
