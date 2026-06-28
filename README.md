@@ -81,7 +81,7 @@ and more!
 
       Select "Upload a template file", then select "Choose file" and navigate
       to a locally-saved copy of
-      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)
+      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.1/cloudformation/lights_off_aws.yaml?raw=true)
       [right-click to save as...].
 
       On the next page, set:
@@ -99,7 +99,7 @@ and more!
 
       ```terraform
       module "lights_off" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.1"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
         # Check that the release is immutable!
       }
@@ -534,7 +534,7 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
 
       Select "Upload a template file", then select "Choose file" and upload a
       locally-saved copy of
-      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)
+      [cloudformation/lights_off_aws.yaml](/../../blob/v3.6.1/cloudformation/lights_off_aws.yaml?raw=true)
       [right-click to save as...].
 
       On the next page, set:
@@ -552,7 +552,7 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
 
       ```terraform
       module "lights_off_stackset" {
-        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.6.0"
+        source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-multi?ref=v3.6.1"
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
         # Check that the release is immutable!
 
@@ -560,6 +560,89 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg",]
       }
       ```
+
+      You can customize
+      [concurrency and error handling](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html#stackset-ops-options)
+      for StackSet operations by setting the
+      `lights_off_stackset_operation_preferences` module variable. These
+      preferences apply to the StackSet as a whole, if you update the
+      CloudFormation template or change a parameter. They also apply to
+      StackSet instances affected when you change the region list or the
+      organizational unit list. The module automatically defines StackSet
+      instances based on the cross product
+      `lights_off_stackset_regions`&nbsp;&times;&nbsp;`lights_off_stackset_organizational_unit_ids`&nbsp;.
+
+      <details>
+        <summary>Defining your own StackSet instances...</summary>
+
+      <br/>
+
+      Your CloudFormation StackSet deployment targets might be more complex
+      than the cross product
+      `lights_off_stackset_regions`&nbsp;&times;&nbsp;`lights_off_stackset_organizational_unit_ids`&nbsp;.
+      You might want to deploy Lights Off in different regions, depending on
+      the organizational unit, or in different OUs, depending on the region.
+      You might also want to include or exclude specific AWS account numbers.
+      You can also selectively override CloudFormation parameter values.
+
+      |Goal|Explanation|
+      |:---|:---|
+      |Vary combinations of regions and organizational units|[CreateStackInstances](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStackInstances.html)|
+      |Include or exclude accounts|[DeploymentTargets](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html#API_DeploymentTargets_Contents)|
+      |Override parameters|[`aws_cloudformation_stack_set_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#argument-reference)`.`[`parameter_overrides`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#parameter_overrides-1)|
+
+      To define all Lights Off StackSet instances yourself, leave the
+      `lights_off_stackset_organizational_unit_ids` list empty, or do not set
+      this module variable at all.
+
+      To define some or all StackSet instances yourself, add one or more
+      resource blocks after the module block:
+
+      ```terraform
+      resource "aws_cloudformation_stack_set_instance" "lights_off" {
+        stack_set_name = module.lights_off_stackset.lights_off_stackset_name
+
+        stack_set_instance_region = "us-east-1"
+        # Use an element of module.lights_off_stackset.lights_off_stackset_regions
+
+        operation_preferences {
+          # Arbitrary HashiCorp Configuration Language (HCL) syntax rules
+          # forbid assigning an entire object value to a block, and instead
+          # require assigning the attributes one by one.
+          # https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12
+
+          concurrency_mode        = module.lights_off_stackset.operation_preferences["concurrency_mode"]
+          region_concurrency_type = module.lights_off_stackset.operation_preferences["region_concurrency_type"]
+          region_order            = module.lights_off_stackset.operation_preferences["region_order"]
+
+          max_concurrent_percentage = lookup(
+            module.lights_off_stackset.operation_preferences,
+            "max_concurrent_percentage",
+            null
+          )
+          max_concurrent_count = lookup(
+            module.lights_off_stackset.operation_preferences,
+            "max_concurrent_count",
+            null
+          )
+
+          failure_tolerance_percentage = lookup(
+            module.lights_off_stackset.operation_preferences,
+            "failure_tolerance_percentage",
+            null
+          )
+          failure_tolerance_count = lookup(
+            module.lights_off_stackset.operation_preferences,
+            "failure_tolerance_count",
+            null
+          )
+        }
+
+        # ...other attributes...
+      }
+      ```
+
+      </details>
 
 ### Installation with Terraform
 
@@ -581,7 +664,7 @@ resemble:
 
 ```terraform
 module "lights_off" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform?ref=v3.6.1"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
   # Check that the release is immutable!
 
@@ -612,17 +695,17 @@ is done for you if you use Terraform at Step&nbsp;3 of the
 [Quick Start](#quick-start).)
 
 First, create the `LightsOffPrereq` stack from
-[cloudformation/lights_off_aws_prereq.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
+[cloudformation/lights_off_aws_prereq.yaml](/../../blob/v3.6.1/cloudformation/lights_off_aws_prereq.yaml?raw=true)&nbsp;.
 
 Under "Additional settings" &rarr; "Stack policy - optional", you can "Upload a
 file" and select a locally-saved copy of
-[cloudformation/lights_off_aws_prereq_policy.json](/../../blob/v3.6.0/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
+[cloudformation/lights_off_aws_prereq_policy.json](/../../blob/v3.6.1/cloudformation/lights_off_aws_prereq_policy.json?raw=true)&nbsp;.
 The stack policy prevents inadvertent replacement or deletion of the deployment
 role during stack updates, but it cannot prevent deletion of the entire
 `LightsOffPrereq` stack.
 
 Next, when you create the `LightsOff` stack from
-[cloudformation/lights_off_aws.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
+[cloudformation/lights_off_aws.yaml](/../../blob/v3.6.1/cloudformation/lights_off_aws.yaml?raw=true)&nbsp;,
 set "Permissions - optional" &rarr; "IAM role - optional" to
 `LightsOffPrereq-DeploymentRole`&nbsp;. If your own privileges are limited, you
 might need permission to pass the deployment role to CloudFormation. See the
@@ -780,13 +863,13 @@ nor add schedule tags. They cannot change existing schedule tag values, either.
 In your AWS Organizations management account, in the region where you manage
 infrastructure-as-code templates for non-regional resources, create a
 CloudFormation stack from
-[cloudformation/scp_protect_lights_off_tags.yaml](/../../blob/v3.6.0/cloudformation/scp_protect_lights_off_tags.yaml?raw=true)&nbsp;.
+[cloudformation/scp_protect_lights_off_tags.yaml](/../../blob/v3.6.1/cloudformation/scp_protect_lights_off_tags.yaml?raw=true)&nbsp;.
 
 Or, reference the equivalent Terraform module:
 
 ```terraform
 module "lights_off_scp" {
-  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-scp?ref=v3.6.0"
+  source = "git::https://github.com/sqlxpert/lights-off-aws.git//terraform-scp?ref=v3.6.1"
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
   # Check that the release is immutable!
 
@@ -855,7 +938,7 @@ a sample use case. See
 [10-minute AWS Client VPN](https://github.com/sqlxpert/10-minute-aws-client-vpn#automatic-scheduling).
 
 To make your own CloudFormation template compatible, see
-[cloudformation/lights_off_aws_bonus_cloudformation_example.yaml](/../../blob/v3.6.0/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
+[cloudformation/lights_off_aws_bonus_cloudformation_example.yaml](/../../blob/v3.6.1/cloudformation/lights_off_aws_bonus_cloudformation_example.yaml)
 .
 
 Not every resource needs to be deleted and recreated; condition the creation

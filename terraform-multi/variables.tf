@@ -116,41 +116,82 @@ variable "lights_off_tags" {
 
 
 
-# You may wish to customize this interface. Beyond simply targeting a list of
-# organizational units and a list of regions, CloudFormation supports a rich
-# set of inputs for determining which AWS accounts to exclude and include, and
-# lets you override StackSet parameters as necessary. See
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStackInstances.html
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html
-# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#parameter_overrides-1
 
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
-  description = "List of the names (not the IDs) of the organizational units in which to create instances of the CloudFormation StackSet. At least one is required. The organizational units must exist. Within a region, deployments will always proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
+  description = "List of the names (not the IDs) of root-level organizational units in which to create instances of the CloudFormation StackSet. The organizational units must exist. Within a region, deployments proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
 
   default = []
 }
 
 variable "lights_off_stackset_organizational_unit_ids" {
   type        = list(string)
-  description = "List of the IDs of the organizational units in which to create instances of the CloudFormation StackSet. At least one OU must be specified. Within a region, deployments will always proceed in alphabetical order by OU ID."
+  description = "List of the IDs of the organizational units in which to automatically create instances of the CloudFormation StackSet. Within a region, deployments proceed in alphabetical order by OU ID. Leave the list empty if you create all aws_cloudformation_stack_set_instance resources manually."
 
-  default = [] # Until lights_off_stackset_organizational_unit_names is removed
-
-  validation {
-    error_message = "At least one organizational unit ID is required."
-
-    condition = (length(var.lights_off_stackset_organizational_unit_ids) >= 1) || (
-      length(var.lights_off_stackset_organizational_unit_names) >= 1
-    )
-  }
+  default = []
 }
+
+
 
 variable "lights_off_stackset_regions" {
   type        = list(string)
-  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment will proceed in alphabetical order by region code."
+  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically created StackSet instances will proceed in alphabetical order by region code."
 
   default = []
+}
+
+locals {
+  region_concurrency_type_values = [
+    "SEQUENTIAL",
+    "PARALLEL"
+  ]
+  region_concurrency_type_values_string = join(
+    " , ",
+    local.region_concurrency_type_values
+  )
+
+  concurrency_mode_values = [
+    "STRICT_FAILURE_TOLERANCE",
+    "SOFT_FAILURE_TOLERANCE"
+  ]
+  concurrency_mode_values_string = join(
+    " , ",
+    local.concurrency_mode_values
+  )
+}
+
+variable "lights_off_stackset_operation_preferences" {
+  type = object({
+    concurrency_mode             = optional(string, "STRICT_FAILURE_TOLERANCE")
+    region_concurrency_type      = optional(string, "PARALLEL")
+    region_order                 = optional(list(string))
+    max_concurrent_percentage    = optional(number)
+    max_concurrent_count         = optional(number, 2)
+    failure_tolerance_percentage = optional(number)
+    failure_tolerance_count      = optional(number, 2)
+  })
+
+  description = "operation_preferences for the Lights Off CloudFormation StackSet and any automatically-created StackSet instances. See registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set#operation_preferences-argument-reference and registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#operation_preferences-argument-reference . The default region_order is lights_off_stackset_regions in alphabetic order. _percentage takes precedence over the corresponding _count . An output is provided so that you can use the same final operation_preferences for any manually-created StackSet instances."
+
+  default = {}
+
+  validation {
+    error_message = "if specified, must be one of: ${local.concurrency_mode_values_string} ."
+
+    condition = contains(
+      local.concurrency_mode_values,
+      var.lights_off_stackset_operation_preferences["concurrency_mode"]
+    )
+  }
+
+  validation {
+    error_message = "if specified, must be one of: ${local.region_concurrency_type_values_string} ."
+
+    condition = contains(
+      local.region_concurrency_type_values,
+      var.lights_off_stackset_operation_preferences["region_concurrency_type"]
+    )
+  }
 }
 
 

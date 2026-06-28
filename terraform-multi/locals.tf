@@ -2,6 +2,16 @@
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
 data "aws_region" "current" {}
+
+data "aws_region" "lights_off_stackset" {
+  for_each = toset(coalescelist(
+    var.lights_off_stackset_regions,
+    [local.region]
+  ))
+
+  region = each.key
+}
+
 locals {
   region = coalesce(
     var.lights_off_region,
@@ -24,6 +34,47 @@ locals {
     },
     var.lights_off_tags,
   )
+
+  regions_set = toset(keys(data.aws_region.lights_off_stackset))
+
+  operation_preferences = merge(
+    {
+      concurrency_mode = var.lights_off_stackset_operation_preferences[
+        "concurrency_mode"
+      ]
+      region_concurrency_type = var.lights_off_stackset_operation_preferences[
+        "region_concurrency_type"
+      ]
+      region_order = lookup(
+        var.lights_off_stackset_operation_preferences,
+        "region_order",
+        sort(tolist(local.regions_set))
+      )
+
+      max_concurrent_count = var.lights_off_stackset_operation_preferences[
+        "max_concurrent_count"
+      ]
+      failure_tolerance_count = var.lights_off_stackset_operation_preferences[
+        "failure_tolerance_count"
+      ]
+    },
+
+    var.lights_off_stackset_operation_preferences["max_concurrent_percentage"] == null
+    ? {}
+    : {
+      max_concurrent_count = null
+      max_concurrent_percentage = var.lights_off_stackset_operation_preferences[
+        "max_concurrent_percentage"
+      ]
+    },
+
+    var.lights_off_stackset_operation_preferences["failure_tolerance_percentage"] == null
+    ? {}
+    : {
+      failure_tolerance_count = null
+      failure_tolerance_percentage = var.lights_off_stackset_operation_preferences[
+        "failure_tolerance_percentage"
+      ]
+    },
+  )
 }
-
-

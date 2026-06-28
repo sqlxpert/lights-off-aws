@@ -3,17 +3,6 @@
 
 
 
-data "aws_region" "lights_off_stackset" {
-  for_each = toset(coalescelist(
-    var.lights_off_stackset_regions,
-    [local.region]
-  ))
-
-  region = each.key
-}
-
-
-
 # Remove when var.lights_off_stackset_organizational_unit_names is removed.
 data "aws_organizations_organization" "current" {}
 data "aws_organizations_organizational_unit" "lights_off_stackset" {
@@ -123,10 +112,31 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
-    region_order            = sort(keys(data.aws_region.lights_off_stackset))
-    region_concurrency_type = "PARALLEL"
-    max_concurrent_count    = 2
-    failure_tolerance_count = 2
+    concurrency_mode        = local.operation_preferences["concurrency_mode"]
+    region_concurrency_type = local.operation_preferences["region_concurrency_type"]
+    region_order            = local.operation_preferences["region_order"]
+
+    max_concurrent_percentage = lookup(
+      local.operation_preferences,
+      "max_concurrent_percentage",
+      null
+    )
+    max_concurrent_count = lookup(
+      local.operation_preferences,
+      "max_concurrent_count",
+      null
+    )
+
+    failure_tolerance_percentage = lookup(
+      local.operation_preferences,
+      "failure_tolerance_percentage",
+      null
+    )
+    failure_tolerance_count = lookup(
+      local.operation_preferences,
+      "failure_tolerance_count",
+      null
+    )
   }
 
   auto_deployment {
@@ -149,29 +159,57 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   }
 }
 
+
+
+locals {
+  organizational_unit_ids = sort(toset(concat([
+    for organizational_unit_key, organizational_unit
+    in data.aws_organizations_organizational_unit.lights_off_stackset
+    : organizational_unit.id
+    ],
+    var.lights_off_stackset_organizational_unit_ids,
+  )))
+  define_instances = (length(local.organizational_unit_ids) > 0)
+}
+
 resource "aws_cloudformation_stack_set_instance" "lights_off" {
-  for_each = data.aws_region.lights_off_stackset
+  for_each = local.define_instances ? local.regions_set : toset([])
 
   stack_set_name = aws_cloudformation_stack_set.lights_off.name
 
   call_as = var.lights_off_stackset_call_as
 
   operation_preferences {
-    region_order            = sort(keys(data.aws_region.lights_off_stackset))
-    region_concurrency_type = "PARALLEL"
-    max_concurrent_count    = 2
-    failure_tolerance_count = 2
+    concurrency_mode        = local.operation_preferences["concurrency_mode"]
+    region_concurrency_type = local.operation_preferences["region_concurrency_type"]
+    region_order            = local.operation_preferences["region_order"]
+
+    max_concurrent_percentage = lookup(
+      local.operation_preferences,
+      "max_concurrent_percentage",
+      null
+    )
+    max_concurrent_count = lookup(
+      local.operation_preferences,
+      "max_concurrent_count",
+      null
+    )
+
+    failure_tolerance_percentage = lookup(
+      local.operation_preferences,
+      "failure_tolerance_percentage",
+      null
+    )
+    failure_tolerance_count = lookup(
+      local.operation_preferences,
+      "failure_tolerance_count",
+      null
+    )
   }
 
-  stack_set_instance_region = each.value.region
+  stack_set_instance_region = each.key
   deployment_targets {
-    organizational_unit_ids = sort(toset(concat([
-      for organizational_unit_key, organizational_unit
-      in data.aws_organizations_organizational_unit.lights_off_stackset
-      : organizational_unit.id
-      ],
-      var.lights_off_stackset_organizational_unit_ids,
-    )))
+    organizational_unit_ids = local.organizational_unit_ids
   }
   retain_stack = false
 
