@@ -135,7 +135,7 @@ variable "lights_off_stackset_organizational_unit_ids" {
 
 variable "lights_off_stackset_regions" {
   type        = list(string)
-  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically created StackSet instances will proceed in alphabetical order by region code."
+  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically-defined StackSet instances will proceed in alphabetical order by region code."
 
   default = []
 }
@@ -171,7 +171,7 @@ variable "lights_off_stackset_operation_preferences" {
     failure_tolerance_count      = optional(number, 2)
   })
 
-  description = "operation_preferences for the Lights Off CloudFormation StackSet and any automatically-created StackSet instances. See registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set#operation_preferences-argument-reference and registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#operation_preferences-argument-reference . The default region_order is lights_off_stackset_regions in alphabetic order. _percentage takes precedence over the corresponding _count . An output is provided so that you can reference the final operation_preferences for any manually-created StackSet instances."
+  description = "operation_preferences for the Lights Off CloudFormation StackSet and any automatically-defined StackSet instances. See registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set#operation_preferences-argument-reference and registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#operation_preferences-argument-reference . The default region_order is lights_off_stackset_regions in alphabetic order. _percentage takes precedence over the corresponding _count . For the aws_cloudformation_stack_set resource, concurrency_mode is ignored. An output is provided so that you can reference the final operation_preferences in any manually-defined cloudformation_stack_set_instance resources."
 
   default = {}
 

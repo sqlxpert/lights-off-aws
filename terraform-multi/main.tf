@@ -112,7 +112,9 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
-    concurrency_mode        = local.operation_preferences["concurrency_mode"]
+    # Applies only to aws_cloudformation_stack_set_instance ,
+    # not to aws_cloudformation_stack_set :
+    # concurrency_mode        = local.operation_preferences["concurrency_mode"]
     region_concurrency_type = local.operation_preferences["region_concurrency_type"]
     region_order            = local.operation_preferences["region_order"]
 
