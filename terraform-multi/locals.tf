@@ -46,7 +46,7 @@ locals {
       region_order = lookup(
         var.lights_off_stackset_operation_preferences,
         "region_order",
-        sort(tolist(local.regions_set))
+        sort(keys(data.aws_region.lights_off_stackset))
       )
 
       max_concurrent_count = var.lights_off_stackset_operation_preferences[

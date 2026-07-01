@@ -209,7 +209,7 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
     )
   }
 
-  stack_set_instance_region = each.value.region
+  stack_set_instance_region = each.key
   deployment_targets {
     organizational_unit_ids = local.organizational_unit_ids
   }
