@@ -37,21 +37,23 @@ AWS software development kit (boto, boto3).
 >AWS's
 [Instance Scheduler](https://github.com/aws-solutions/instance-scheduler-on-aws),
 the closest competing tool, has well over 10,000&nbsp;lines of Python spread
-across more than 100&nbsp;files. As of 2026-04-05, the latest release was still
-mutable:
-[v3.2.1 (2026-03-27)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.1).
+across more than 100&nbsp;files. As of 2026-06-30, more than 3&nbsp;months
+after
+[software supply chain attacks rocked the open source world](https://www.theregister.com/security/2026/04/11/two-different-attackers-poisoned-popular-open-source-tools/5221008),
+AWS's latest Instance Scheduler release was **still** mutable: see
+[v3.2.4 (2026-06-17)](https://github.com/aws-solutions/instance-scheduler-on-aws/releases/tag/v3.2.4).
 Instance Scheduler depends on numerous
-[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/source/app/.projen/deps.json)
+[Python modules](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/1cdfba5/source/app/.projen/deps.json)
 and
-[npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/e547564/package.json).
+[npm packages](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/1cdfba5/package.json).
 It helps itself to permission to
-[modify and stop any EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
+[modify and stop **any** EC2 instance](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/ec2-scheduling-permissions-policy.ts#L23-L29)
 and
-[delete any RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
+[delete **any** RDS snapshot](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/f6611ff/source/instance-scheduler/lib/iam/rds-scheduling-permissions-policy.ts#L21-L28).
 It also
-[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/ad5a47b/README.md#collection-of-operational-metrics).
-Instance Scheduler is powerful, and I have tremendous respect for its authors,
-but you'd need your own expert to run it securely.
+[sends data to AWS](https://github.com/aws-solutions/instance-scheduler-on-aws/blob/1cdfba5/README.md#collection-of-operational-metrics).
+Instance Scheduler is powerful, and I respect its authors, but you'd need an
+expert to run it securely.
 
 Click to view the Lights Off architecture diagram:
 
@@ -561,16 +563,37 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       }
       ```
 
-      You can customize
-      [concurrency and error handling](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html#stackset-ops-options)
-      for StackSet operations by setting the
-      `lights_off_stackset_operation_preferences` module variable. These
-      preferences apply to the StackSet as a whole, if you update the
+      Lights Off will be deployed automatically in every region listed, in
+      every account of every organizational unit listed.
+
+      <details>
+        <summary>Customizing deployment concurrency</summary>
+
+      <br/>
+
+      The `lights_off_stackset_operation_preferences` module variable lets you
+      customize StackSet operation
+      [concurrency](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html#stackset-ops-options).
+      Preferences apply to the StackSet as a whole, if you update the
       CloudFormation template or change a parameter. They also apply to
       StackSet instances affected when you change the region list or the
-      organizational unit list. The module automatically defines StackSet
-      instances based on the cross product
-      `lights_off_stackset_regions`&nbsp;&times;&nbsp;`lights_off_stackset_organizational_unit_ids`&nbsp;.
+      organizational unit list.
+
+      For example, to allow up to 4&nbsp;parallel&nbsp;deployments and accept
+      up to 3&nbsp;failures before cancellation (the module's conservative
+      defaults are 2 and 2), add:
+
+      ```terraform
+      # module "lights_off_stackset" {
+        # ...other attributes...
+
+        lights_off_stackset_operation_preferences = {
+          max_concurrent_count    = 4
+          failure_tolerance_count = 3
+        }
+      ```
+
+      </details>
 
       <details>
         <summary>Defining your own StackSet instances...</summary>
@@ -603,12 +626,13 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         stack_set_name = module.lights_off_stackset.lights_off_stackset_name
 
         stack_set_instance_region = "us-east-1"
-        # Use an element of module.lights_off_stackset.lights_off_stackset_regions
+        # Specify an element of
+        # module.lights_off_stackset.operation_preferences["region_order"]
 
         operation_preferences {
-          # Arbitrary HashiCorp Configuration Language (HCL) syntax rules
+          # Arbitrary HashiCorp Configuration Language (HCL) syntax restrictions
           # forbid assigning an entire object value to a block, and instead
-          # require assigning the attributes one by one.
+          # require assigning the attribute values one by one.
           # https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12
 
           concurrency_mode        = module.lights_off_stackset.operation_preferences["concurrency_mode"]

@@ -35,8 +35,6 @@ locals {
     var.lights_off_tags,
   )
 
-  regions_set = toset(keys(data.aws_region.lights_off_stackset))
-
   operation_preferences = merge(
     {
       concurrency_mode = var.lights_off_stackset_operation_preferences[

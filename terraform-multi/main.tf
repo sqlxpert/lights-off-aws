@@ -173,7 +173,9 @@ locals {
 }
 
 resource "aws_cloudformation_stack_set_instance" "lights_off" {
-  for_each = local.define_instances ? local.regions_set : toset([])
+  for_each = (
+    local.define_instances ? data.aws_region.lights_off_stackset : toset([])
+  )
 
   stack_set_name = aws_cloudformation_stack_set.lights_off.name
 
@@ -207,7 +209,7 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
     )
   }
 
-  stack_set_instance_region = each.key
+  stack_set_instance_region = each.value.region
   deployment_targets {
     organizational_unit_ids = local.organizational_unit_ids
   }
