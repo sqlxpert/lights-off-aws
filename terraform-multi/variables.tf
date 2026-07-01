@@ -162,7 +162,7 @@ locals {
 
 variable "lights_off_stackset_operation_preferences" {
   type = object({
-    concurrency_mode             = optional(string, "STRICT_FAILURE_TOLERANCE")
+    concurrency_mode             = optional(string)
     region_concurrency_type      = optional(string, "PARALLEL")
     region_order                 = optional(list(string))
     max_concurrent_percentage    = optional(number)
@@ -178,9 +178,12 @@ variable "lights_off_stackset_operation_preferences" {
   validation {
     error_message = "if specified, must be one of: ${local.concurrency_mode_values_string} ."
 
-    condition = contains(
-      local.concurrency_mode_values,
-      var.lights_off_stackset_operation_preferences["concurrency_mode"]
+    condition = (
+      (var.lights_off_stackset_operation_preferences["concurrency_mode"] == null)
+      || contains(
+        local.concurrency_mode_values,
+        var.lights_off_stackset_operation_preferences["concurrency_mode"]
+      )
     )
   }
 

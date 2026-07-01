@@ -112,9 +112,8 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
-    # Applies only to aws_cloudformation_stack_set_instance ,
-    # not to aws_cloudformation_stack_set :
-    # concurrency_mode        = local.operation_preferences["concurrency_mode"]
+    # concurrency_mode applies to aws_cloudformation_stack_set_instance
+    # but not to aws_cloudformation_stack_set
     region_concurrency_type = local.operation_preferences["region_concurrency_type"]
     region_order            = local.operation_preferences["region_order"]
 
@@ -175,16 +174,18 @@ locals {
 }
 
 resource "aws_cloudformation_stack_set_instance" "lights_off" {
-  for_each = (
-    local.define_instances ? data.aws_region.lights_off_stackset : toset([])
-  )
+  for_each = local.define_instances ? data.aws_region.lights_off_stackset : {}
 
   stack_set_name = aws_cloudformation_stack_set.lights_off.name
 
   call_as = var.lights_off_stackset_call_as
 
   operation_preferences {
-    concurrency_mode        = local.operation_preferences["concurrency_mode"]
+    concurrency_mode = lookup(
+      local.operation_preferences,
+      "concurrency_mode",
+      null
+    )
     region_concurrency_type = local.operation_preferences["region_concurrency_type"]
     region_order            = local.operation_preferences["region_order"]
 
