@@ -593,6 +593,12 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         }
       ```
 
+      **&#9888; Do not change `lights_off_stackset_operation_preferences` after
+      module creation**, until
+      [github.com/hashicorp/terraform-provider-aws/issues/39393](https://github.com/hashicorp/terraform-provider-aws/issues/39393)
+      has been resolved. Reported 2024-09-14, this bug is still present as of
+      2026-07-01, in Terraform AWS Provider `v6.53.0`&nbsp;.
+
       </details>
 
       <details>
@@ -630,41 +636,24 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         # module.lights_off_stackset.operation_preferences["region_order"]
 
         operation_preferences {
-          # Arbitrary HashiCorp Configuration Language (HCL) syntax restrictions
-          # forbid assigning an entire object value to a block, and instead
-          # require assigning the attribute values one by one.
-          # https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12
-
-          concurrency_mode        = module.lights_off_stackset.operation_preferences["concurrency_mode"]
-          region_concurrency_type = module.lights_off_stackset.operation_preferences["region_concurrency_type"]
-          region_order            = module.lights_off_stackset.operation_preferences["region_order"]
-
-          max_concurrent_percentage = lookup(
-            module.lights_off_stackset.operation_preferences,
-            "max_concurrent_percentage",
-            null
-          )
-          max_concurrent_count = lookup(
-            module.lights_off_stackset.operation_preferences,
-            "max_concurrent_count",
-            null
-          )
-
-          failure_tolerance_percentage = lookup(
-            module.lights_off_stackset.operation_preferences,
-            "failure_tolerance_percentage",
-            null
-          )
-          failure_tolerance_count = lookup(
-            module.lights_off_stackset.operation_preferences,
-            "failure_tolerance_count",
-            null
-          )
+          concurrency_mode             = local.operation_preferences["concurrency_mode"]
+          region_concurrency_type      = local.operation_preferences["region_concurrency_type"]
+          region_order                 = local.operation_preferences["region_order"]
+          max_concurrent_percentage    = local.operation_preferences["max_concurrent_percentage"]
+          max_concurrent_count         = local.operation_preferences["max_concurrent_count"]
+          failure_tolerance_percentage = local.operation_preferences["failure_tolerance_percentage"]
+          failure_tolerance_count      = local.operation_preferences["failure_tolerance_count"]
         }
 
         # ...other attributes...
       }
       ```
+
+      Arbitrary HashiCorp Configuration Language (HCL) syntax restrictions
+      forbid assigning an entire object value to a block, and instead require
+      assigning the attribute values one by one. See also
+      ["Attributes as Blocks"](https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12)
+      in HashiCorp's _Terraform Language Documentation_.
 
       </details>
 

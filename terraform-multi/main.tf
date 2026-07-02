@@ -112,32 +112,19 @@ resource "aws_cloudformation_stack_set" "lights_off" {
   capabilities     = ["CAPABILITY_IAM"]
 
   operation_preferences {
-    # concurrency_mode applies to aws_cloudformation_stack_set_instance
-    # but not to aws_cloudformation_stack_set
-    region_concurrency_type = local.operation_preferences["region_concurrency_type"]
-    region_order            = local.operation_preferences["region_order"]
+    # aws_cloudformation_stack_set_instance not aws_cloudformation_stack_set :
+    # concurrency_mode             = local.operation_preferences["concurrency_mode"]
+    region_concurrency_type      = local.operation_preferences["region_concurrency_type"]
+    region_order                 = local.operation_preferences["region_order"]
+    max_concurrent_percentage    = local.operation_preferences["max_concurrent_percentage"]
+    max_concurrent_count         = local.operation_preferences["max_concurrent_count"]
+    failure_tolerance_percentage = local.operation_preferences["failure_tolerance_percentage"]
+    failure_tolerance_count      = local.operation_preferences["failure_tolerance_count"]
 
-    max_concurrent_percentage = lookup(
-      local.operation_preferences,
-      "max_concurrent_percentage",
-      null
-    )
-    max_concurrent_count = lookup(
-      local.operation_preferences,
-      "max_concurrent_count",
-      null
-    )
-
-    failure_tolerance_percentage = lookup(
-      local.operation_preferences,
-      "failure_tolerance_percentage",
-      null
-    )
-    failure_tolerance_count = lookup(
-      local.operation_preferences,
-      "failure_tolerance_count",
-      null
-    )
+    # Arbitrary HashiCorp Configuration Language (HCL) syntax restrictions
+    # forbid assigning an entire object value to a block, and instead require
+    # assigning the attribute values one by one. See also
+    # https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12
   }
 
   auto_deployment {
@@ -181,35 +168,18 @@ resource "aws_cloudformation_stack_set_instance" "lights_off" {
   call_as = var.lights_off_stackset_call_as
 
   operation_preferences {
-    concurrency_mode = lookup(
-      local.operation_preferences,
-      "concurrency_mode",
-      null
-    )
-    region_concurrency_type = local.operation_preferences["region_concurrency_type"]
-    region_order            = local.operation_preferences["region_order"]
+    concurrency_mode             = local.operation_preferences["concurrency_mode"]
+    region_concurrency_type      = local.operation_preferences["region_concurrency_type"]
+    region_order                 = local.operation_preferences["region_order"]
+    max_concurrent_percentage    = local.operation_preferences["max_concurrent_percentage"]
+    max_concurrent_count         = local.operation_preferences["max_concurrent_count"]
+    failure_tolerance_percentage = local.operation_preferences["failure_tolerance_percentage"]
+    failure_tolerance_count      = local.operation_preferences["failure_tolerance_count"]
 
-    max_concurrent_percentage = lookup(
-      local.operation_preferences,
-      "max_concurrent_percentage",
-      null
-    )
-    max_concurrent_count = lookup(
-      local.operation_preferences,
-      "max_concurrent_count",
-      null
-    )
-
-    failure_tolerance_percentage = lookup(
-      local.operation_preferences,
-      "failure_tolerance_percentage",
-      null
-    )
-    failure_tolerance_count = lookup(
-      local.operation_preferences,
-      "failure_tolerance_count",
-      null
-    )
+    # Arbitrary HashiCorp Configuration Language (HCL) syntax restrictions
+    # forbid assigning an entire object value to a block, and instead require
+    # assigning the attribute values one by one. See also
+    # https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12
   }
 
   stack_set_instance_region = each.key

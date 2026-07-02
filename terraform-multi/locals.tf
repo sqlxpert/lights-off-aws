@@ -36,26 +36,16 @@ locals {
   )
 
   operation_preferences = merge(
-    {
-      concurrency_mode = var.lights_off_stackset_operation_preferences[
-        "concurrency_mode"
-      ]
-      region_concurrency_type = var.lights_off_stackset_operation_preferences[
-        "region_concurrency_type"
-      ]
-      region_order = lookup(
-        var.lights_off_stackset_operation_preferences,
-        "region_order",
-        sort(keys(data.aws_region.lights_off_stackset))
-      )
+    var.lights_off_stackset_operation_preferences,
 
-      max_concurrent_count = var.lights_off_stackset_operation_preferences[
-        "max_concurrent_count"
-      ]
-      failure_tolerance_count = var.lights_off_stackset_operation_preferences[
-        "failure_tolerance_count"
-      ]
-    },
+    # Reminder: optional(TYPE) with no default, in the object type constraint,
+    # supplies a null "value" for each key that has not been explicitly set.
+
+    var.lights_off_stackset_operation_preferences["region_order"] == null
+    ? {
+      region_order = sort(keys(data.aws_region.lights_off_stackset))
+    }
+    : {},
 
     var.lights_off_stackset_operation_preferences["max_concurrent_percentage"] == null
     ? {}
