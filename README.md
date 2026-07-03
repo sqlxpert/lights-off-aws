@@ -567,7 +567,8 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       every account of every organizational unit listed. Deployment
       customizations are also possible.
 
-      <details name="deployment_customization">
+      <a id="custom-terraform-multi-concurrency"></a>
+      <details name="terraform-multi-deployment-customization">
         <summary>Customizing deployment concurrency...</summary>
 
       ---
@@ -612,7 +613,8 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
 
       </details>
 
-      <details name="deployment_customization">
+      <a id="custom-terraform-multi-stackset-instances"></a>
+      <details name="terraform-multi-deployment-customization">
         <summary>Defining your own StackSet instances...</summary>
 
       ---
