@@ -649,7 +649,7 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         stack_set_instance_region = "us-east-1"
         # Specify an element of local.operation_preferences["region_order"]
         # or use
-        # for_each = toset(local.operation_preferences["region_order"]))
+        # for_each = toset(local.operation_preferences["region_order"])
 
         operation_preferences {
           concurrency_mode             = local.operation_preferences["concurrency_mode"]
