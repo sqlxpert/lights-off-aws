@@ -558,18 +558,19 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
         # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
         # Check that the release is immutable!
 
-        lights_off_stackset_regions                 = ["us-east-1", "us-west-2",]
-        lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg",]
+        lights_off_stackset_regions                 = ["us-east-1", "us-west-2", ]
+        lights_off_stackset_organizational_unit_ids = ["ou-0123-abcdefg", ]
       }
       ```
 
       Lights Off will be deployed automatically in every region listed, in
-      every account of every organizational unit listed.
+      every account of every organizational unit listed. Deployment
+      customizations are also possible.
 
-      <details>
-        <summary>Customizing deployment concurrency</summary>
+      <details name="deployment_customization">
+        <summary>Customizing deployment concurrency...</summary>
 
-      <br/>
+      ---
 
       The `lights_off_stackset_operation_preferences` module variable lets you
       customize StackSet operation
@@ -596,15 +597,25 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       **&#9888; Do not change `lights_off_stackset_operation_preferences` after
       module creation**, until
       [github.com/hashicorp/terraform-provider-aws/issues/39393](https://github.com/hashicorp/terraform-provider-aws/issues/39393)
-      has been resolved. Reported 2024-09-14, this bug is still present as of
-      2026-07-01, in Terraform AWS Provider `v6.53.0`&nbsp;.
+      has been resolved. This bug was still present as of 2026-07-01, in
+      Terraform AWS Provider `v6.53.0`&nbsp;. Work-arounds:
+
+      - Empty `lights_off_stackset_organizational_unit_ids` to delete all
+        existing StackSet instances. Then, restore the list values and change
+        `lights_off_stackset_operation_preferences` to create StackSet
+        instances using the new preferences, _or_
+      - Employ a blue/green deployment strategy by creating a second module
+        instance with a different or non-empty
+        `lights_off_stackset_name_suffix`&nbsp;.
+
+      ---
 
       </details>
 
-      <details>
+      <details name="deployment_customization">
         <summary>Defining your own StackSet instances...</summary>
 
-      <br/>
+      ---
 
       Your CloudFormation StackSet deployment targets might be more complex
       than the cross product
@@ -614,10 +625,9 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       You might also want to include or exclude specific AWS account numbers.
       You can also selectively override CloudFormation parameter values.
 
-      |Goal|Explanation|
+      |Goal|Documentation|
       |:---|:---|
-      |Vary combinations of regions and organizational units|[CreateStackInstances](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStackInstances.html)|
-      |Include or exclude accounts|[DeploymentTargets](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html#API_DeploymentTargets_Contents)|
+      |Vary regions, organizational unit, and account combinations|[DeploymentTargets](https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DeploymentTargets.html#API_DeploymentTargets_Contents)<br/>[`aws_cloudformation_stack_set_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#argument-reference)`.`[`deployment_targets`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#deployment_targets-argument-reference)|
       |Override parameters|[`aws_cloudformation_stack_set_instance`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#argument-reference)`.`[`parameter_overrides`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudformation_stack_set_instance#parameter_overrides-1)|
 
       To define all Lights Off StackSet instances yourself, leave the
@@ -628,12 +638,18 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       resource blocks after the module block:
 
       ```terraform
-      resource "aws_cloudformation_stack_set_instance" "lights_off" {
+
+      locals {
+        operation_preferences = module.lights_off_stackset.lights_off_stackset_operation_preferences
+      }
+
+      resource "aws_cloudformation_stack_set_instance" "lights_off_custom" {
         stack_set_name = module.lights_off_stackset.lights_off_stackset_name
 
         stack_set_instance_region = "us-east-1"
-        # Specify an element of
-        # module.lights_off_stackset.operation_preferences["region_order"]
+        # Specify an element of local.operation_preferences["region_order"]
+        # or use
+        # for_each = toset(local.operation_preferences["region_order"]))
 
         operation_preferences {
           concurrency_mode             = local.operation_preferences["concurrency_mode"]
@@ -655,7 +671,12 @@ each AWS account. To deploy to multiple regions and/or AWS accounts,
       ["Attributes as Blocks"](https://developer.hashicorp.com/terraform/language/attr-as-blocks#:~:text=this%20page%20only%20applies,prior%20to%20Terraform%20v0.12)
       in HashiCorp's _Terraform Language Documentation_.
 
+      ---
+
       </details>
+
+      Further customization of the deployment requires defining a custom
+      module.
 
 ### Installation with Terraform
 
@@ -681,7 +702,7 @@ module "lights_off" {
   # Reference a specific version from github.com/sqlxpert/lights-off-aws/releases
   # Check that the release is immutable!
 
-  for_each          = toset(["us-east-1", "us-west-2",])
+  for_each          = toset(["us-east-1", "us-west-2", ])
   lights_off_region = each.key
 }
 ```
@@ -1094,16 +1115,29 @@ counted non-blank, non-comment lines in Instance Scheduler `.py` files without
 `test` in their paths. People would never read all the Python source in AWS's
 Instance Scheduler, which is my point!
 
-## Dedication
+## Acknowledgements
 
 This project is dedicated to ej, Marianne and R&eacute;gis, Ivan, and to the
-wonderful colleagues whom Paul has worked with over the years. Thank you to
-Corey for sharing it with the AWS user community in _Last Week in AWS_
-newsletter issues
-[286 (2022-10-03)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
-and
-[424 (2025-05-27)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools),
-and to Lee for suggesting the new name.
+wonderful colleagues I've worked with over the years.
+
+Thank you to...
+
+- Corey for sharing Lights Off with the AWS user community in
+  _Last Week in AWS_ newsletter issues
+  [286 (2022-10-03)](https://www.lastweekinaws.com/newsletter/amazon-file-cash/#h-tools)
+  and
+  [424 (2025-05-27)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools).
+- Lee for suggesting the new name.
+- Florian for
+  [suggesting a queue policy change](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora/issues/10)
+  for my companion project
+  [github.com/sqlxpert/step-stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora)&nbsp;,
+  which led to a stricter but customizable policy that I was able to back-port
+  to Lights Off.
+- Toni for
+  [writing concurrency customization code](https://github.com/sqlxpert/lights-off-aws/pull/31),
+  which prompted me to expose much more CloudFormation StackSets deployment
+  flexibility in the `//terraform-multi` module.
 
 ## Licenses
 
