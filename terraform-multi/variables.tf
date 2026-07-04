@@ -126,7 +126,7 @@ variable "lights_off_stackset_organizational_unit_names" {
 
 variable "lights_off_stackset_organizational_unit_ids" {
   type        = list(string)
-  description = "List of the IDs of the organizational units in which to automatically create instances of the CloudFormation StackSet. Within a region, deployments proceed in alphabetical order by OU ID. Leave the list empty if you create all aws_cloudformation_stack_set_instance resources manually."
+  description = "List of the IDs of the organizational units in which to automatically define instances of the CloudFormation StackSet. Within a region, deployments proceed in alphabetical order by OU ID. Leave the list empty if you define all aws_cloudformation_stack_set_instance resources manually."
 
   default = []
 }
@@ -135,7 +135,7 @@ variable "lights_off_stackset_organizational_unit_ids" {
 
 variable "lights_off_stackset_regions" {
   type        = list(string)
-  description = "List of region codes for the regions in which to create instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically-defined StackSet instances will proceed in alphabetical order by region code."
+  description = "List of region codes for the regions in which to define instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically-defined StackSet instances will proceed in alphabetical order by region code."
 
   default = []
 }
