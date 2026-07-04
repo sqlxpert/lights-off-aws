@@ -1131,15 +1131,15 @@ Thank you to...
   [424 (2025-05-27)](https://www.lastweekinaws.com/newsletter/putting-my-wife-on-a-pip/#h-tools).
 - Lee for suggesting the new name.
 - Florian for
-  [suggesting a queue policy change](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora/issues/10)
+  [proposing a queue policy change](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora/issues/10)
   for my companion project
   [github.com/sqlxpert/step-stay-stopped-aws-rds-aurora](https://github.com/sqlxpert/step-stay-stopped-aws-rds-aurora)&nbsp;,
-  which led to a stricter but customizable policy that I was able to back-port
-  to Lights Off.
+  which led me to write a stricter but customizable policy and back-port it to
+  Lights Off.
 - Toni for
-  [writing concurrency customization code](https://github.com/sqlxpert/lights-off-aws/pull/31),
-  which prompted me to expose much more CloudFormation StackSets deployment
-  flexibility in the `//terraform-multi` module.
+  [proposing concurrency customization code](https://github.com/sqlxpert/lights-off-aws/pull/31),
+  which prompted me to expose more CloudFormation StackSet deployment controls
+  in the `//terraform-multi` module.
 
 ## Licenses
 
