@@ -2,6 +2,16 @@
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
 data "aws_region" "current" {}
+
+data "aws_region" "lights_off_stackset" {
+  for_each = toset(coalescelist(
+    var.lights_off_stackset_regions,
+    [local.region]
+  ))
+
+  region = each.key
+}
+
 locals {
   region = coalesce(
     var.lights_off_region,
@@ -24,6 +34,35 @@ locals {
     },
     var.lights_off_tags,
   )
+
+  operation_preferences = merge(
+    var.lights_off_stackset_operation_preferences,
+
+    # Reminder: optional(TYPE) with no default, in the object type constraint,
+    # supplies a null "value" for each key that has not been explicitly set.
+
+    var.lights_off_stackset_operation_preferences["region_order"] == null
+    ? {
+      region_order = sort(keys(data.aws_region.lights_off_stackset))
+    }
+    : {},
+
+    var.lights_off_stackset_operation_preferences["max_concurrent_percentage"] == null
+    ? {}
+    : {
+      max_concurrent_count = null
+      max_concurrent_percentage = var.lights_off_stackset_operation_preferences[
+        "max_concurrent_percentage"
+      ]
+    },
+
+    var.lights_off_stackset_operation_preferences["failure_tolerance_percentage"] == null
+    ? {}
+    : {
+      failure_tolerance_count = null
+      failure_tolerance_percentage = var.lights_off_stackset_operation_preferences[
+        "failure_tolerance_percentage"
+      ]
+    },
+  )
 }
-
-
