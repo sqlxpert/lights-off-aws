@@ -119,14 +119,14 @@ variable "lights_off_tags" {
 
 variable "lights_off_stackset_organizational_unit_names" {
   type        = list(string)
-  description = "List of the names (not the IDs) of root-level organizational units in which to create instances of the CloudFormation StackSet. The organizational units must exist. Within a region, deployments proceed in alphabetical order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
+  description = "List of the names (not the IDs) of root-level organizational units in which to create instances of the CloudFormation StackSet. The organizational units must exist. Within a region, deployments proceed in alphabetic order by OU ID (not by name). Deprecated. Start with, or switch to, lights_off_stackset_organizational_unit_ids ."
 
   default = []
 }
 
 variable "lights_off_stackset_organizational_unit_ids" {
   type        = list(string)
-  description = "List of the IDs of the organizational units in which to automatically define instances of the CloudFormation StackSet. Within a region, deployments proceed in alphabetical order by OU ID. Leave the list empty if you define all aws_cloudformation_stack_set_instance resources manually."
+  description = "List of the IDs of the organizational units in which to automatically define instances of the CloudFormation StackSet. Within a region, deployments proceed in alphabetic order by OU ID. Leave the list empty if you define all aws_cloudformation_stack_set_instance resources manually."
 
   default = []
 }
@@ -135,7 +135,7 @@ variable "lights_off_stackset_organizational_unit_ids" {
 
 variable "lights_off_stackset_regions" {
   type        = list(string)
-  description = "List of region codes for the regions in which to define instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically-defined StackSet instances will proceed in alphabetical order by region code."
+  description = "List of region codes for the regions in which to define instances of the CloudFormation StackSet. The empty list causes the module to use lights_off_region . Initial deployment of automatically-defined StackSet instances will proceed in alphabetic order by region code."
 
   default = []
 }
