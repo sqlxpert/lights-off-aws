@@ -2,4 +2,5 @@
 # github.com/sqlxpert/lights-off-aws/  GPLv3  Copyright Paul Marcelin
 
 *.tf -linguist-detectable
+*.hcl -linguist-detectable
 *.yaml -linguist-detectable
